@@ -26,7 +26,7 @@ console.log(id)
     }, [dispatch, id]);
 
 
-    const script = `<script src="http://localhost:5000/public/widget.js?apiKey=${apiKey}&agentName=${encodeURIComponent(selectedAgent?.name || '')}" async></script>`;
+    const script = `<script src="https://nuvro-backend.onrender.com/public/widget.js?apiKey=${apiKey}&agentName=${encodeURIComponent(selectedAgent?.name || '')}" async></script>`;
 
 
     const handleCopy = () => {
