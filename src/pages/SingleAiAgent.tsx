@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy } from "lucide-react";
+import { Copy, Divide } from "lucide-react";
 import toast from "react-hot-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -13,10 +13,10 @@ import { useSelector } from "react-redux";
 export default function SingleAiAgent() {
     const [copied, setCopied] = useState(false);
     const { id }: any = useParams();
-console.log(id)
+    console.log(id)
     const dispatch = useDispatch<AppDispatch>();
     const { selectedAgent, status, apiKey } = useSelector((state: RootState) => state.aiAgent);
-    
+
     useEffect(() => {
         try {
             dispatch(fetchAIAgentById(id));
@@ -36,12 +36,20 @@ console.log(id)
         setTimeout(() => setCopied(false), 2000);
     };
 
+
+
     return (
         <div className="p-6 md:p-10">
-            <h1 className="text-2xl font-semibold text-[#000000] dark:text-[#FFFFFF] mb-6">
-                {status === "loading" ? <div className="animate-spin rounded-full h-10 w-10 border-b-2 dark:border-white border-[#8C52FF]">
 
-                </div> : selectedAgent?.name}</h1>
+            
+            {
+                status !== "loading" && (
+                    <div className="flex items-center justify-start gap-2">
+                        <div className="text-2xl font-semibold text-[#000000] dark:text-[#FFFFFF] mb-6">{selectedAgent?.name}</div>
+                        <div>{selectedAgent?.active === true ? <div className="px-2 py-1 rounded-full text-sm bg-[#8C52FF] text-white">Active</div> : <div className="px-2 py-1 rounded-md bg-red-400 text-sm text-white" >Inactive</div>}</div>
+                    </div>
+                )
+            }
 
             {/* Tabs */}
             <Tabs defaultValue="integration">
@@ -53,7 +61,10 @@ console.log(id)
                 </TabsList>
             </Tabs>
 
-            <div className="flex lg:flex-row justify-start flex-col gap-6">
+
+
+            <div className="flex lg:flex-row lg:justify-start flex-col gap-6">
+
                 {/* Sidebar */}
                 <div className="space-y-2 w-[242px]">
                     <Card className="px-4 py-2 w-full border-l-4 rounded-[8px] border-[#8C52FF] bg-[#F4F1FD] dark:bg-[#383841] dark:text-[#FFFFFF]  text-[#8C52FF] font-medium cursor-pointer ">
@@ -64,22 +75,27 @@ console.log(id)
 
                 {/* Embed Script */}
                 <div className="col-span-2 flex lg:flex-row  flex-col gap-5">
-                    <Card className="px-6 space-y-4 lg:w-2/3 border border-[#D4D8DE] dark:border-[#2C3139] p-5">
-                        <h2 className="text-lg font-semibold dark:text-[#FFFFFF] text-[#101214]">Embed</h2>
 
-                        <pre className="bg-[#F1F2F4] dark:border-none dark:bg-[#101214] text-[#101214] dark:text-[#ABA8B4] text-sm  whitespace-pre-wrap break-words overflow-hidden p-4 rounded-md word-break  border border-[#e4e4e7]">
+
+                    <Card className="w-full max-w-full p-5 border border-[#D4D8DE] dark:border-[#2C3139] overflow-hidden">
+                        <h2 className="text-lg font-semibold dark:text-white text-[#101214]">Embed</h2>
+
+                        <pre className="bg-[#F1F2F4] dark:bg-[#101214] rounded-md p-4 break-words whitespace-pre-wrap text-sm text-[#101214] dark:text-[#ABA8B4] w-full">
                             {script}
                         </pre>
 
                         <Button
                             onClick={handleCopy}
                             variant="outline"
-                            className="text-[#8C52FF] dark:text-[#A3ABB8]  border-[#8C52FF] cursor-pointer"
+                            className="mt-4 text-[#8C52FF] dark:text-[#A3ABB8] border-[#8C52FF] cursor-pointer"
                         >
                             <Copy className="mr-2 h-4 w-4" />
                             {copied ? "Copied!" : "Copy script"}
                         </Button>
                     </Card>
+
+
+
 
                     {/* Instructions */}
                     <Card className=" px-6 lg:w-1/3 border dark:border-[#2C3139]  border-[#D4D8DE p-5">
@@ -102,8 +118,14 @@ console.log(id)
                             </div>
                         </div>
                     </Card>
+
                 </div>
+
             </div>
+
+
+
+
         </div>
     );
 }

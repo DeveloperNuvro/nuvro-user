@@ -29,6 +29,7 @@ export default function OnboardingStep() {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         businessName: '',
+        businessDomain: '',
         industry: '',
         businessType: '',
         platform: '',
@@ -53,21 +54,23 @@ export default function OnboardingStep() {
     const isStepValid = () => {
         switch (step) {
             case 1: return !!formData.businessName.trim();
-            case 2: return !!formData.industry.trim();
-            case 3: return !!formData.businessType;
-            case 4: return !!formData.platform;
-            case 5: return !!formData.supportSize;
-            case 6: return formData.supportChannels.length > 0;
-            case 7: return !!formData.websiteTraffic;
-            case 8: return !!formData.monthlyConversations;
-            case 9: return formData.goals.length > 0;
+            case 2: return !!formData.businessDomain.trim();
+
+            case 3: return !!formData.industry.trim();
+            case 4: return !!formData.businessType;
+            case 5: return !!formData.platform;
+            case 6: return !!formData.supportSize;
+            case 7: return formData.supportChannels.length > 0;
+            case 8: return !!formData.websiteTraffic;
+            case 9: return !!formData.monthlyConversations;
+            case 10: return formData.goals.length > 0;
             default: return true;
         }
     };
 
 
     const handleNext = () => {
-        if (step < 10) setStep(step + 1);
+        if (step < 11) setStep(step + 1);
         else console.log("✅ Final Submission:", formData);
     };
 
@@ -138,14 +141,26 @@ export default function OnboardingStep() {
                         />
                     </>
                 );
-            case 2:
+                case 2:
+                return (
+                    <>
+                        <label className="text-[18px] font-500 text-[#101214] dark:text-[#FFFFFF] text-center">What’s the name of your business domain?</label>
+                        <Input
+                            placeholder="Your Business Domain"
+                            value={formData.businessDomain}
+                            onChange={(e) => handleChange('businessDomain', e.target.value)}
+                            className="w-full"
+                        />
+                    </>
+                );
+            case 3:
                 return (
                     <>
                         <label className="text-[18px] font-500 text-[#101214] dark:text-[#FFFFFF] text-center">Which industry best describes your business?</label>
                         {renderButtons('industry', OPTIONS.industry)}
                     </>
                 );
-            case 3:
+            case 4:
                 return (
                     <>
                         <label className="text-[18px] font-500 text-[#101214] dark:text-[#FFFFFF] text-center">How does your business operate?</label>
@@ -153,7 +168,7 @@ export default function OnboardingStep() {
                     </>
                 );
 
-            case 4:
+            case 5:
                 return (
                     <>
                         <label className="text-[18px] font-500 text-[#101214] dark:text-[#FFFFFF] text-center">Which platform does your website run on?</label>
@@ -161,7 +176,7 @@ export default function OnboardingStep() {
                     </>
                 );
 
-            case 5:
+            case 6:
                 return (
                     <>
                         <label className="text-[18px] font-500 text-[#101214] dark:text-[#FFFFFF] text-center">Your Customer Support Team Size?</label>
@@ -169,7 +184,7 @@ export default function OnboardingStep() {
                     </>
                 );
 
-            case 6:
+            case 7:
                 return (
                     <>
                         <label className="text-[18px] font-500 dark:text-[#FFFFFF] text-[#101214] text-center">
@@ -179,21 +194,21 @@ export default function OnboardingStep() {
                         {renderButtons('supportChannels', OPTIONS.supportChannels, true)}
                     </>
                 );
-            case 7:
+            case 8:
                 return (
                     <>
                         <label className="text-[18px] font-500 text-[#101214] dark:text-[#FFFFFF] text-center">Your monthly website traffic?</label>
                         {renderButtons('websiteTraffic', OPTIONS.websiteTraffic)}
                     </>
                 );
-            case 8:
+            case 9:
                 return (
                     <>
                         <label className="text-[18px] font-500 text-[#101214] dark:text-[#FFFFFF] text-center">How many conversations do you have with clients each month?</label>
                         {renderButtons('monthlyConversations', OPTIONS.monthlyConversations)}
                     </>
                 );
-            case 9:
+            case 10:
                 return (
                     <>
                         <label className="text-[18px] font-500 dark:text-[#FFFFFF] text-[#101214] text-center">
@@ -203,7 +218,7 @@ export default function OnboardingStep() {
                         {renderButtons('goals', OPTIONS.goals, true)}
                     </>
                 );
-            case 10:
+            case 11:
                 return (
                     <div className="text-center space-y-4">
                         <h2 className="text-[28px] font-500 text[#101214]">🎉 You’re All Set!</h2>
@@ -229,12 +244,13 @@ export default function OnboardingStep() {
                         <p className="text-sm text-[#A3ABB8] dark:text-[#ABA8B4]">
                             {
                                 step === 1 ? "We’re excited to get started! Please tell us a bit about yourself." :
-                                    step === 2 ? "This helps us tailor our services to your needs." :
-                                        step === 3 || step === 4 || step === 5 ? "This helps us understand your business better." :
-                                            step === 6 ? "This helps us understand your current setup." :
-                                                step === 7 ? "This helps us understand your audience." :
-                                                    step === 8 ? "This helps us understand your customer interactions." :
-                                                        step === 9 ? "This helps us tailor our services to your goals." : ""
+                                    step === 2 ? "Carefully write your busienss domain because it will be used to connect your AI chatbot to your website." :
+                                    step === 3 ? "This helps us tailor our services to your needs." :
+                                        step === 4 || step === 5 || step === 6 ? "This helps us understand your business better." :
+                                            step === 7 ? "This helps us understand your current setup." :
+                                                step === 8 ? "This helps us understand your audience." :
+                                                    step === 9 ? "This helps us understand your customer interactions." :
+                                                        step === 10 ? "This helps us tailor our services to your goals." : ""
 
                             }
                         </p>
@@ -242,7 +258,7 @@ export default function OnboardingStep() {
 
                     <div className="w-full space-y-4 flex flex-col items-center">{renderStepContent()}</div>
 
-                    {step < 10 && (
+                    {step < 11 && (
                         <div className="w-full mt-6 flex justify-center items-center gap-5">
                             {step > 1 && (
                                 <ButtonSmall
@@ -265,7 +281,7 @@ export default function OnboardingStep() {
 
             <div className="w-full max-w-xl text-center mt-6 px-6 bottom-[80px] absolute">
                 <div className='text-[14px] font-400 text-[#A3ABB8] w-full mb-5'>Your response will help us create the best onboarding experience for you! </div>
-                <Progress value={(step / 10) * 100} />
+                <Progress value={(step / 11) * 100} />
             </div>
         </div>
     );
