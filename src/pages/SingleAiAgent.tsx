@@ -26,7 +26,7 @@ export default function SingleAiAgent() {
     }, [dispatch, id]);
 
 
-    const script = `<script src="https://nuvro-backend.onrender.com/public/widget.js?apiKey=${apiKey}&agentName=${encodeURIComponent(selectedAgent?.name || '')}" async></script>`;
+    const script = `<script src="https://nuvro-dtao9.ondigitalocean.app/public/widget.js?apiKey=${apiKey}&agentName=${encodeURIComponent(selectedAgent?.name || '')}" async></script>`;
 
 
     const handleCopy = () => {
