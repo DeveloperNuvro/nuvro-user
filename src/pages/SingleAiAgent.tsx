@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Divide } from "lucide-react";
+import { Copy} from "lucide-react";
 import toast from "react-hot-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
