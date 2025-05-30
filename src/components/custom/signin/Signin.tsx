@@ -45,7 +45,7 @@ const Signin = () => {
           };
     
           const result : any = await dispatch(loginUser(payload)).unwrap();
-          console.log(result.data.user.onboardingCompleted);
+
     
           toast.success(result?.message || 'Logged in successfully!');
           if(result.data.user.onboardingCompleted
@@ -53,9 +53,9 @@ const Signin = () => {
           else navigate('/main-menu/ai-model');
           
         } catch (err: any) {
-          console.error('❌ Signin failed:', err);
+          
           if (err) {
-            console.log(err)
+        
             toast.error(err);
             
           }
