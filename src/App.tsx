@@ -15,6 +15,10 @@ import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
 import { useAppSelector } from "./app/hooks";
 import OnboardingGuard from "./routes/OnboardingGuard";
 import SingleAiAgent from "./pages/SingleAiAgent";
+import ChatInbox from "./pages/ChatInbox";
+import { Toaster } from 'sonner'
+import CustomersPage from "./pages/AllCustomerPage";
+
 
 function App() {
 
@@ -24,6 +28,8 @@ function App() {
   if (!bootstrapped) return <div className="text-center ">Loading session...</div>;
 
   return (
+    <>
+     <Toaster position="top-right" richColors />
     <Routes>
       {/* Public Routes */}
       <Route path="/signin" element={<Signin />} />
@@ -43,7 +49,7 @@ function App() {
           <Route path="ai-model/train-model" element={<TrainModelForm />} />
 
           <Route path="overview" element={<ComingSoon />} />
-          <Route path="inbox" element={<ComingSoon />} />
+          <Route path="inbox" element={<ChatInbox />} />
           <Route path="ticket" element={<ComingSoon />} />
 
           <Route path="ai-agent" element={<AIAgent />} />
@@ -52,7 +58,7 @@ function App() {
           <Route path="ai-agent/:id" element={<SingleAiAgent />} />
 
 
-          <Route path="customers" element={<ComingSoon />} />
+          <Route path="customers" element={<CustomersPage />} />
           <Route path="analytics" element={<ComingSoon />} />
           <Route path="plan" element={<ComingSoon />} />
           <Route path="help" element={<ComingSoon />} />
@@ -61,6 +67,8 @@ function App() {
         </Route>
       </Route>
     </Routes>
+    
+    </>
   );
 }
 

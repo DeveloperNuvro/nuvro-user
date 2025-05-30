@@ -3,12 +3,15 @@ import authReducer from '../features/auth/authSlice';
 import onboardingReducer from '../features/onboarding/onboardingSlice';
 import trainModelReducer from '../features/aiModel/trainModelSlice';
 import aiAgentReducer from '../features/aiAgent/aiAgentSlice';
+import chatInboxReducer from '../features/chatInbox/chatInboxSlice';
+
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     onboarding: onboardingReducer,
     trainModel: trainModelReducer,
-    aiAgent: aiAgentReducer
+    aiAgent: aiAgentReducer,
+    chatInbox: chatInboxReducer,
   },
 });
 

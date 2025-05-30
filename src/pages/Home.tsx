@@ -2,6 +2,9 @@ import { ButtonExtraSmall } from '@/components/custom/button/Button'
 import { Link } from 'react-router-dom'
 
 const Home = () => {
+
+  
+
   return (
     <div className='flex justify-center items-center h-screen'>
         <div>

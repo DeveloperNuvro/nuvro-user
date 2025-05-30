@@ -8,21 +8,21 @@ export const useAuthBootstrap = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const timeout = setTimeout(() => {
+useEffect(() => {
+  console.log("🔁 Bootstrapping session...");
+  dispatch(refreshAccessToken())
+    .unwrap()
+    .then(() => {
+      console.log("✅ Token refreshed");
+    })
+    .catch(() => {
+      console.log("❌ Refresh failed");
       dispatch(logout());
       navigate('/signin');
-    }, 10000); // ⏱ 10-second timeout
+    })
+    .finally(() => {
+      dispatch(setBootstrapped());
+    });
+}, []);
 
-    dispatch(refreshAccessToken())
-      .unwrap()
-      .catch(() => {
-        dispatch(logout()); // important for cleanup
-        navigate('/signin');
-      })
-      .finally(() => {
-        clearTimeout(timeout); // ✅ Clear timeout if refresh finishes early
-        dispatch(setBootstrapped()); // ✅ Allow UI to render
-      });
-  }, []);
 };

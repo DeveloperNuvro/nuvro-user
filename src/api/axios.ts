@@ -28,6 +28,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   response => response,
   async error => {
+    console.log("⛔️ Interceptor caught error:", error.response?.status);
     const originalRequest = error.config;
 
     if (originalRequest.url?.includes('/refresh-token')) {

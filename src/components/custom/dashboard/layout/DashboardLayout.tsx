@@ -16,7 +16,7 @@ import { TbBoxModel2 } from "react-icons/tb"; //AI model
 import { FiUsers } from "react-icons/fi"; //customers
 import { FiTrendingUp } from "react-icons/fi"; //analytics
 import { MdOutlinePayment } from "react-icons/md"; //plan & payment
-import { IoIosHelpCircleOutline } from "react-icons/io"; //help
+
 import { IoSettingsOutline } from "react-icons/io5"; //settings
 import { IoIosLogOut } from "react-icons/io"; //log out
 
@@ -50,7 +50,6 @@ const menuItems = [
     title: "Account",
     links: [
       { label: "Plan & Payment", to: "/main-menu/plan", icon: <MdOutlinePayment className="mr-2" /> },
-      { label: "Help", to: "/main-menu/help", icon: <IoIosHelpCircleOutline className="mr-2" /> },
       { label: "Settings", to: "/main-menu/settings", icon: <IoSettingsOutline className="mr-2" /> },
       { label: "Log Out", to: "logout", icon: <IoIosLogOut className="mr-2" />, action: "logout" },
     ],
