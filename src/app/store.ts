@@ -4,6 +4,7 @@ import onboardingReducer from '../features/onboarding/onboardingSlice';
 import trainModelReducer from '../features/aiModel/trainModelSlice';
 import aiAgentReducer from '../features/aiAgent/aiAgentSlice';
 import chatInboxReducer from '../features/chatInbox/chatInboxSlice';
+import supportTicket from '../features/SupportTicket/supportTicketSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     trainModel: trainModelReducer,
     aiAgent: aiAgentReducer,
     chatInbox: chatInboxReducer,
+    tickets: supportTicket,
   },
 });
 

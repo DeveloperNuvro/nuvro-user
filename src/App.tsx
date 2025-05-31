@@ -18,6 +18,7 @@ import SingleAiAgent from "./pages/SingleAiAgent";
 import ChatInbox from "./pages/ChatInbox";
 import { Toaster } from 'sonner'
 import CustomersPage from "./pages/AllCustomerPage";
+import AllTicketPage from "./pages/AllTicketPage";
 
 
 function App() {
@@ -50,7 +51,7 @@ function App() {
 
           <Route path="overview" element={<ComingSoon />} />
           <Route path="inbox" element={<ChatInbox />} />
-          <Route path="ticket" element={<ComingSoon />} />
+          <Route path="ticket" element={<AllTicketPage />} />
 
           <Route path="ai-agent" element={<AIAgent />} />
           <Route path="ai-agent/setup" element={<AiAgentPage />} />
