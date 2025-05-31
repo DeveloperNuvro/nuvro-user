@@ -48,34 +48,34 @@ const initialState: ChatInboxState = {
 
 // ⏬ Fetch all customers for a business
 export const fetchCustomersByBusiness = createAsyncThunk<
-  { page: number; customers: Customer[]; totalPages: number },
-  { businessId: string; page: number; searchQuery?: string; context?: "chat" | "table" },
-  { rejectValue: string }
+    { page: number; customers: Customer[]; totalPages: number },
+    { businessId: string; page: number; searchQuery?: string; context?: "chat" | "table" },
+    { rejectValue: string }
 >(
-  "chatInbox/fetchCustomersByBusiness",
-  async ({ businessId, page, searchQuery }, thunkAPI) => {
-    try {
-      const res = await api.get("/api/v1/customer/by-business", {
-        params: { businessId, page, limit: 10, phoneNumber: searchQuery || "" },
-      });
+    "chatInbox/fetchCustomersByBusiness",
+    async ({ businessId, page, searchQuery }, thunkAPI) => {
+        try {
+            const res = await api.get("/api/v1/customer/by-business", {
+                params: { businessId, page, limit: 10, phoneNumber: searchQuery || "" },
+            });
 
-      const rawData = res.data.data;
-      const customers = rawData.data.map((c: any) => ({
-        id: c._id,
-        name: c.name || "Unknown",
-        email: c.email || "",
-        phone: c.phone || "",
-        preview: c.latestMessage || "",
-        latestMessageTimestamp: c.latestMessageTimestamp || null,
-      }));
+            const rawData = res.data.data;
+            const customers = rawData.data.map((c: any) => ({
+                id: c._id,
+                name: c.name || "Unknown",
+                email: c.email || "",
+                phone: c.phone || "",
+                preview: c.latestMessage || "",
+                latestMessageTimestamp: c.latestMessageTimestamp || null,
+            }));
 
-      const totalPages = rawData.pagination?.totalPages || 1;
+            const totalPages = rawData.pagination?.totalPages || 1;
 
-      return { page, customers, totalPages };
-    } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch customers");
+            return { page, customers, totalPages };
+        } catch (error: any) {
+            return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch customers");
+        }
     }
-  }
 );
 
 
@@ -116,23 +116,30 @@ const chatInboxSlice = createSlice({
             const { customerId, message } = action.payload;
 
             // Append message
-            if (!state.chatData[customerId]) {
-                state.chatData[customerId] = [];
-            }
-            state.chatData[customerId].push(message);
+            const existingMessages = state.chatData[customerId] || [];
+            state.chatData[customerId] = [...existingMessages, message];
 
+             const customerIndex = state.customers.findIndex(c => c.id === customerId);
+             if (customerIndex !== -1) {
+                // Create a new customer object to ensure immutability for that item
+                const updatedCustomer = {
+                    ...state.customers[customerIndex],
+                    preview: message.text,
+                    latestMessageTimestamp: message.time,
+                };
+                // Create a new customers array
+                state.customers = [
+                    ...state.customers.slice(0, customerIndex),
+                    updatedCustomer,
+                    ...state.customers.slice(customerIndex + 1),
+                ];
+            }
             // ✅ Immutably update preview and timestamp
-            state.customers = state.customers
-                .map((c) =>
-                    c.id === customerId
-                        ? { ...c, preview: message.text, latestMessageTimestamp: message.time }
-                        : c
-                )
-                .sort(
-                    (a, b) =>
-                        new Date(b.latestMessageTimestamp || 0).getTime() -
-                        new Date(a.latestMessageTimestamp || 0).getTime()
-                );
+            state.customers.sort(
+                (a, b) =>
+                    new Date(b.latestMessageTimestamp || 0).getTime() -
+                    new Date(a.latestMessageTimestamp || 0).getTime()
+            );
 
 
         },
