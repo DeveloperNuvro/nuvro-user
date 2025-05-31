@@ -39,7 +39,7 @@ export const loginUser = createAsyncThunk<
   { email: string; password: string }
 >('auth/loginUser', async (payload, thunkAPI) => {
   try {
-    const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/v1/users/login`, payload);
+    const response = await api.post(`/api/v1/users/login`, payload);
     return response.data;
   } catch (error: any) {
     console.log(error)

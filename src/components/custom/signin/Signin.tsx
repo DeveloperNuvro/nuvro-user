@@ -50,7 +50,7 @@ const Signin = () => {
           toast.success(result?.message || 'Logged in successfully!');
           if(result.data.user.onboardingCompleted
             === false) navigate('/onboarding');
-          else navigate('/main-menu/ai-model');
+          else navigate('/main-menu/overview');
           
         } catch (err: any) {
           
