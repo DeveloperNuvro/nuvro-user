@@ -202,11 +202,11 @@ export default function ChatInbox() {
     }
   };
 
-  useEffect(() => {
-    if (messageScrollRef.current) {
-      messageScrollRef.current.scrollTo({ top: messageScrollRef.current.scrollHeight, behavior: "smooth" });
-    }
-  }, [chatData, selectedCustomer]);
+  // useEffect(() => {
+  //   if (messageScrollRef.current) {
+  //     messageScrollRef.current.scrollTo({ top: messageScrollRef.current.scrollHeight, behavior: "smooth" });
+  //   }
+  // }, [chatData, selectedCustomer]);
 
   const emitTyping = debounce((customerId: string, businessId: string) => {
     socket.emit("typing", { customerId, businessId, source: "humanAgent" });
