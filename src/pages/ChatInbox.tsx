@@ -69,17 +69,17 @@ export default function ChatInbox() {
 
   useEffect(() => {
     const handleNewMessage = (data: any) => {
-      const { customerId, sender, message, customerName } = data;
+      const { customerId, sender, message, name } = data;
       const id = customerId?.toString();
       if (!id) return;
       setIsTyping(prev => ({...prev, [id]: false}));
       if (sender === 'user') {
-        toast.custom((t) => <NotificationToast t={t} name={customerName || "A customer"} msg={message} />)
+        toast.custom((t) => <NotificationToast t={t} name={name|| "A customer"} msg={message} />)
         notificationRef.current?.play().catch(err => console.warn("Audio playback failed:", err));
       }
       const exists = customers.some((c: any) => c.id === id);
       if (!exists && sender === 'user') {
-        dispatch(addNewCustomer({ id, name: customerName || "Unknown", preview: message, latestMessageTimestamp: new Date().toISOString() }));
+        dispatch(addNewCustomer({ id, name: name|| "Unknown", preview: message, latestMessageTimestamp: new Date().toISOString() }));
       }
       dispatch(addRealtimeMessage({
         customerId: id,
