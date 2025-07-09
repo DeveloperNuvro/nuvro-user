@@ -68,7 +68,7 @@ const initialState: TrainModelState = {
 
 // Thunk for CREATING a model
 export const trainModel = createAsyncThunk<
-  AIModel, // The backend now returns the full model object in `res.data.data`
+  AIModel, 
   TrainModelPayload,
   { rejectValue: string }
 >('trainModel/trainModel', async (payload, thunkAPI) => {
