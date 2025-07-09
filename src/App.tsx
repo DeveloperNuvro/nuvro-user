@@ -19,6 +19,12 @@ import ChatInbox from "./pages/ChatInbox";
 import { Toaster } from 'sonner'
 import CustomersPage from "./pages/AllCustomerPage";
 import AllTicketPage from "./pages/AllTicketPage";
+import UpdateAIModelForm from "./components/custom/aiModel/UpdateAIModelForm";
+import { PricingPage } from "./pages/PricingPage";
+import { BillingManagement } from "./pages/BillingManagement";
+import AnalysisPage from "./pages/AnalysisPage";
+import DashboardOverviewPage from "./pages/OverviewPage";
+import AccountSettingsPage from "./pages/AccountSettingPage";
 
 
 function App() {
@@ -48,8 +54,8 @@ function App() {
         <Route path="/main-menu" element={<DashboardLayout />}>
           <Route path="ai-model" element={<AiModelPage />} />
           <Route path="ai-model/train-model" element={<TrainModelForm />} />
-
-          <Route path="overview" element={<ComingSoon />} />
+         <Route path="ai-model/update/:id" element={<UpdateAIModelForm />} />
+          <Route path="overview" element={<DashboardOverviewPage />} />
           <Route path="inbox" element={<ChatInbox />} />
           <Route path="ticket" element={<AllTicketPage />} />
 
@@ -60,10 +66,11 @@ function App() {
 
 
           <Route path="customers" element={<CustomersPage />} />
-          <Route path="analytics" element={<ComingSoon />} />
-          <Route path="plan" element={<ComingSoon />} />
+          <Route path="analytics" element={<AnalysisPage />} />
+          <Route path="pricing" element={<PricingPage />} />
+          <Route path="billing" element={<BillingManagement />} />
           <Route path="help" element={<ComingSoon />} />
-          <Route path="settings" element={<ComingSoon />} />
+          <Route path="settings" element={<AccountSettingsPage />} />
           <Route path="logout" element={<ComingSoon />} />
         </Route>
       </Route>

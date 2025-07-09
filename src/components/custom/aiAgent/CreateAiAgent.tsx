@@ -164,7 +164,7 @@ export default function CreateAiAgent() {
               <button
                 type="button"
                 onClick={() => append({ question: "", answer: "" })}
-                className="text-sm text-[#8C52FF] cursor-pointer hover:underline mt-5"
+                className="text-sm text-[#ff21b0] cursor-pointer hover:underline mt-5"
               >
                 <span className="ml-2 font-bold">+ Add another Q&A</span>
               </button>

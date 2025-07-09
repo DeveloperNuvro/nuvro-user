@@ -65,7 +65,7 @@ export default function TrainModelForm() {
       //   return;
       // }
       try {
-        const res = await dispatch(
+         await dispatch(
           trainModel({
             name: data.name,
             modelType: data.modelType,
@@ -74,7 +74,7 @@ export default function TrainModelForm() {
           })
         ).unwrap();
 
-        toast.success(res.message || 'Model trained successfully!');
+        toast.success('Model trained successfully!');
         setUploadedFiles([]);
         navigate("/main-menu/ai-model");
 

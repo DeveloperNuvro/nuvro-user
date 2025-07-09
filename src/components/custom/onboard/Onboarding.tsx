@@ -83,7 +83,7 @@ export default function OnboardingStep() {
 
     // Redirect to main-menu after successful onboarding
     const sendToMainMenu = () => {
-        setTimeout(() => { navigate('/main-menu'); }, 2000);
+        setTimeout(() => { navigate('/main-menu/pricing'); }, 2000);
     }
 
     // Final submission logic
@@ -116,7 +116,7 @@ export default function OnboardingStep() {
                             isMulti ? toggleMultiSelect(field, opt) : handleChange(field, opt)
                         }
                         className={`px-4 py-2 rounded-[6px] border text-[14px] cursor-pointer ${selected
-                            ? "bg-[#DBC9FF] text-[#8C52FF] border-[#8C52FF]"
+                            ? "bg-[#DBC9FF] text-[#ff21b0] border-[#ff21b0]"
                             : " text-[#A3ABB8] dark:text-[#89888C] border-[#D4D8DE] dark:border-[#2C3139]"
                             }`}
                     >
@@ -146,7 +146,7 @@ export default function OnboardingStep() {
                     <>
                         <label className="text-[18px] font-500 text-[#101214] dark:text-[#FFFFFF] text-center">What’s the name of your business domain?</label>
                         <Input
-                            placeholder="Your Business Domain"
+                            placeholder="Your Business Domain (e.g., example.com)"
                             value={formData.businessDomain}
                             onChange={(e) => handleChange('businessDomain', e.target.value)}
                             className="w-full"

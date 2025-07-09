@@ -15,7 +15,7 @@ export const Button = ({ value, type = "button", ...rest }: ButtonProps) => {
       type={type}
       className="
         md:h-[56px] w-full h-[40px]
-        bg-[#8C52FF] rounded-[8px] px-[16px] py-[8px] mb-[10px]
+        bg-[#ff21b0] rounded-[8px] px-[16px] py-[8px] mb-[10px]
         text-[16px] font-[600] text-[#FFFFFF]
         disabled:opacity-50 disabled:cursor-not-allowed
         cursor-pointer
@@ -34,7 +34,7 @@ export const ButtonSmall = ({ value, customClass, type = "button", isOutline = f
       className={
         `
         ${customClass}
-        ${isOutline ? 'bg-none border-[1px] border-[#8C52FF] text-[#8C52FF] ' : 'bg-[#8C52FF] text-[#FFFFFF]'}
+        ${isOutline ? 'bg-none border-[1px] border-[#ff21b0] text-[#ff21b0] ' : 'bg-[#ff21b0] text-[#FFFFFF]'}
         md:h-[46px] w-[220px]
         rounded-[8px] px-[16px] py-[8px] mb-[10px]
         text-[16px]
@@ -55,7 +55,7 @@ export const ButtonExtraSmall = ({ value, type = "button", isOutline = false, ..
       type={type}
       className={
         `
-        ${isOutline ? 'bg-none border-[1px] border-[#8C52FF] text-[#8C52FF] ' : 'bg-[#8C52FF] text-[#FFFFFF]'}
+        ${isOutline ? 'bg-none border-[1px] border-[#ff21b0] text-[#ff21b0] ' : 'bg-[#ff21b0] text-[#FFFFFF]'}
         md:h-[40px] w-[120px]
         rounded-[8px] px-[10px] py-[8px] mb-[10px]
         text-[16px]

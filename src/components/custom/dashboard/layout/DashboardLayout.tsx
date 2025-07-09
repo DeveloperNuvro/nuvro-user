@@ -1,11 +1,12 @@
 // components/layout/DashboardLayout.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Menu, CircleUser, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/images/LogoColor.png";
+import logoWhite from "@/assets/images/logoWhiteColor.png";
 import { ModeToggle } from "@/components/mode-toggle";
 
 import { FiGrid } from "react-icons/fi"; //overview
@@ -22,10 +23,13 @@ import { IoIosLogOut } from "react-icons/io"; //log out
 
 
 import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/app/store';
+import { AppDispatch, RootState } from '@/app/store';
 import { logoutUser } from '@/features/auth/authSlice';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from "react-redux";
+import { fetchBusinessById } from "@/features/business/businessSlice";
+import { format } from 'date-fns';
 
 
 const menuItems = [
@@ -36,7 +40,7 @@ const menuItems = [
       { label: "Inbox", to: "/main-menu/inbox", icon: <GoInbox className="mr-2" /> },
       { label: "Ticket", to: "/main-menu/ticket", icon: <LuTicket className="mr-2" /> },
       { label: "AI Model", to: "/main-menu/ai-model", icon: <TbBoxModel2 className="mr-2" /> },
-      { label: "AI Agent", to: "/main-menu/ai-agent", icon: <SiProbot className="mr-2" /> },
+      { label: "AI Agent", to: "/main-menu/ai-agent/setup", icon: <SiProbot className="mr-2" /> },
     ],
   },
   {
@@ -49,7 +53,8 @@ const menuItems = [
   {
     title: "Account",
     links: [
-      { label: "Plan & Payment", to: "/main-menu/plan", icon: <MdOutlinePayment className="mr-2" /> },
+      { label: "Plan & Payment", to: "/main-menu/pricing", icon: <MdOutlinePayment className="mr-2" /> },
+
       { label: "Settings", to: "/main-menu/settings", icon: <IoSettingsOutline className="mr-2" /> },
       { label: "Log Out", to: "logout", icon: <IoIosLogOut className="mr-2" />, action: "logout" },
     ],
@@ -59,9 +64,22 @@ const menuItems = [
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const [imageSrc, setImageSrc] = useState<string>(logoWhite);
+
 
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  const { selectedBusiness } = useSelector((state: RootState) => state.business);
+
+  const businessId = user?.businessId || '';
+  useEffect(() => {
+    if (businessId) {
+      dispatch(fetchBusinessById(businessId));
+    }
+  }, [dispatch, businessId]);
 
   const handleMenuClick = async (item: any) => {
     if (item.action === 'logout') {
@@ -75,16 +93,40 @@ export default function DashboardLayout() {
     }
   };
 
+   useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+    const updateImage = () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setImageSrc(isDark ? logo : logoWhite);
+    };
+
+    updateImage();
+    mediaQuery.addEventListener('change', updateImage);
+    const observer = new MutationObserver(updateImage);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+
+    return () => {
+      mediaQuery.removeEventListener('change', updateImage);
+      observer.disconnect();
+    };
+  }, []);
+
+  const endDateRaw = selectedBusiness?.currentPeriodEnd || selectedBusiness?.trialEndDate;
+  const endDate = endDateRaw ? format(new Date(endDateRaw), 'MMMM d, yyyy, h:mm a') : 'N/A';
 
   const SidebarContent = (
     <div className="w-[300px] bg-[#FAFAFA] dark:bg-[#1B1B20] scrollbar-hide overflow-y-auto h-full  fixed inset-y-0 left-0 border-r-[0.5px] border-[#D4D8DE]
      dark:border-[#2C3139] z-40">
-      <div className="px-6 pt-8 pb-12 ">
-        <img src={logo} alt="Nuvro logo" />
+      <div className="px-6  my-6 max-h-[100px]">
+        <img className="object-fill" src={imageSrc} alt="Nuvro logo" />
       </div>
       <ScrollArea className="h-[calc(100vh-64px)] px-4">
         <nav className="flex flex-col gap-6">
-          {menuItems.map((section) => (
+          {menuItems?.map((section) => (
             <div key={section.title}>
               <p className="text-[12px] font-400 text-[#A3ABB8] uppercase mb-2">{section.title}</p>
               <ul className="space-y-1">
@@ -93,7 +135,7 @@ export default function DashboardLayout() {
                     {link.action === 'logout' ? (
                       <button
                         onClick={() => handleMenuClick(link)}
-                        className="w-full cursor-pointer text-left block rounded-md px-3 py-2 text-sm font-400 transition-colors text-[#A3ABB8] hover:text-[#8C52FF] hover:bg-muted/40"
+                        className="w-full cursor-pointer text-left block rounded-md px-3 py-2 text-sm font-400 transition-colors text-[#A3ABB8] hover:text-[#ff21b0] hover:bg-muted/40"
                       >
                         <div className="flex items-center">
                           {link.icon}
@@ -107,8 +149,8 @@ export default function DashboardLayout() {
                           cn(
                             "block rounded-md px-3 py-2 text-sm font-400 transition-colors",
                             isActive
-                              ? "bg-[#F4EEFF] dark:bg-[#8C52FF] text-[#8C52FF] dark:text-[#FFFFFF]"
-                              : "hover:text-[#8C52FF] text-[#A3ABB8] hover:bg-muted/40"
+                              ? "bg-[#f7deee] dark:bg-[#ff21b0] text-[#ff21b0] dark:text-[#FFFFFF]"
+                              : "hover:text-[#ff21b0] text-[#A3ABB8] hover:bg-muted/40"
                           )
                         }
                       >
@@ -182,11 +224,11 @@ export default function DashboardLayout() {
             <div className="hidden md:flex flex-col items-center text-[16px] font-400 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] border-[1px] px-[16px] py-[8px] rounded-md cursor-pointer">
               <div className="flex items-center">
                 <MdOutlinePayment className="mr-2" />
-                Active Subscription
+                Current Subscription
                 <ChevronDown size={16} className="ml-1" />
               </div>
               <div className="text-[10px] text-[#A3ABB8] dark:text-[#ABA8B4]">
-                You're on <span className="font-bold">Free</span> Plan, <span className="font-bold">Always Free</span>
+                You're on <span className="font-bold">{selectedBusiness?.subscriptionPlan}</span> Plan, <span className="font-bold">End: {endDate}</span>
               </div>
             </div>
             {/* <Languages className="w-5 h-5 cursor-pointer" /> */}

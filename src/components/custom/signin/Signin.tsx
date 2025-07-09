@@ -2,10 +2,10 @@
 import SignUpAndSignInPageComponent from '../SignUpAndSignInPageComponent/SignUpAndSignInPageComponent'
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm} from 'react-hook-form';
 import { Button } from '../button/Button';
 import InputBox from '../inputbox/InputBox';
-import Checkbox from '../checkbox/Checkbox';
+
 import { Link, useNavigate } from 'react-router-dom'
 import { loginUser } from '@/features/auth/authSlice';
 import { useDispatch } from 'react-redux';
@@ -16,7 +16,6 @@ import { AppDispatch, RootState } from '@/app/store';
 const signinSchema = z.object({
     email: z.string().email('Invalid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
-    rememberMe: z.boolean().refine((val) => val !== undefined, { message: 'Remember Me is required' }),
 });
 
 type SigninFormData = z.infer<typeof signinSchema>;
@@ -26,7 +25,6 @@ const Signin = () => {
     const {
         register,
         handleSubmit,
-        control,
         formState: { errors, isValid },
     } = useForm<SigninFormData>({
         resolver: zodResolver(signinSchema),
@@ -85,7 +83,7 @@ const Signin = () => {
 
 
                     <div className="flex items-center justify-between w-full mt-2 mb-2">
-                        <Controller
+                        {/* <Controller
                             name="rememberMe"
                             defaultValue={false}
                             control={control}
@@ -101,17 +99,17 @@ const Signin = () => {
                                     </p>
                                 </div>
                             )}
-                        />
-                        <div>
-                            <Link to="/forgot-password" className="text-sm text-[#8C52FF] hover:underline">Forgot password?</Link>
-                        </div>
+                        /> */}
+                        {/* <div>
+                            <Link to="#" className="text-sm w-full text-[#ff21b0] hover:underline">Forgot password?</Link>
+                        </div> */}
                     </div>
 
 
                     <div className="text-sm text-[#101214] dark:text-white text-center w-full">
                         <Button value={`${status === 'loading' ? 'Signing in...' : 'Sign In'}`} type="submit" disabled={!isValid} />
                         Don’t have account?{' '}
-                        <Link to="/signup" className="text-[#8C52FF] hover:underline">Sign Up</Link>
+                        <Link to="/signup" className="text-[#ff21b0] hover:underline">Sign Up</Link>
                     </div>
                 </form>
             </SignUpAndSignInPageComponent>

@@ -106,8 +106,8 @@ const Signup = () => {
                 />
                 <p className="text-sm text-[#101214] dark:text-white">
                   I agree to Nuvro's{' '}
-                  <span className="text-[#8C52FF]">Terms & Conditions</span> and{' '}
-                  <span className="text-[#8C52FF]">Privacy Policy</span>
+                  <span className="text-[#ff21b0]">Terms & Conditions</span> and{' '}
+                  <span className="text-[#ff21b0]">Privacy Policy</span>
                 </p>
               </div>
             )}
@@ -124,7 +124,7 @@ const Signup = () => {
               disabled={!isValid || status === 'loading'}
             />
             Already have an account?{' '}
-            <Link to="/signin" className="text-[#8C52FF] hover:underline">Sign In</Link>
+            <Link to="/signin" className="text-[#ff21b0] hover:underline">Sign In</Link>
           </div>
         </form>
       </SignUpAndSignInPageComponent>

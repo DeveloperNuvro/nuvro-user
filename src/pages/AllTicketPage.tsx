@@ -275,7 +275,7 @@ const TicketList: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <Button
-            className="bg-purple-600 cursor-pointer text-white hover:bg-purple-700"
+            className="bg-[#ff21b0] cursor-pointer text-white hover:bg-[#c76ba7]"
             onClick={() => openModal('create')}
           >
             Add Ticket ✚
@@ -537,7 +537,7 @@ const TicketList: React.FC = () => {
             <Button
               onClick={handleSubmit}
               disabled={status === 'loading' && modalState.mode !== null} // Disable during any active modal operation
-              className={`cursor-pointer ${modalState.mode === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700'} text-white`}
+              className={`cursor-pointer ${modalState.mode === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#ff21b0] hover:bg-[#c76ba7]'} text-white`}
             >
               {status === 'loading' && modalState.mode !== null ? 'Processing...' : modalState.mode === 'create' ? 'Create Ticket' : modalState.mode === 'edit' ? 'Save Changes' : 'Delete Ticket'}
             </Button>
