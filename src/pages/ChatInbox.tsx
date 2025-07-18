@@ -24,7 +24,7 @@ import NotificationToast from "@/components/custom/Notification/NotificationToas
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = 'https://nuvro-dtao9.ondigitalocean.app';
 const TYPING_EMIT_DELAY = 500;
 
 export default function ChatInbox() {
