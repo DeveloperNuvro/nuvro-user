@@ -11,6 +11,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+// NEW: Import the Textarea component
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -33,7 +35,7 @@ import {
 import dayjs from 'dayjs';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isToday from 'dayjs/plugin/isToday';
-import toast from 'react-hot-toast'; // Import react-hot-toast
+import toast from 'react-hot-toast';
 
 dayjs.extend(localizedFormat);
 dayjs.extend(isToday);
@@ -49,7 +51,7 @@ const pageSize = 10;
 const TicketList: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { tickets, status, error, total, pages, currentPage } = useSelector((state: RootState) => state.tickets);
-  const { user }: { user: any } = useSelector((state: RootState) => state.auth); // Consider defining a proper type for user
+  const { user }: { user: any } = useSelector((state: RootState) => state.auth);
 
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -95,7 +97,7 @@ const TicketList: React.FC = () => {
     if (mode === 'edit' && ticket) {
       setFormData({
         businessId: typeof ticket.businessId === 'string' ? ticket.businessId : ticket.businessId?.name || user?.businessId || '',
-        customerId: ticket.customerId?.name || '', // Display name, field is disabled. If you need to submit customer ID, store it separately or parse it
+        customerId: ticket.customerId?.name || '',
         subject: ticket.subject,
         description: ticket.description,
         priority: ticket.priority,
@@ -133,15 +135,13 @@ const TicketList: React.FC = () => {
       errors.description = 'Description must be at least 10 characters long';
     }
     if (modalState.mode === 'create' && !formData.customerId) {
-        // Assuming customerId is required for creation based on common use cases.
-        // Adjust if customerId is truly optional or handled differently.
         errors.customerId = 'Customer ID is required for new tickets.';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  const handleSubmit = async () => { // Made async to await dispatch for toast
+  const handleSubmit = async () => {
     if (modalState.mode === 'delete') {
       if (modalState.ticket && modalState.ticket._id) {
         const ticketId = modalState.ticket._id;
@@ -151,14 +151,12 @@ const TicketList: React.FC = () => {
           if (action.meta?.requestStatus === 'fulfilled') {
             if (action.payload && action.payload.success === false) {
                  toast.error(action.payload.message || 'Failed to delete ticket.', { id: loadingToastId });
-                 console.error('Delete failed on backend:', action.payload.error || action.payload.message);
             } else if (action.payload && action.payload.error) {
                  toast.error(action.payload.error || 'Failed to delete ticket.', { id: loadingToastId });
-                 console.error('Delete failed on backend:', action.payload.error);
             } else {
                 toast.success('Ticket deleted successfully!', { id: loadingToastId });
                 dispatch(getAllTickets({
-                    page: (tickets.length === 1 && currentPage > 1) ? currentPage - 1 : currentPage, // Go to prev page if last item on current page deleted
+                    page: (tickets.length === 1 && currentPage > 1) ? currentPage - 1 : currentPage,
                     limit: pageSize,
                     status: filter === 'open' ? TicketStatus.Open : filter === 'closed' ? TicketStatus.Closed : undefined,
                     businessId: user?.businessId || '',
@@ -167,17 +165,14 @@ const TicketList: React.FC = () => {
             }
           } else {
             toast.error(action.error?.message || 'Failed to delete ticket.', { id: loadingToastId });
-            console.error('Delete request failed:', action.error?.message);
           }
         } catch (error: any) {
           toast.error(error.message || 'An unexpected error occurred.', { id: loadingToastId });
-          console.error('Dispatch error during delete:', error);
         } finally {
           closeModal();
         }
       } else {
         toast.error('Invalid ticket data for deletion.');
-        console.error('Invalid ticket or _id for deletion:', modalState.ticket);
         closeModal();
       }
       return;
@@ -189,7 +184,7 @@ const TicketList: React.FC = () => {
     }
 
     const commonTicketParamsForGetAll = {
-      page: currentPage, // Or 1 for create to see the new item on the first page
+      page: currentPage,
       limit: pageSize,
       status: filter === 'open' ? TicketStatus.Open : filter === 'closed' ? TicketStatus.Closed : undefined,
       businessId: user?.businessId || '',
@@ -212,16 +207,14 @@ const TicketList: React.FC = () => {
 
         if (action.meta?.requestStatus === 'fulfilled' && (!action.payload || action.payload.success !== false)) {
           toast.success('Ticket created successfully!', { id: loadingToastId });
-          dispatch(getAllTickets({...commonTicketParamsForGetAll, page: 1})); // Go to page 1 after create
+          dispatch(getAllTickets({...commonTicketParamsForGetAll, page: 1}));
           closeModal();
         } else {
           const errorMsg = action.payload?.message || action.payload?.error || action.error?.message || 'Failed to create ticket.';
           toast.error(errorMsg, { id: loadingToastId });
-          console.error('Create ticket failed:', errorMsg);
         }
       } catch (error: any) {
         toast.error(error.message || 'An unexpected error occurred.', { id: loadingToastId });
-        console.error('Dispatch error during create:', error);
       }
     } else if (modalState.mode === 'edit' && modalState.ticket) {
       const loadingToastId = toast.loading('Updating ticket...');
@@ -245,19 +238,15 @@ const TicketList: React.FC = () => {
         } else {
           const errorMsg = action.payload?.message || action.payload?.error || action.error?.message || 'Failed to update ticket.';
           toast.error(errorMsg, { id: loadingToastId });
-          console.error('Edit ticket failed:', errorMsg);
         }
       } catch (error: any) {
         toast.error(error.message || 'An unexpected error occurred.', { id: loadingToastId });
-        console.error('Dispatch error during edit:', error);
       }
     }
   };
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
-      {/* Toaster component should be at the root of your app, but can be here for isolated testing */}
-      {/* <Toaster position="top-right" /> */}
       <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
         <Tabs defaultValue="all" onValueChange={(value) => { setFilter(value); dispatch(setCurrentPage(1)); }}>
           <TabsList>
@@ -289,7 +278,6 @@ const TicketList: React.FC = () => {
             <table className="min-w-full text-sm table-auto">
               <thead className="bg-gray-100 dark:bg-[#1e1e1f] text-left">
                 <tr>
-                 
                   <th className="p-3 sm:p-4 whitespace-nowrap">No.</th>
                   <th className="p-3 sm:p-4 whitespace-nowrap">Ticket ID</th>
                   <th className="p-3 sm:p-4 whitespace-nowrap">Priority</th>
@@ -304,7 +292,7 @@ const TicketList: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {status === 'loading' && !modalState.isOpen && ( // Only show table loading if not a modal operation
+                {status === 'loading' && !modalState.isOpen && (
                   <tr>
                     <td colSpan={12} className="p-4 text-center">Loading tickets...</td>
                   </tr>
@@ -314,7 +302,7 @@ const TicketList: React.FC = () => {
                     <td colSpan={12} className="p-4 text-center text-red-500">Error: {error}</td>
                   </tr>
                 )}
-                {status !== 'loading' && tickets.length === 0 && ( // Show no tickets if not loading and empty
+                {status !== 'loading' && tickets.length === 0 && (
                   <tr>
                     <td colSpan={12} className="p-4 text-center">No tickets found.</td>
                   </tr>
@@ -324,7 +312,6 @@ const TicketList: React.FC = () => {
                     key={ticket._id}
                     className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                   >
-                    
                     <td className="p-3 sm:p-4">{(currentPage - 1) * pageSize + idx + 1}</td>
                     <td className="p-3 sm:p-4 truncate max-w-[100px] sm:max-w-[150px]" title={ticket._id}>{ticket._id}</td>
                     <td className="p-3 sm:p-4">
@@ -340,19 +327,13 @@ const TicketList: React.FC = () => {
                     <td className="p-3 sm:p-4 hidden md:table-cell">{ticket.type}</td>
                     <td className="p-3 sm:p-4 truncate max-w-[100px] sm:max-w-[150px]" title={ticket.customerId?.name || 'N/A'}>{ticket.customerId?.name || 'N/A'}</td>
                     <td className="p-3 sm:p-4 hidden lg:table-cell truncate max-w-[100px] sm:max-w-[150px]" title={ticket.assignedAgent?.name || '-'}>{ticket.assignedAgent?.name || '-'}</td>
+                    {/* CHANGED: Simplified date format to always show full date and time */}
                     <td className="p-3 sm:p-4 hidden sm:table-cell">
-                      {ticket.createdAt
-                        ? (dayjs(ticket.createdAt).isToday()
-                          ? dayjs(ticket.createdAt).format("h:mm A")
-                          : dayjs(ticket.createdAt).format("MMM D, YY"))
-                        : "-"}
+                      {ticket.createdAt ? dayjs(ticket.createdAt).format("MMM D, YYYY h:mm A") : "-"}
                     </td>
+                    {/* CHANGED: Simplified date format to always show full date and time */}
                     <td className="p-3 sm:p-4 hidden md:table-cell">
-                      {ticket.updatedAt
-                        ? (dayjs(ticket.updatedAt).isToday()
-                          ? dayjs(ticket.updatedAt).format("h:mm A")
-                          : dayjs(ticket.updatedAt).format("MMM D, YY"))
-                        : "-"}
+                      {ticket.updatedAt ? dayjs(ticket.updatedAt).format("MMM D, YYYY h:mm A") : "-"}
                     </td>
                     <td className="p-3 sm:p-4">
                       <span className={`px-2 py-1 text-xs rounded-full font-medium ${
@@ -448,14 +429,16 @@ const TicketList: React.FC = () => {
                 />
                 {formErrors.subject && <p className="text-red-500 text-xs col-start-2 col-span-3">{formErrors.subject}</p>}
               </div>
+              {/* CHANGED: Replaced Input with Textarea for the description field */}
               <div className="grid grid-cols-4 items-center gap-x-4 gap-y-1">
                 <label htmlFor="description" className="text-right col-span-1 text-sm">Description</label>
-                <Input // Or use Textarea for description
+                <Textarea
                   id="description"
                   placeholder="Description (min 10 characters)"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className={`col-span-3 ${formErrors.description ? 'border-red-500' : ''}`}
+                  rows={4}
                 />
                 {formErrors.description && <p className="text-red-500 text-xs col-start-2 col-span-3">{formErrors.description}</p>}
               </div>
@@ -536,7 +519,7 @@ const TicketList: React.FC = () => {
             <Button variant="outline" onClick={closeModal} disabled={status === 'loading' && modalState.mode !== null}>Cancel</Button>
             <Button
               onClick={handleSubmit}
-              disabled={status === 'loading' && modalState.mode !== null} // Disable during any active modal operation
+              disabled={status === 'loading' && modalState.mode !== null}
               className={`cursor-pointer ${modalState.mode === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#ff21b0] hover:bg-[#c76ba7]'} text-white`}
             >
               {status === 'loading' && modalState.mode !== null ? 'Processing...' : modalState.mode === 'create' ? 'Create Ticket' : modalState.mode === 'edit' ? 'Save Changes' : 'Delete Ticket'}
