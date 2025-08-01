@@ -9,9 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription, // NEW: Import for better modal structure
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-// NEW: Import the Textarea component
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -46,6 +46,12 @@ interface ModalState {
   ticket: ISupportTicket | null;
 }
 
+// NEW: Interface for the client details modal state
+interface ClientModalState {
+  isOpen: boolean;
+  client: any | null; // Using `any` as we don't have a strict type for the client object here
+}
+
 const pageSize = 10;
 
 const TicketList: React.FC = () => {
@@ -57,8 +63,10 @@ const TicketList: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
   const [modalState, setModalState] = useState<ModalState>({ isOpen: false, mode: null, ticket: null });
+  // NEW: State for the client details modal
+  const [clientModalState, setClientModalState] = useState<ClientModalState>({ isOpen: false, client: null });
   const [formErrors, setFormErrors] = useState<{ subject?: string; description?: string; customerId?: string }>({});
-  
+
   const [formData, setFormData] = useState({
     businessId: user?.businessId || '',
     customerId: '',
@@ -124,6 +132,17 @@ const TicketList: React.FC = () => {
   const closeModal = () => {
     setModalState({ isOpen: false, mode: null, ticket: null });
     setFormErrors({});
+  };
+
+  // NEW: Functions to open and close the client details modal
+  const openClientModal = (client: any) => {
+    if (client && client._id) {
+      setClientModalState({ isOpen: true, client });
+    }
+  };
+
+  const closeClientModal = () => {
+    setClientModalState({ isOpen: false, client: null });
   };
 
   const validateForm = () => {
@@ -325,13 +344,24 @@ const TicketList: React.FC = () => {
                     </td>
                     <td className="p-3 sm:p-4 truncate max-w-[150px] sm:max-w-[250px]" title={ticket.subject}>{ticket.subject}</td>
                     <td className="p-3 sm:p-4 hidden md:table-cell">{ticket.type}</td>
-                    <td className="p-3 sm:p-4 truncate max-w-[100px] sm:max-w-[150px]" title={ticket.customerId?.name || 'N/A'}>{ticket.customerId?.name || 'N/A'}</td>
+                    {/* MODIFIED: Wrapped client name in a button to open the details modal */}
+                    <td className="p-3 sm:p-4 truncate max-w-[100px] sm:max-w-[150px]">
+                      {ticket.customerId?.name ? (
+                        <button
+                          onClick={() => openClientModal(ticket.customerId)}
+                          className=" hover:underline focus:outline-none p-0 bg-transparent border-none cursor-pointer text-left"
+                          title={`View details for ${ticket.customerId.name}`}
+                        >
+                          {ticket.customerId.name}
+                        </button>
+                      ) : (
+                        <span>N/A</span>
+                      )}
+                    </td>
                     <td className="p-3 sm:p-4 hidden lg:table-cell truncate max-w-[100px] sm:max-w-[150px]" title={ticket.assignedAgent?.name || '-'}>{ticket.assignedAgent?.name || '-'}</td>
-                    {/* CHANGED: Simplified date format to always show full date and time */}
                     <td className="p-3 sm:p-4 hidden sm:table-cell">
                       {ticket.createdAt ? dayjs(ticket.createdAt).format("MMM D, YYYY h:mm A") : "-"}
                     </td>
-                    {/* CHANGED: Simplified date format to always show full date and time */}
                     <td className="p-3 sm:p-4 hidden md:table-cell">
                       {ticket.updatedAt ? dayjs(ticket.updatedAt).format("MMM D, YYYY h:mm A") : "-"}
                     </td>
@@ -387,6 +417,7 @@ const TicketList: React.FC = () => {
       </div>
 
       <Dialog open={modalState.isOpen} onOpenChange={(open) => !open && closeModal()}>
+        {/* ... (existing create/edit/delete modal content remains unchanged) ... */}
         <DialogContent className="sm:max-w-[425px] md:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>
@@ -429,7 +460,6 @@ const TicketList: React.FC = () => {
                 />
                 {formErrors.subject && <p className="text-red-500 text-xs col-start-2 col-span-3">{formErrors.subject}</p>}
               </div>
-              {/* CHANGED: Replaced Input with Textarea for the description field */}
               <div className="grid grid-cols-4 items-center gap-x-4 gap-y-1">
                 <label htmlFor="description" className="text-right col-span-1 text-sm">Description</label>
                 <Textarea
@@ -524,6 +554,46 @@ const TicketList: React.FC = () => {
             >
               {status === 'loading' && modalState.mode !== null ? 'Processing...' : modalState.mode === 'create' ? 'Create Ticket' : modalState.mode === 'edit' ? 'Save Changes' : 'Delete Ticket'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* NEW: Client Details Modal */}
+      <Dialog open={clientModalState.isOpen} onOpenChange={(open) => !open && closeClientModal()}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Client Details</DialogTitle>
+            <DialogDescription>
+              Full information for client: {clientModalState.client?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {clientModalState.client ? (
+              <div className="space-y-3 text-sm">
+                <div className="flex">
+                  <strong className="w-24 shrink-0">Client ID:</strong>
+                  <span className="truncate">{clientModalState.client._id}</span>
+                </div>
+                <div className="flex">
+                  <strong className="w-24 shrink-0">Name:</strong>
+                  <span>{clientModalState.client.name || 'N/A'}</span>
+                </div>
+                <div className="flex">
+                  <strong className="w-24 shrink-0">Email:</strong>
+                  <span>{clientModalState.client.email || 'N/A'}</span>
+                </div>
+                <div className="flex">
+                  <strong className="w-24 shrink-0">Phone:</strong>
+                  <span>{clientModalState.client.phone || 'N/A'}</span>
+                </div>
+                {/* Add any other client fields you expect from your API here */}
+              </div>
+            ) : (
+              <p>No client details to display.</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeClientModal}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

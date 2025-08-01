@@ -4,7 +4,7 @@ import { refreshAccessToken } from '@/features/auth/authSlice';
 import { getDispatch, getState } from '@/utils/setStore';
 import toast from 'react-hot-toast';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL;
+export const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 export const api = axios.create({
   baseURL,
