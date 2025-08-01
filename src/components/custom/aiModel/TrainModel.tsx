@@ -9,13 +9,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { formatFileSize, getFileTypeLabel, countTextCharacters } from '@/lib/utils';
-import { FiPaperclip, FiPlus } from "react-icons/fi";
+import { FiPaperclip} from "react-icons/fi";
 import { CiFileOn } from "react-icons/ci";
-import { GoChevronDown, GoChevronUp } from "react-icons/go";
+
 
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
-import { trainModel, EntitySchemaDefinition } from '../../../features/aiModel/trainModelSlice';
+import { trainModel} from '../../../features/aiModel/trainModelSlice';
 import toast from 'react-hot-toast';
 
 // Simplified Zod schema for the main form fields
@@ -31,13 +31,9 @@ export default function TrainModelForm() {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [totalChars, setTotalChars] = useState(0);
 
-  const [showSchemaBuilder, setShowSchemaBuilder] = useState(false);
-  const [entitySchemas, setEntitySchemas] = useState<Record<string, EntitySchemaDefinition>>({});
-
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<TrainModelFormData>({
     resolver: zodResolver(trainModelSchema),
@@ -51,55 +47,7 @@ export default function TrainModelForm() {
   const { status } = useSelector((state: RootState) => state.trainModel);
   const navigate = useNavigate();
 
-  // --- Handlers for the schema builder ---
-  const addEntity = () => {
-    const newEntityName = `newEntity${Object.keys(entitySchemas).length + 1}`;
-    setEntitySchemas(prev => ({
-      ...prev,
-      [newEntityName]: {
-        description: '',
-        attributes: [{ name: '', type: 'string', description: '' }]
-      }
-    }));
-  };
 
-  const updateEntity = (oldName: string, newName: string, newDescription: string) => {
-    const newSchemas = { ...entitySchemas };
-    if (oldName !== newName) {
-      newSchemas[newName] = { ...newSchemas[oldName], description: newDescription };
-      delete newSchemas[oldName];
-    } else {
-      newSchemas[oldName].description = newDescription;
-    }
-    setEntitySchemas(newSchemas);
-  };
-
-  const removeEntity = (entityName: string) => {
-    const newSchemas = { ...entitySchemas };
-    delete newSchemas[entityName];
-    setEntitySchemas(newSchemas);
-  };
-
-  const addAttribute = (entityName: string) => {
-    const newSchemas = { ...entitySchemas };
-    newSchemas[entityName].attributes.push({ name: '', type: 'string', description: '' });
-    setEntitySchemas(newSchemas);
-  };
-
-  const updateAttribute = (entityName: string, attrIndex: number, field: string, value: string) => {
-    const newSchemas = { ...entitySchemas };
-    newSchemas[entityName].attributes[attrIndex] = {
-      ...newSchemas[entityName].attributes[attrIndex],
-      [field]: value
-    };
-    setEntitySchemas(newSchemas);
-  };
-
-  const removeAttribute = (entityName: string, attrIndex: number) => {
-    const newSchemas = { ...entitySchemas };
-    newSchemas[entityName].attributes.splice(attrIndex, 1);
-    setEntitySchemas(newSchemas);
-  };
 
   // --- UPDATED onSubmit function ---
   const onSubmit = async (data: TrainModelFormData) => {
@@ -116,7 +64,6 @@ export default function TrainModelForm() {
             name: data.name,
             modelType: data.modelType,
             files: uploadedFiles,
-            entitySchemas: Object.keys(entitySchemas).length > 0 ? entitySchemas : undefined,
           })
         ).unwrap();
 
