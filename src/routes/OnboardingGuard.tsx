@@ -8,7 +8,8 @@ const OnboardingGuard = ({ children }: any) => {
 
   // If user has completed onboarding, redirect to dashboard
   if (user?.onboardingCompleted) {
-    return <Navigate to="/main-menu" replace />;
+    if(user?.role === 'agent') return <Navigate to="/main-menu/agent/inbox" replace />
+    else return <Navigate to="/main-menu/overview" replace />
   }
 
   return children;
