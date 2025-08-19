@@ -48,7 +48,10 @@ const Signin = () => {
           toast.success(result?.message || 'Logged in successfully!');
           if(result.data.user.onboardingCompleted
             === false) navigate('/onboarding');
-          else navigate('/main-menu/overview');
+          else {
+            if(result.data.user.role === "agent") navigate('/main-menu/agent/inbox');
+            else navigate('/main-menu/overview');
+          }
           
         } catch (err: any) {
           

@@ -6,7 +6,7 @@ import { Navigate } from 'react-router-dom';
 const OnboardingGuard = ({ children }: any) => {
   const user: any = useSelector((state: RootState) => state.auth.user);
 
-  // If user has completed onboarding, redirect to dashboard
+  console.log(user)
   if (user?.onboardingCompleted) {
     if(user?.role === 'agent') return <Navigate to="/main-menu/agent/inbox" replace />
     else return <Navigate to="/main-menu/overview" replace />
