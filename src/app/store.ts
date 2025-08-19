@@ -11,6 +11,9 @@ import whatsappIntregation from '../features/whatsappIntregation/integrationsSli
 import  AnalysisReport  from '../features/analysisReport/analysisReportSlice';
 import overView from '../features/overview/overviewSlice';
 import profileSlice from '../features/profile/profileSlice';
+import humanAgent from '../features/humanAgent/humanAgentSlice';
+import channel from '../features/channel/channelSlice';
+import humanAgentInbox from '../features/humanAgent/humanAgentInboxSlice';
 
 export const store = configureStore({
   reducer: {
@@ -26,6 +29,9 @@ export const store = configureStore({
     analysisReport: AnalysisReport,
     overview: overView,
     profile: profileSlice,
+    humanAgent: humanAgent,
+    channel: channel,
+    agentInbox: humanAgentInbox
   },
 });
 

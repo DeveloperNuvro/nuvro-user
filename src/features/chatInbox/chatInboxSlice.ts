@@ -1,20 +1,23 @@
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/api/axios";
 
 // --- INTERFACES ---
 
-// For the chat list (with message previews)
-interface Customer {
-    id: string;
-    name: string;
-    email: string;
-    phone: string;
+// Represents a CONVERSATION in the inbox list. It contains a nested customer object.
+export interface ConversationInList {
+    id: string; // This is the Conversation ID
+    customer: { // The customer is a nested object
+        id: string;
+        name: string;
+    };
     preview: string;
     latestMessageTimestamp?: string;
+    status: 'live' | 'ticket' | 'ai_only' | 'closed';
+    assignedAgentId?: string;
 }
 
-// NEW: For the customer table/directory
-interface CustomerTableRow {
+// Represents a customer for the dedicated "All Customers" table/page.
+export interface CustomerTableRow {
     id: string;
     name: string;
     email: string;
@@ -22,48 +25,38 @@ interface CustomerTableRow {
     createdAt: string;
 }
 
-interface Message {
-    from: string;
-    time: string;
+// Represents a single message within a chat.
+export interface Message {
     text: string;
-    sentBy: "user" | "bot" | "human";
+    time: string;
+    sentBy: "customer" | "agent" | "human" | "system";
 }
 
 // --- STATE INTERFACE ---
 
 interface ChatInboxState {
-    customers: Customer[]; // For the main chat list
-    chatData: {
-        [customerId: string]: Message[];
-    };
-    // State for the paginated customer directory/table
+    conversations: ConversationInList[];
+    chatData: { [customerId: string]: Message[] };
     customerTable: {
         list: CustomerTableRow[],
         totalPages: number,
         currentPage: number,
-        status: "idle" | "loading" | "succeeded" | "failed"; // Status specific to the table
+        status: "idle" | "loading" | "succeeded" | "failed";
         error: string | null;
     },
-    // General status for other operations like fetching messages
     status: "idle" | "loading" | "succeeded" | "failed";
     error: string | null;
-    currentPage: number; // For the chat list pagination
-    totalPages: number;  // For the chat list pagination
-    hasMore: boolean;    // For the chat list pagination
+    currentPage: number;
+    totalPages: number;
+    hasMore: boolean;
 }
 
 // --- INITIAL STATE ---
 
 const initialState: ChatInboxState = {
-    customers: [],
+    conversations: [],
     chatData: {},
-    customerTable: {
-        list: [],
-        totalPages: 1,
-        currentPage: 1,
-        status: "idle",
-        error: null,
-    },
+    customerTable: { list: [], totalPages: 1, currentPage: 1, status: "idle", error: null },
     status: "idle",
     error: null,
     currentPage: 1,
@@ -73,104 +66,102 @@ const initialState: ChatInboxState = {
 
 // --- ASYNC THUNKS ---
 
-// This thunk is for the chat list on the left side
 export const fetchCustomersByBusiness = createAsyncThunk<
-    { page: number; customers: Customer[]; totalPages: number },
+    { page: number; conversations: ConversationInList[]; totalPages: number },
     { businessId: string; page: number; searchQuery?: string },
     { rejectValue: string }
 >(
     "chatInbox/fetchCustomersByBusiness",
     async ({ businessId, page, searchQuery }, thunkAPI) => {
         try {
+            // This now calls your new, correct backend endpoint
             const res = await api.get("/api/v1/customer/by-business", {
                 params: { businessId, page, limit: 10, search: searchQuery || "" },
             });
             const rawData = res.data.data;
-            const customers = rawData.data.map((c: any) => ({
+            // This mapping now perfectly matches the response from getConversationsForInbox
+            const conversations = rawData.data.map((c: any) => ({
                 id: c._id,
-                name: c.name || "Unknown",
-                email: c.email || "",
-                phone: c.phone || "",
-                preview: c.latestMessage || "",
-                latestMessageTimestamp: c.latestMessageTimestamp || null,
+                customer: {
+                    id: c.customerId._id,
+                    name: c.customerId.name || "Unknown Customer",
+                },
+                preview: c.latestMessage,
+                latestMessageTimestamp: c.lastMessageTimestamp || c.updatedAt,
+                status: c.status,
+                assignedAgentId: c.assignedAgentId,
             }));
             const totalPages = rawData.pagination?.totalPages || 1;
-            return { page, customers, totalPages };
+            return { page, conversations, totalPages };
         } catch (error: any) {
-            return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch customers");
+            return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch conversations");
         }
     }
 );
 
-/// =========================================================================
-// --- CORRECTED ASYNC THUNK TO FETCH PAGINATED CUSTOMER DATA FOR THE TABLE ---
-// =========================================================================
 export const fetchCustomersForTable = createAsyncThunk<
-    // This is the shape of the successful return value
     { customers: CustomerTableRow[], totalPages: number, currentPage: number },
-    // These are the arguments passed to the thunk
     { businessId: string; page: number; limit?: number, searchQuery?: string },
     { rejectValue: string }
 >(
     "chatInbox/fetchCustomersForTable",
     async ({ businessId, page, limit = 10, searchQuery }, thunkAPI) => {
         try {
-            // This API call is correct
             const res = await api.get('/api/v1/customer/all-customers', {
                 params: { businessId, page, limit, search: searchQuery },
             });
-
-            // FIX: Access the nested 'data' object from the sendSuccess response
             const responsePayload = res.data.data;
-
-            // FIX: Map over the correct array: responsePayload.data
             const customers: CustomerTableRow[] = responsePayload.data.map((c: any) => ({
-                id: c._id,
-                name: c.name,
-                email: c.email,
-                phone: c.phone,
-                createdAt: c.createdAt,
+                id: c._id, name: c.name, email: c.email, phone: c.phone, createdAt: c.createdAt,
             }));
-
             return {
                 customers,
-                // FIX: Access pagination from the correct object: responsePayload.pagination
                 totalPages: responsePayload.pagination.totalPages,
                 currentPage: responsePayload.pagination.currentPage
             };
-
         } catch (error: any) {
-            // A good practice for debugging this in the future:
-            console.error("API Error in fetchCustomersForTable:", error.response?.data || error.message);
             return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch customer table data");
         }
     }
 );
 
-
-// Other thunks (fetchMessagesByCustomer, sendHumanMessage) remain the same...
 export const fetchMessagesByCustomer = createAsyncThunk<
-    { customerId: string; messages: Message[]; page: number },
-    { customerId: string; page: number },
+    { customerId: string; messages: Message[] },
+    { customerId: string; page?: number }, // Added optional page for future use
     { rejectValue: string }
->("chatInbox/fetchMessagesByCustomer", async ({ customerId, page }, thunkAPI) => {
+>("chatInbox/fetchMessagesByCustomer", async ({ customerId, page = 1 }, thunkAPI) => {
     try {
         const res = await api.get(`/api/v1/customer/messages/${customerId}`, {
             params: { page, limit: 20 },
         });
-        const formatted = res?.data.data.data.map((msg: any) => ({
-            from: msg.sender === "agent" ? "You" : msg.sender === "human" ? "Human" : "Customer",
-            time: msg.timestamp,
-            text: msg.message,
-            sentBy: msg.sender === "agent" ? "bot" : msg.sender,
-        }));
-        return { customerId, messages: formatted, page };
+
+        // --- THE DEFINITIVE FIX IS HERE ---
+        // The array of messages is at res.data.data.data
+        const messagesArray = res.data.data.data;
+
+        // Ensure we are mapping over an actual array
+        if (!Array.isArray(messagesArray)) {
+            console.error("API response for messages was not an array:", messagesArray);
+            return { customerId, messages: [] };
+        }
+
+        const formatted = messagesArray.map((msg: any) => ({
+            text: msg.message, time: msg.timestamp, sentBy: msg.sender,
+        })).reverse();
+
+        return { customerId, messages: formatted };
     } catch (error: any) {
         return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch messages");
     }
 });
-export const sendHumanMessage = createAsyncThunk<void, { businessId: string; customerId: string; message: string; senderSocketId: string; }, { rejectValue: string }>("chatInbox/sendHumanMessage", async (payload, thunkAPI) => { try { await api.post('/api/v1/messages/send-human', payload); } catch (error: any) { return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to send message"); } });
 
+export const sendHumanMessage = createAsyncThunk<void, { businessId: string; customerId: string; message: string; senderSocketId: string; }, { rejectValue: string }>("chatInbox/sendHumanMessage", async (payload, thunkAPI) => {
+    try {
+        await api.post('/api/v1/messages/send-human', payload);
+    } catch (error: any) {
+        return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to send message");
+    }
+});
 
 // --- SLICE DEFINITION ---
 
@@ -178,48 +169,49 @@ const chatInboxSlice = createSlice({
     name: "chatInbox",
     initialState,
     reducers: {
-        // Your existing reducers are correct
-        addRealtimeMessage: (state, action) => {
+        addRealtimeMessage: (state, action: PayloadAction<{ customerId: string; message: Message }>) => {
             const { customerId, message } = action.payload;
-            const existingMessages = state.chatData[customerId] || [];
-            state.chatData[customerId] = [...existingMessages, message];
+            if (!state.chatData[customerId]) { state.chatData[customerId] = []; }
+            state.chatData[customerId].push(message);
 
-            const customerIndex = state.customers.findIndex(c => c.id === customerId);
-            if (customerIndex !== -1) {
-                const updatedCustomer = {
-                    ...state.customers[customerIndex],
-                    preview: message.text,
-                    latestMessageTimestamp: message.time,
-                };
-                state.customers = [
-                    updatedCustomer,
-                    ...state.customers.slice(0, customerIndex),
-                    ...state.customers.slice(customerIndex + 1),
-                ];
+            const convoIndex = state.conversations.findIndex(c => c.customer.id === customerId);
+            if (convoIndex !== -1) {
+                state.conversations[convoIndex].preview = message.text;
+                state.conversations[convoIndex].latestMessageTimestamp = message.time;
             }
         },
-        addNewCustomer: (state, action) => {
-            const customer: Customer = action.payload;
-            const exists = state.customers.some((c) => c.id === customer.id);
+        removeConversation: (state, action: PayloadAction<{ conversationId: string }>) => {
+            state.conversations = state.conversations.filter(c => c.id !== action.payload.conversationId);
+        },
+        addNewCustomer: (state, action: PayloadAction<ConversationInList>) => {
+            const conversation = action.payload;
+            const exists = state.conversations.some((c) => c.id === conversation.id);
             if (!exists) {
-                state.customers.unshift(customer);
+                state.conversations.unshift(conversation);
+            }
+        },
+        updateConversationStatus: (state, action: PayloadAction<{ customerId: string; status: ConversationInList['status']; assignedAgentId?: string }>) => {
+            const { customerId, status, assignedAgentId } = action.payload;
+            const convoIndex = state.conversations.findIndex(c => c.customer.id === customerId);
+            if (convoIndex !== -1) {
+                state.conversations[convoIndex].status = status;
+                state.conversations[convoIndex].assignedAgentId = assignedAgentId;
             }
         }
     },
     extraReducers: (builder) => {
         builder
-            // Cases for fetchCustomersByBusiness (for chat list)
             .addCase(fetchCustomersByBusiness.pending, (state) => {
-                state.status = "loading";
+                if (state.currentPage === 1) state.status = "loading";
             })
             .addCase(fetchCustomersByBusiness.fulfilled, (state, action) => {
-                const { customers, page, totalPages } = action.payload;
+                const { conversations, page, totalPages } = action.payload;
                 if (page === 1) {
-                    state.customers = customers;
+                    state.conversations = conversations;
                 } else {
-                    const existingIds = new Set(state.customers.map(c => c.id));
-                    const newCustomers = customers.filter(c => !existingIds.has(c.id));
-                    state.customers.push(...newCustomers);
+                    const existingIds = new Set(state.conversations.map(c => c.id));
+                    const newConversations = conversations.filter(c => !existingIds.has(c.id));
+                    state.conversations.push(...newConversations);
                 }
                 state.currentPage = page;
                 state.totalPages = totalPages;
@@ -230,35 +222,31 @@ const chatInboxSlice = createSlice({
                 state.status = "failed";
                 state.error = action.payload || "An unknown error occurred";
             })
-
-            // ================================================================
-            // --- NEW REDUCER CASES FOR THE CUSTOMER TABLE ---
-            // ================================================================
+            .addCase(fetchMessagesByCustomer.pending, (state) => { state.status = "loading"; })
+            .addCase(fetchMessagesByCustomer.fulfilled, (state, action) => {
+                state.status = "succeeded";
+                state.chatData[action.payload.customerId] = action.payload.messages;
+            })
+            .addCase(fetchMessagesByCustomer.rejected, (state, action) => {
+                state.status = "failed";
+                state.error = action.payload || "An unknown error occurred";
+            })
             .addCase(fetchCustomersForTable.pending, (state) => {
                 state.customerTable.status = "loading";
                 state.customerTable.error = null;
             })
             .addCase(fetchCustomersForTable.fulfilled, (state, action) => {
                 state.customerTable.status = "succeeded";
-                state.customerTable.list = action.payload.customers; // Replace the list with the new page's data
+                state.customerTable.list = action.payload.customers;
                 state.customerTable.currentPage = action.payload.currentPage;
                 state.customerTable.totalPages = action.payload.totalPages;
             })
             .addCase(fetchCustomersForTable.rejected, (state, action) => {
                 state.customerTable.status = "failed";
                 state.customerTable.error = action.payload || "Failed to load customers";
-            })
-
-
-            // Other reducer cases (fetchMessagesByCustomer, sendHumanMessage) remain the same...
-            .addCase(fetchMessagesByCustomer.pending, (state) => { state.status = "loading"; })
-            .addCase(fetchMessagesByCustomer.fulfilled, (state, action) => { state.status = "succeeded"; state.chatData[action.payload.customerId] = action.payload.page === 1 ? action.payload.messages.reverse() : [...action.payload.messages.reverse(), ...state.chatData[action.payload.customerId] || []]; })
-            .addCase(fetchMessagesByCustomer.rejected, (state, action) => { state.status = "failed"; state.error = action.payload || "An unknown error occurred"; })
-            .addCase(sendHumanMessage.pending, (state) => { state.status = "loading"; })
-            .addCase(sendHumanMessage.fulfilled, (state) => { state.status = "succeeded"; })
-            .addCase(sendHumanMessage.rejected, (state, action) => { state.status = "failed"; state.error = action.payload || "Message could not be sent."; });
+            });
     },
 });
 
-export const { addRealtimeMessage, addNewCustomer } = chatInboxSlice.actions;
+export const { addRealtimeMessage, addNewCustomer, updateConversationStatus, removeConversation } = chatInboxSlice.actions;
 export default chatInboxSlice.reducer;

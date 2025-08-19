@@ -25,6 +25,9 @@ import { BillingManagement } from "./pages/BillingManagement";
 import AnalysisPage from "./pages/AnalysisPage";
 import DashboardOverviewPage from "./pages/OverviewPage";
 import AccountSettingsPage from "./pages/AccountSettingPage";
+import ChannelPage from "./pages/ChannelPage";
+import HumanAgentPage from "./pages/HumanAgentPage";
+import AgentInbox from "./pages/AgentInbox";
 
 
 function App() {
@@ -57,6 +60,12 @@ function App() {
          <Route path="ai-model/update/:id" element={<UpdateAIModelForm />} />
           <Route path="overview" element={<DashboardOverviewPage />} />
           <Route path="inbox" element={<ChatInbox />} />
+          <Route path="agent/inbox" element={<AgentInbox />} />
+
+          <Route path="channel" element={<ChannelPage />} />
+          <Route path="human-agent" element={<HumanAgentPage />} />
+
+
           <Route path="ticket" element={<AllTicketPage />} />
 
           <Route path="ai-agent" element={<AIAgent />} />
