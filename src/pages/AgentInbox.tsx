@@ -147,6 +147,7 @@ export default function AgentInbox() {
     if (!newMessage.trim() || !selectedCustomer || !businessId || !socket) return;
     dispatch(sendHumanMessage({ businessId, customerId: selectedCustomer, message: newMessage.trim(), senderSocketId: socket.id ?? "" }))
       .unwrap().catch((error) => toast.error(error || "Message failed to send."));
+      
     setNewMessage("");
   }, [newMessage, selectedCustomer, businessId, dispatch, socket]);
 
