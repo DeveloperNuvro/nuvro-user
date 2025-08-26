@@ -24,35 +24,37 @@ export enum TicketPriority {
   Urgent = 'urgent'
 }
 
-// Define interfaces for populated fields
-interface User {
+
+
+interface PopulatedUser {
+  _id: string;
   name: string;
   email?: string;
+  phone?: string;
 }
 
-interface Business {
+interface PopulatedBusiness {
+  _id: string;
   name: string;
 }
+
 
 export interface ISupportTicket {
   _id: string;
-  ticketId: string;
-  businessId: Business;
-  customerId: User;
+  businessId: string;
+  customerId: string;
   subject: string;
   description: string;
   status: TicketStatus;
   priority: TicketPriority;
   type?: TicketType;
-  assignedAgent?: any;
-  createdAt: Date;
-  updatedAt: Date;
-  comments?: {
-    role: 'user' | 'agent';
-    comment: string;
-    createdAt: Date;
-  }[];
-  resolution?: string;
+  assignedAgent?: string;
+  createdAt: string;
+  updatedAt: string;
+  
+  customerDetails?: PopulatedUser;
+  business?: PopulatedBusiness;
+  assignedAgentDetails?: PopulatedUser;
 }
 
 interface TicketState {

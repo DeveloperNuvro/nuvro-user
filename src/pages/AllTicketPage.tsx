@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription, // NEW: Import for better modal structure
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AppDispatch, RootState } from '../app/store'; // Assuming correct path
+import { AppDispatch, RootState } from '../app/store';
 import {
   getAllTickets,
   createTicket,
@@ -31,7 +31,7 @@ import {
   TicketType,
   ISupportTicket,
   setCurrentPage
-} from '../features/SupportTicket/supportTicketSlice'; // Assuming correct path
+} from '../features/SupportTicket/supportTicketSlice';
 import dayjs from 'dayjs';
 import localizedFormat from 'dayjs/plugin/localizedFormat';
 import isToday from 'dayjs/plugin/isToday';
@@ -40,30 +40,32 @@ import toast from 'react-hot-toast';
 dayjs.extend(localizedFormat);
 dayjs.extend(isToday);
 
+// --- Interfaces for local state management ---
 interface ModalState {
   isOpen: boolean;
   mode: 'create' | 'edit' | 'delete' | null;
   ticket: ISupportTicket | null;
 }
 
-// NEW: Interface for the client details modal state
 interface ClientModalState {
   isOpen: boolean;
-  client: any | null; // Using `any` as we don't have a strict type for the client object here
+  client: any | null; // Using 'any' for the populated customer object
 }
 
 const pageSize = 10;
 
 const TicketList: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
+  
+  // --- Redux State Selection ---
   const { tickets, status, error, total, pages, currentPage } = useSelector((state: RootState) => state.tickets);
   const { user }: { user: any } = useSelector((state: RootState) => state.auth);
 
+  // --- Local Component State ---
   const [filter, setFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
   const [modalState, setModalState] = useState<ModalState>({ isOpen: false, mode: null, ticket: null });
-  // NEW: State for the client details modal
   const [clientModalState, setClientModalState] = useState<ClientModalState>({ isOpen: false, client: null });
   const [formErrors, setFormErrors] = useState<{ subject?: string; description?: string; customerId?: string }>({});
 
@@ -79,39 +81,56 @@ const TicketList: React.FC = () => {
     comment: '',
   });
 
+  // --- Effects ---
+
+  // Debounce search input to avoid excessive API calls
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-    }, 300);
+      if (currentPage !== 1) {
+          dispatch(setCurrentPage(1));
+      }
+    }, 500);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, dispatch]);
 
+  // Main data fetching effect
   useEffect(() => {
     if (user?.businessId) {
-        dispatch(getAllTickets({
+      let statusParam: string | undefined;
+      if (filter === 'open') {
+        statusParam = TicketStatus.Open;
+      } else if (filter === 'closed') {
+        statusParam = TicketStatus.Closed;
+      } else if (filter === 'unassigned') {
+        statusParam = 'unassigned'; // Send the literal string 'unassigned' for the backend filter
+      }
+      
+      dispatch(getAllTickets({
         page: currentPage,
         limit: pageSize,
-        status: filter === 'open' ? TicketStatus.Open : filter === 'closed' ? TicketStatus.Closed : undefined,
+        status: statusParam,
         businessId: user.businessId,
-        customerId: undefined,
         searchQuery: debouncedSearch,
       }));
     }
   }, [dispatch, currentPage, filter, debouncedSearch, user?.businessId]);
+
+  // --- Modal and Form Handlers ---
 
   const openModal = (mode: 'create' | 'edit' | 'delete', ticket?: ISupportTicket) => {
     setModalState({ isOpen: true, mode, ticket: ticket || null });
     setFormErrors({});
     if (mode === 'edit' && ticket) {
       setFormData({
-        businessId: typeof ticket.businessId === 'string' ? ticket.businessId : ticket.businessId?.name || user?.businessId || '',
-        customerId: ticket.customerId?.name || '',
+        businessId: (ticket.business as any)?._id || user?.businessId || '',
+        customerId: (ticket.customerDetails as any)?._id || '', // Use the ID for the form
         subject: ticket.subject,
         description: ticket.description,
         priority: ticket.priority,
         type: ticket.type || TicketType.General,
         status: ticket.status,
-        assignedAgent: ticket.assignedAgent?.id || '',
+        assignedAgent: (ticket.assignedAgentDetails as any)?._id || '', // Use the ID for the form
         comment: '',
       });
     } else if (mode === 'create') {
@@ -131,10 +150,8 @@ const TicketList: React.FC = () => {
 
   const closeModal = () => {
     setModalState({ isOpen: false, mode: null, ticket: null });
-    setFormErrors({});
   };
 
-  // NEW: Functions to open and close the client details modal
   const openClientModal = (client: any) => {
     if (client && client._id) {
       setClientModalState({ isOpen: true, client });
@@ -147,122 +164,84 @@ const TicketList: React.FC = () => {
 
   const validateForm = () => {
     const errors: { subject?: string; description?: string; customerId?: string } = {};
-    if (!formData.subject || formData.subject.length < 5) {
-      errors.subject = 'Subject must be at least 5 characters long';
+    if (!formData.subject.trim() || formData.subject.trim().length < 5) {
+      errors.subject = 'Subject must be at least 5 characters long.';
     }
-    if (!formData.description || formData.description.length < 10) {
-      errors.description = 'Description must be at least 10 characters long';
+    if (!formData.description.trim() || formData.description.trim().length < 10) {
+      errors.description = 'Description must be at least 10 characters long.';
     }
-    if (modalState.mode === 'create' && !formData.customerId) {
+    if (modalState.mode === 'create' && !formData.customerId.trim()) {
         errors.customerId = 'Customer ID is required for new tickets.';
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
+  // Simplified handleSubmit with toast.promise for cleaner code
   const handleSubmit = async () => {
     if (modalState.mode === 'delete') {
-      if (modalState.ticket && modalState.ticket._id) {
-        const ticketId = modalState.ticket._id;
-        const loadingToastId = toast.loading('Deleting ticket...');
-        try {
-          const action: any = await dispatch(deleteTicket(ticketId));
-          if (action.meta?.requestStatus === 'fulfilled') {
-            if (action.payload && action.payload.success === false) {
-                 toast.error(action.payload.message || 'Failed to delete ticket.', { id: loadingToastId });
-            } else if (action.payload && action.payload.error) {
-                 toast.error(action.payload.error || 'Failed to delete ticket.', { id: loadingToastId });
-            } else {
-                toast.success('Ticket deleted successfully!', { id: loadingToastId });
-                dispatch(getAllTickets({
-                    page: (tickets.length === 1 && currentPage > 1) ? currentPage - 1 : currentPage,
-                    limit: pageSize,
-                    status: filter === 'open' ? TicketStatus.Open : filter === 'closed' ? TicketStatus.Closed : undefined,
-                    businessId: user?.businessId || '',
-                    searchQuery: debouncedSearch,
-                }));
-            }
-          } else {
-            toast.error(action.error?.message || 'Failed to delete ticket.', { id: loadingToastId });
+      if (modalState.ticket?._id) {
+        toast.promise(
+          dispatch(deleteTicket(modalState.ticket._id)).unwrap(),
+          {
+            loading: 'Deleting ticket...',
+            success: () => {
+              if (tickets.length === 1 && currentPage > 1) {
+                dispatch(setCurrentPage(currentPage - 1));
+              }
+              return 'Ticket deleted successfully!';
+            },
+            error: (err) => err.message || 'Failed to delete ticket.',
           }
-        } catch (error: any) {
-          toast.error(error.message || 'An unexpected error occurred.', { id: loadingToastId });
-        } finally {
-          closeModal();
-        }
-      } else {
-        toast.error('Invalid ticket data for deletion.');
+        );
         closeModal();
       }
       return;
     }
 
-    if (!validateForm()) {
-      toast.error('Please correct the form errors.');
-      return;
-    }
-
-    const commonTicketParamsForGetAll = {
-      page: currentPage,
-      limit: pageSize,
-      status: filter === 'open' ? TicketStatus.Open : filter === 'closed' ? TicketStatus.Closed : undefined,
-      businessId: user?.businessId || '',
-      searchQuery: debouncedSearch,
-    };
+    if (!validateForm()) return;
 
     if (modalState.mode === 'create') {
-      const loadingToastId = toast.loading('Creating ticket...');
-      try {
-        const action: any = await dispatch(createTicket({
-          businessId: formData.businessId,
-          customerId: formData.customerId,
-          subject: formData.subject,
-          description: formData.description,
-          priority: formData.priority,
-          type: formData.type,
-          comment: formData.comment,
-          role: 'user',
-        }));
-
-        if (action.meta?.requestStatus === 'fulfilled' && (!action.payload || action.payload.success !== false)) {
-          toast.success('Ticket created successfully!', { id: loadingToastId });
-          dispatch(getAllTickets({...commonTicketParamsForGetAll, page: 1}));
-          closeModal();
-        } else {
-          const errorMsg = action.payload?.message || action.payload?.error || action.error?.message || 'Failed to create ticket.';
-          toast.error(errorMsg, { id: loadingToastId });
-        }
-      } catch (error: any) {
-        toast.error(error.message || 'An unexpected error occurred.', { id: loadingToastId });
-      }
-    } else if (modalState.mode === 'edit' && modalState.ticket) {
-      const loadingToastId = toast.loading('Updating ticket...');
-      try {
-        const action: any = await dispatch(editTicket({
-          id: modalState.ticket._id,
-          subject: formData.subject,
-          description: formData.description,
-          status: formData.status,
-          priority: formData.priority,
-          type: formData.type,
-          assignedAgent: formData.assignedAgent || undefined,
-          comment: formData.comment,
-          role: 'user',
-        }));
-
-        if (action.meta?.requestStatus === 'fulfilled' && (!action.payload || action.payload.success !== false)) {
-          toast.success('Ticket updated successfully!', { id: loadingToastId });
-          dispatch(getAllTickets(commonTicketParamsForGetAll));
-          closeModal();
-        } else {
-          const errorMsg = action.payload?.message || action.payload?.error || action.error?.message || 'Failed to update ticket.';
-          toast.error(errorMsg, { id: loadingToastId });
-        }
-      } catch (error: any) {
-        toast.error(error.message || 'An unexpected error occurred.', { id: loadingToastId });
-      }
+        toast.promise(
+            dispatch(createTicket({
+              businessId: formData.businessId,
+              customerId: formData.customerId,
+              subject: formData.subject,
+              description: formData.description,
+              priority: formData.priority,
+              type: formData.type,
+              comment: formData.comment,
+              role: 'user',
+            })).unwrap(),
+            {
+              loading: 'Creating ticket...',
+              success: 'Ticket created successfully!',
+              error: (err) => err.message || 'Failed to create ticket.',
+            }
+        );
+    } else if (modalState.mode === 'edit' && modalState.ticket?._id) {
+        toast.promise(
+            dispatch(editTicket({
+              id: modalState.ticket._id,
+              subject: formData.subject,
+              description: formData.description,
+              status: formData.status,
+              priority: formData.priority,
+              type: formData.type,
+              assignedAgent: formData.assignedAgent || undefined,
+              comment: formData.comment,
+              role: 'user',
+            })).unwrap(),
+            {
+              loading: 'Updating ticket...',
+              success: 'Ticket updated successfully!',
+              error: (err) => err.message || 'Failed to update ticket.',
+            }
+        );
     }
+    closeModal();
   };
+
 
   return (
     <div className="p-4 sm:p-6 md:p-8">
@@ -344,21 +323,20 @@ const TicketList: React.FC = () => {
                     </td>
                     <td className="p-3 sm:p-4 truncate max-w-[150px] sm:max-w-[250px]" title={ticket.subject}>{ticket.subject}</td>
                     <td className="p-3 sm:p-4 hidden md:table-cell">{ticket.type}</td>
-                    {/* MODIFIED: Wrapped client name in a button to open the details modal */}
                     <td className="p-3 sm:p-4 truncate max-w-[100px] sm:max-w-[150px]">
-                      {ticket.customerId?.name ? (
+                      {ticket.customerDetails?.name ? (
                         <button
-                          onClick={() => openClientModal(ticket.customerId)}
+                          onClick={() => openClientModal(ticket.customerDetails)}
                           className=" hover:underline focus:outline-none p-0 bg-transparent border-none cursor-pointer text-left"
-                          title={`View details for ${ticket.customerId.name}`}
+                          title={`View details for ${ticket.customerDetails.name}`}
                         >
-                          {ticket.customerId.name}
+                          {ticket.customerDetails.name}
                         </button>
                       ) : (
                         <span>N/A</span>
                       )}
                     </td>
-                    <td className="p-3 sm:p-4 hidden lg:table-cell truncate max-w-[100px] sm:max-w-[150px]" title={ticket.assignedAgent?.name || '-'}>{ticket.assignedAgent?.name || '-'}</td>
+                    <td className="p-3 sm:p-4 hidden lg:table-cell truncate max-w-[100px] sm:max-w-[150px]" title={ticket.assignedAgentDetails?.name || '-'}>{ticket.assignedAgentDetails?.name || '-'}</td>
                     <td className="p-3 sm:p-4 hidden sm:table-cell">
                       {ticket.createdAt ? dayjs(ticket.createdAt).format("MMM D, YYYY h:mm A") : "-"}
                     </td>
@@ -408,7 +386,7 @@ const TicketList: React.FC = () => {
             <Button
             variant="outline"
             size="sm"
-            disabled={currentPage === pages || pages === 0 || tickets.length < pageSize && currentPage === pages}
+            disabled={currentPage === pages || pages === 0 || (tickets.length < pageSize && currentPage === pages)}
             onClick={() => dispatch(setCurrentPage(currentPage + 1))}
             >
             Next
@@ -417,7 +395,6 @@ const TicketList: React.FC = () => {
       </div>
 
       <Dialog open={modalState.isOpen} onOpenChange={(open) => !open && closeModal()}>
-        {/* ... (existing create/edit/delete modal content remains unchanged) ... */}
         <DialogContent className="sm:max-w-[425px] md:max-w-[550px]">
           <DialogHeader>
             <DialogTitle>
@@ -441,7 +418,7 @@ const TicketList: React.FC = () => {
                 <label htmlFor="customerId" className="text-right col-span-1 text-sm">Customer ID</label>
                 <Input
                   id="customerId"
-                  placeholder="Customer ID (e.g. cust_123)"
+                  placeholder="Customer ID (e.g. 660f7b1...)"
                   value={formData.customerId}
                   onChange={(e) => setFormData({ ...formData, customerId: e.target.value })}
                   className={`col-span-3 ${formErrors.customerId ? 'border-red-500' : ''}`}
@@ -530,7 +507,6 @@ const TicketList: React.FC = () => {
                   value={formData.assignedAgent}
                   onChange={(e) => setFormData({ ...formData, assignedAgent: e.target.value })}
                   className="col-span-3"
-                  disabled={modalState.mode === 'create'}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-x-4 gap-y-2">
@@ -558,7 +534,6 @@ const TicketList: React.FC = () => {
         </DialogContent>
       </Dialog>
       
-      {/* NEW: Client Details Modal */}
       <Dialog open={clientModalState.isOpen} onOpenChange={(open) => !open && closeClientModal()}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -586,7 +561,6 @@ const TicketList: React.FC = () => {
                   <strong className="w-24 shrink-0">Phone:</strong>
                   <span>{clientModalState.client.phone || 'N/A'}</span>
                 </div>
-                {/* Add any other client fields you expect from your API here */}
               </div>
             ) : (
               <p>No client details to display.</p>

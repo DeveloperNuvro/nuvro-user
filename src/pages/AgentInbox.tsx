@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+// src/pages/AgentInbox.tsx
+
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, MessageSquareText, Loader2, User, MoreVertical, ChevronsRight, Wifi, WifiOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,14 +11,11 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchAgentConversations,
   addAssignedConversation,
-  removeConversation
+  removeConversation,
+  resetAgentConversations,
 } from "../features/humanAgent/humanAgentInboxSlice";
-import { 
-  fetchMessagesByCustomer, 
-  addRealtimeMessage, 
-  sendHumanMessage 
-} from "@/features/chatInbox/chatInboxSlice";
-import { fetchHumanAgents,  updateAgentStatus } from "@/features/humanAgent/humanAgentSlice";
+import { fetchMessagesByCustomer, addRealtimeMessage, sendHumanMessage } from "@/features/chatInbox/chatInboxSlice";
+import { fetchHumanAgents, updateAgentStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels} from "@/features/channel/channelSlice";
 import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
@@ -25,6 +25,7 @@ import toast from 'react-hot-toast';
 import { api } from '../api/axios';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import NotificationToast from "@/components/custom/Notification/NotificationToast";
+import { ConversationInList } from "@/features/chatInbox/chatInboxSlice";
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
@@ -35,6 +36,15 @@ const SystemMessage = ({ text }: { text: string }) => (
     <div className="flex items-center justify-center my-4"><div className="text-center text-xs text-muted-foreground px-4 py-1 bg-muted rounded-full">{text}</div></div>
 );
 
+const useDebounce = (value: string, delay: number) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    useEffect(() => {
+        const handler = setTimeout(() => { setDebouncedValue(value); }, delay);
+        return () => { clearTimeout(handler); };
+    }, [value, delay]);
+    return debouncedValue;
+};
+
 export default function AgentInbox() {
   const dispatch = useDispatch<AppDispatch>();
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -42,9 +52,13 @@ export default function AgentInbox() {
   const [newMessage, setNewMessage] = useState("");
   const [isConnected, setIsConnected] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'open' | 'closed'>('open');
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearchQuery = useDebounce(searchInput, 500);
   
   const messageListRef = useRef<HTMLDivElement | null>(null);
-  const conversationsRef = useRef<any[]>([]);
+  const prevScrollHeightRef = useRef<number>(0);
+  const [isInitialMessageLoad, setIsInitialMessageLoad] = useState(true);
+  const conversationsRef = useRef<ConversationInList[]>([]);
   const audioInitialized = useRef(false);
   const notificationRef = useRef<HTMLAudioElement | null>(null);
 
@@ -54,8 +68,8 @@ export default function AgentInbox() {
   const businessId = user?.businessId;
   const agentId = user?._id;
 
-  const { conversations, status: agentInboxStatus } = useSelector((state: RootState) => state.agentInbox);
-  const { chatData } = useSelector((state: RootState) => state.chatInbox);
+  const { conversations, status: agentInboxStatus, currentPage, totalPages } = useSelector((state: RootState) => state.agentInbox);
+  const messagesData = useSelector((state: RootState) => selectedCustomer ? state.chatInbox.chatData[selectedCustomer] : null);
   
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
@@ -77,54 +91,46 @@ export default function AgentInbox() {
   }, [handleAppClick]);
 
   useEffect(() => {
-    dispatch(fetchAgentConversations());
+    dispatch(resetAgentConversations());
+    dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter }));
+  }, [dispatch, debouncedSearchQuery, activeFilter]);
+
+  useEffect(() => {
     dispatch(fetchHumanAgents());
     dispatch(fetchChannels());
-
     const newSocket = io(API_BASE_URL, { query: { userId: agentId }, transports: ['websocket'] });
     setSocket(newSocket);
-    
     newSocket.on('connect', () => { setIsConnected(true); if (agentId) newSocket.emit('agentOnline', agentId); });
     newSocket.on('disconnect', () => setIsConnected(false));
-
     return () => { newSocket.disconnect(); };
   }, [dispatch, agentId]);
   
   useEffect(() => {
     if (!socket) return;
-    
     const handleNewMessage = (data: any) => {
         dispatch(addRealtimeMessage({ customerId: data.customerId, message: { text: data.message, sentBy: data.sender, time: new Date().toISOString() } }));
         if (data.sender === 'customer') {
           toast.custom((t) => <NotificationToast t={t} name={data.customerName || "A customer"} msg={data.message} />);
-          if (audioInitialized.current) notificationRef.current?.play();
+          if (audioInitialized.current) { notificationRef.current?.play().catch(e => console.error("Audio play failed", e)); }
         }
     };
-    
-    const handleNewAssignment = (data: any) => {
+    const handleNewAssignment = (data: ConversationInList) => {
         toast.success(`New chat assigned from ${data.customer.name}`);
-        const currentConversations = conversationsRef.current;
-        if (!currentConversations.some(c => c.id === data.id)) {
-            dispatch(addAssignedConversation(data));
-        }
+        dispatch(addAssignedConversation(data));
     };
-
     const handleConversationRemoved = (data: { conversationId: string }) => {
         dispatch(removeConversation(data));
         if (currentConversation?.id === data.conversationId) {
             setSelectedCustomer(null);
         }
     };
-
     const handleAgentStatusChange = (data: { userId: string, status: 'online' | 'offline' }) => {
         dispatch(updateAgentStatus(data));
     };
-
     socket.on("newMessage", handleNewMessage);
     socket.on("newChatAssigned", handleNewAssignment);
     socket.on("conversationRemoved", handleConversationRemoved);
     socket.on("agentStatusChanged", handleAgentStatusChange);
-
     return () => {
       socket.off("newMessage");
       socket.off("newChatAssigned");
@@ -133,21 +139,47 @@ export default function AgentInbox() {
     };
   }, [dispatch, socket, currentConversation]);
 
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            dispatch(resetAgentConversations());
+            dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter }));
+        }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+  }, [dispatch, debouncedSearchQuery, activeFilter]);
+
   useEffect(() => { notificationRef.current = new Audio("/sounds/notification.mp3"); }, []);
 
   useEffect(() => {
-    if (selectedCustomer) { dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer })); }
+    if (selectedCustomer) { 
+      setIsInitialMessageLoad(true);
+      dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); 
+    }
   }, [selectedCustomer, dispatch]);
 
-  useEffect(() => {
-    if (messageListRef.current) { messageListRef.current.scrollTop = messageListRef.current.scrollHeight; }
-  }, [chatData[selectedCustomer || '']]);
+  useLayoutEffect(() => {
+    if (!messageListRef.current) return;
+    if (isInitialMessageLoad) {
+      messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+      setIsInitialMessageLoad(false);
+    } else {
+      const newScrollHeight = messageListRef.current.scrollHeight;
+      const scrollDifference = newScrollHeight - (prevScrollHeightRef.current || 0);
+      if (scrollDifference > 0) {
+        messageListRef.current.scrollTop = scrollDifference;
+      }
+      prevScrollHeightRef.current = 0;
+    }
+  }, [messagesData?.list, isInitialMessageLoad]);
 
   const handleSendMessage = useCallback(() => {
     if (!newMessage.trim() || !selectedCustomer || !businessId || !socket) return;
     dispatch(sendHumanMessage({ businessId, customerId: selectedCustomer, message: newMessage.trim(), senderSocketId: socket.id ?? "" }))
       .unwrap().catch((error) => toast.error(error || "Message failed to send."));
-      
     setNewMessage("");
   }, [newMessage, selectedCustomer, businessId, dispatch, socket]);
 
@@ -162,22 +194,35 @@ export default function AgentInbox() {
     });
   };
 
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      dispatch(fetchAgentConversations({ page: currentPage + 1, searchQuery: debouncedSearchQuery, status: activeFilter }));
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      dispatch(fetchAgentConversations({ page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter }));
+    }
+  };
+
+  const handleLoadMoreMessages = () => {
+    if (selectedCustomer && messagesData && messagesData.hasMore && messagesData.status !== 'loading' && messageListRef.current) {
+        prevScrollHeightRef.current = messageListRef.current.scrollHeight;
+        dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 }));
+    }
+  };
+
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== agentId) : [], [agents, agentId]);
-  const filteredConversations = useMemo(() => {
-    const list = Array.isArray(conversations) ? conversations : [];
-    if (activeFilter === 'closed') { return list.filter(c => c.status === 'closed'); }
-    return list.filter(c => c.status !== 'closed');
-  }, [conversations, activeFilter]);
-  const sortedConversations = useMemo(() => [...filteredConversations].sort((a, b) => dayjs(b.latestMessageTimestamp || 0).valueOf() - dayjs(a.latestMessageTimestamp || 0).valueOf()), [filteredConversations]);
   const groupedMessages = useMemo(() => {
-    const allMessages = selectedCustomer ? chatData[selectedCustomer] || [] : [];
+    const allMessages = messagesData?.list || [];
     return allMessages.reduce((acc: any, msg: any) => {
       const dateLabel = dayjs(msg.time).isToday() ? "Today" : dayjs(msg.time).isYesterday() ? "Yesterday" : dayjs(msg.time).format("MMMM D, YYYY");
       if (!acc[dateLabel]) acc[dateLabel] = [];
       acc[dateLabel].push(msg);
       return acc;
     }, {});
-  }, [selectedCustomer, chatData]);
+  }, [messagesData?.list]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] h-screen w-full gap-6 p-6">
@@ -193,11 +238,14 @@ export default function AgentInbox() {
               <Button variant={activeFilter === 'open' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('open')}>Open</Button>
               <Button variant={activeFilter === 'closed' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('closed')}>Closed</Button>
           </div>
+          <div className="px-2 my-4">
+              <Input placeholder="Search by customer name..." className="bg-muted border-none" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
+          </div>
           <div className="flex-1 overflow-y-auto space-y-2 scrollbar-hide pr-2 mt-2">
               {agentInboxStatus === 'loading' ? (
                   <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-              ) : sortedConversations.length > 0 ? (
-                  sortedConversations.map((convo) => (
+              ) : conversations.length > 0 ? (
+                  conversations.map((convo) => (
                       <div key={convo.id} onClick={() => setSelectedCustomer(convo.customer.id)} className={cn("flex items-center gap-4 p-3 rounded-lg cursor-pointer", selectedCustomer === convo.customer.id ? "bg-primary/10" : "hover:bg-muted/50")}>
                           <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary shrink-0">{convo.customer.name?.charAt(0).toUpperCase()}</div>
                           <div className="flex-1 overflow-hidden">
@@ -213,6 +261,13 @@ export default function AgentInbox() {
                   </div>
               )}
           </div>
+          {totalPages > 0 && (
+            <div className="flex items-center justify-center gap-2 pt-4 border-t">
+                <Button size="sm" variant="outline" onClick={handlePrevPage} disabled={currentPage <= 1 || agentInboxStatus === 'loading'}>Previous</Button>
+                <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
+                <Button size="sm" variant="outline" onClick={handleNextPage} disabled={currentPage >= totalPages || agentInboxStatus === 'loading'}>Next</Button>
+            </div>
+          )}
       </aside>
       <main className="flex flex-col bg-card border rounded-xl max-h-screen">
           {!selectedCustomer ? (
@@ -222,9 +277,7 @@ export default function AgentInbox() {
                   <div className="flex items-center justify-between p-4 border-b">
                       <h2 className="font-semibold">{currentConversation?.customer?.name}</h2>
                       <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5"/></Button>
-                          </DropdownMenuTrigger>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5"/></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Transfer Conversation</DropdownMenuLabel>
                               <DropdownMenuSeparator />
@@ -250,6 +303,12 @@ export default function AgentInbox() {
                       </DropdownMenu>
                   </div>
                   <div ref={messageListRef} className="flex-1 p-6 space-y-2 overflow-y-auto scrollbar-hide">
+                      <div className="text-center">
+                          {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
+                          {messagesData && messagesData.hasMore && messagesData.status !== 'loading' && (
+                              <Button variant="link" onClick={handleLoadMoreMessages}>Load More Messages</Button>
+                          )}
+                      </div>
                       {Object.entries(groupedMessages).map(([date, group]: any) => (
                           <div key={date}>
                               <div className="text-center text-xs text-muted-foreground my-4">{date}</div>

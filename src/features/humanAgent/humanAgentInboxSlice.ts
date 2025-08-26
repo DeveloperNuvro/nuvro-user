@@ -1,66 +1,86 @@
+// src/features/humanAgent/humanAgentInboxSlice.ts
+
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/api/axios";
-import { ConversationInList} from "../chatInbox/chatInboxSlice"; 
+import { ConversationInList } from "../chatInbox/chatInboxSlice"; 
 
-
-
+// --- STATE INTERFACE ---
+// Corrected for classic pagination (no `hasMore` needed)
 interface AgentInboxState {
     conversations: ConversationInList[];
     status: "idle" | "loading" | "succeeded" | "failed";
     error: string | null;
+    currentPage: number;
+    totalPages: number;
 }
 
+// --- INITIAL STATE ---
+// Corrected for classic pagination
 const initialState: AgentInboxState = {
     conversations: [],
     status: "idle",
     error: null,
+    currentPage: 1,
+    totalPages: 1,
 };
 
 // --- ASYNC THUNKS ---
-
 export const fetchAgentConversations = createAsyncThunk<
-    ConversationInList[],
-    void, 
+    { page: number; conversations: ConversationInList[]; totalPages: number },
+    { page: number; searchQuery?: string; status: 'open' | 'closed' }, 
     { rejectValue: string }
 >(
     "agentInbox/fetchAgentConversations",
-    async (_, thunkAPI) => {
+    async ({ page, searchQuery, status }, thunkAPI) => {
         try {
-          
-            const response = await api.get("/api/v1/agents/my-conversations");
-            return response.data.data; 
+            const response = await api.get("/api/v1/agents/my-conversations", {
+                params: { page, limit: 15, search: searchQuery || "", status }
+            });
+
+            const responsePayload = response.data.data;
+            const conversations: ConversationInList[] = responsePayload.data;
+            const totalPages = responsePayload.pagination?.totalPages || 1;
+
+            return { page, conversations, totalPages };
         } catch (error: any) {
-            return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch conversations");
+            return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch agent conversations");
         }
     }
 );
-
-
 
 const agentInboxSlice = createSlice({
     name: "agentInbox",
     initialState,
     reducers: {
+        resetAgentConversations: (state) => {
+            state.conversations = [];
+            state.currentPage = 1;
+            state.totalPages = 1;
+            state.status = 'idle';
+        },
         addAssignedConversation: (state, action: PayloadAction<ConversationInList>) => {
             const exists = state.conversations.some(c => c.id === action.payload.id);
             if (!exists) {
                 state.conversations.unshift(action.payload);
             }
         },
-        
         removeConversation: (state, action: PayloadAction<{ conversationId: string }>) => {
             state.conversations = state.conversations.filter(c => c.id !== action.payload.conversationId);
         },
-
     },
+    // Corrected extraReducers for classic pagination
     extraReducers: (builder) => {
         builder
             .addCase(fetchAgentConversations.pending, (state) => {
                 state.status = "loading";
             })
             .addCase(fetchAgentConversations.fulfilled, (state, action) => {
+                const { conversations, page, totalPages } = action.payload;
+                // ALWAYS replace the list for classic pagination
+                state.conversations = conversations;
+                state.currentPage = page;
+                state.totalPages = totalPages;
                 state.status = "succeeded";
-                state.conversations = action.payload;
             })
             .addCase(fetchAgentConversations.rejected, (state, action) => {
                 state.status = "failed";
@@ -69,5 +89,5 @@ const agentInboxSlice = createSlice({
     },
 });
 
-export const { addAssignedConversation,  removeConversation } = agentInboxSlice.actions;
+export const { addAssignedConversation,  removeConversation, resetAgentConversations } = agentInboxSlice.actions;
 export default agentInboxSlice.reducer;
