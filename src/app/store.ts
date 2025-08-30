@@ -14,6 +14,7 @@ import profileSlice from '../features/profile/profileSlice';
 import humanAgent from '../features/humanAgent/humanAgentSlice';
 import channel from '../features/channel/channelSlice';
 import humanAgentInbox from '../features/humanAgent/humanAgentInboxSlice';
+import agentTicket from '../features/SupportTicket/agentTicketSlice';
 
 export const store = configureStore({
   reducer: {
@@ -31,7 +32,8 @@ export const store = configureStore({
     profile: profileSlice,
     humanAgent: humanAgent,
     channel: channel,
-    agentInbox: humanAgentInbox
+    agentInbox: humanAgentInbox,
+    agentTickets: agentTicket,
   },
 });
 

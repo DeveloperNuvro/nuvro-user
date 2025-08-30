@@ -36,14 +36,14 @@ export interface Message {
 interface ChatInboxState {
     conversations: ConversationInList[];
     // Corrected: chatData now holds pagination state for each message list
-    chatData: { 
+    chatData: {
         [customerId: string]: {
             list: Message[],
             currentPage: number,
             totalPages: number,
             hasMore: boolean,
             status: 'idle' | 'loading' | 'succeeded',
-        } 
+        }
     };
     customerTable: {
         list: CustomerTableRow[],
@@ -93,6 +93,7 @@ export const fetchCustomersByBusiness = createAsyncThunk<
     }
 );
 
+
 export const fetchCustomersForTable = createAsyncThunk<
     { customers: CustomerTableRow[], totalPages: number, currentPage: number },
     { businessId: string; page: number; limit?: number, searchQuery?: string },
@@ -137,8 +138,8 @@ export const fetchMessagesByCustomer = createAsyncThunk<
         const formatted = messagesArray.map((msg: any) => ({
             text: msg.message, time: msg.timestamp, sentBy: msg.sender,
         })).reverse();
-        return { 
-            customerId, 
+        return {
+            customerId,
             messages: formatted,
             page: responsePayload.pagination.currentPage,
             totalPages: responsePayload.pagination.totalPages,
@@ -156,7 +157,25 @@ export const sendHumanMessage = createAsyncThunk<void, { businessId: string; cus
     }
 });
 
-// --- SLICE DEFINITION ---
+
+export const closeConversation = createAsyncThunk<
+    string,
+    { conversationId: string; businessId: string },
+    { rejectValue: string }
+>(
+    "chatInbox/closeConversation",
+    async ({ conversationId, businessId }, thunkAPI) => {
+        try {
+            await api.patch(`/api/v1/customer/conversations/${conversationId}/close`, { businessId });
+            return conversationId;
+        } catch (error: any) {
+            return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to close conversation");
+        }
+    }
+);
+
+
+
 
 const chatInboxSlice = createSlice({
     name: "chatInbox",
@@ -268,6 +287,13 @@ const chatInboxSlice = createSlice({
             .addCase(fetchCustomersForTable.rejected, (state, action) => {
                 state.customerTable.status = "failed";
                 state.customerTable.error = action.payload || "Failed to load customers";
+            })
+
+            .addCase(closeConversation.fulfilled, (state, action) => {
+                state.conversations = state.conversations.filter(c => c.id !== action.payload);
+            })
+            .addCase(closeConversation.rejected, (state, action) => {
+                state.error = action.payload || "Failed to close conversation.";
             });
     },
 });

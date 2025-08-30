@@ -2,10 +2,9 @@
 
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/api/axios";
-import { ConversationInList } from "../chatInbox/chatInboxSlice"; 
+import { ConversationInList } from "../chatInbox/chatInboxSlice";
 
 // --- STATE INTERFACE ---
-// Corrected for classic pagination (no `hasMore` needed)
 interface AgentInboxState {
     conversations: ConversationInList[];
     status: "idle" | "loading" | "succeeded" | "failed";
@@ -15,7 +14,6 @@ interface AgentInboxState {
 }
 
 // --- INITIAL STATE ---
-// Corrected for classic pagination
 const initialState: AgentInboxState = {
     conversations: [],
     status: "idle",
@@ -27,7 +25,7 @@ const initialState: AgentInboxState = {
 // --- ASYNC THUNKS ---
 export const fetchAgentConversations = createAsyncThunk<
     { page: number; conversations: ConversationInList[]; totalPages: number },
-    { page: number; searchQuery?: string; status: 'open' | 'closed' }, 
+    { page: number; searchQuery?: string; status: 'open' | 'closed' },
     { rejectValue: string }
 >(
     "agentInbox/fetchAgentConversations",
@@ -67,8 +65,27 @@ const agentInboxSlice = createSlice({
         removeConversation: (state, action: PayloadAction<{ conversationId: string }>) => {
             state.conversations = state.conversations.filter(c => c.id !== action.payload.conversationId);
         },
+        // --- THIS IS THE CRITICAL ADDITION ---
+        updateConversationPreview: (state, action: PayloadAction<{ conversationId: string; preview: string; latestMessageTimestamp: string }>) => {
+            const { conversationId, preview, latestMessageTimestamp } = action.payload;
+            const conversationIndex = state.conversations.findIndex(c => c.id === conversationId);
+
+            if (conversationIndex !== -1) {
+                // Found the conversation, update it and move to the top
+                const conversationToUpdate = {
+                    ...state.conversations[conversationIndex],
+                    preview,
+                    latestMessageTimestamp,
+                };
+                
+                // Remove the old version
+                const filteredConversations = state.conversations.filter(c => c.id !== conversationId);
+                
+                // Add the updated version to the beginning of the list
+                state.conversations = [conversationToUpdate, ...filteredConversations];
+            }
+        },
     },
-    // Corrected extraReducers for classic pagination
     extraReducers: (builder) => {
         builder
             .addCase(fetchAgentConversations.pending, (state) => {
@@ -76,7 +93,6 @@ const agentInboxSlice = createSlice({
             })
             .addCase(fetchAgentConversations.fulfilled, (state, action) => {
                 const { conversations, page, totalPages } = action.payload;
-                // ALWAYS replace the list for classic pagination
                 state.conversations = conversations;
                 state.currentPage = page;
                 state.totalPages = totalPages;
@@ -89,5 +105,12 @@ const agentInboxSlice = createSlice({
     },
 });
 
-export const { addAssignedConversation,  removeConversation, resetAgentConversations } = agentInboxSlice.actions;
+// --- EXPORT THE NEW ACTION ---
+export const {
+    addAssignedConversation,
+    removeConversation,
+    resetAgentConversations,
+    updateConversationPreview, // <-- Exported
+} = agentInboxSlice.actions;
+
 export default agentInboxSlice.reducer;

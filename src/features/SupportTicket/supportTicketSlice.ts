@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '@/api/axios';
 
-// Enum for ticket status
+
 export enum TicketStatus {
   Open = 'open',
   InProgress = 'in-progress',
@@ -76,10 +76,10 @@ const initialState: TicketState = {
   total: 0,
   pages: 0,
   currentPage: 1,
-  limit: 10, // Changed to 10 for reasonable pagination
+  limit: 10, 
 };
 
-// Create Ticket
+
 export const createTicket = createAsyncThunk<ISupportTicket, {
   businessId: string;
   customerId: string;
@@ -101,7 +101,7 @@ export const createTicket = createAsyncThunk<ISupportTicket, {
   }
 );
 
-// Edit Ticket
+
 export const editTicket = createAsyncThunk<ISupportTicket, {
   id: string;
   subject?: string;
@@ -126,7 +126,7 @@ export const editTicket = createAsyncThunk<ISupportTicket, {
   }
 );
 
-// Delete Ticket
+
 export const deleteTicket = createAsyncThunk<string, string>(
   'tickets/deleteTicket',
   async (id, thunkAPI) => {
@@ -139,7 +139,7 @@ export const deleteTicket = createAsyncThunk<string, string>(
   }
 );
 
-// Get All Tickets
+
 export const getAllTickets = createAsyncThunk<{
   tickets: ISupportTicket[];
   pagination: { page: number; limit: number; total: number; pages: number };
@@ -150,7 +150,7 @@ export const getAllTickets = createAsyncThunk<{
   priority?: string;
   businessId?: string;
   customerId?: string;
-  searchQuery?: string; // Added for search
+  searchQuery?: string; 
 }>(
   'tickets/getAllTickets',
   async (params, thunkAPI) => {
@@ -164,7 +164,8 @@ export const getAllTickets = createAsyncThunk<{
   }
 );
 
-// Get Ticket by ID
+
+
 export const getTicketById = createAsyncThunk<ISupportTicket, string>(
   'tickets/getTicketById',
   async (id, thunkAPI) => {

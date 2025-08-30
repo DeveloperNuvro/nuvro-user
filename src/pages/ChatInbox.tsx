@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { io, Socket } from 'socket.io-client';
 import { useDispatch, useSelector } from "react-redux";
@@ -17,7 +17,8 @@ import {
   updateConversationStatus,
   removeConversation,
   resetConversations,
-  ConversationInList
+  ConversationInList,
+  closeConversation
 } from "@/features/chatInbox/chatInboxSlice";
 import { fetchHumanAgents, updateAgentStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
@@ -36,6 +37,22 @@ dayjs.extend(isYesterday);
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+const playNotificationSound = (notificationRef: React.RefObject<HTMLAudioElement | null>) => {
+  // The null check for `.current` is now safely inside the utility function.
+  if (notificationRef.current) {
+    // Reset the audio to play again if it's already playing or just finished
+    notificationRef.current.currentTime = 0;
+    const playPromise = notificationRef.current.play();
+
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        // Autoplay was prevented. This is common before the user interacts with the page.
+        console.warn("Audio playback was prevented by the browser.", error);
+      });
+    }
+  }
+};
+
 const SystemMessage = ({ text }: { text: string }) => (
   <div className="flex items-center justify-center my-4">
     <div className="text-center text-xs text-muted-foreground px-4 py-1 bg-muted rounded-full">{text}</div>
@@ -43,12 +60,12 @@ const SystemMessage = ({ text }: { text: string }) => (
 );
 
 const useDebounce = (value: string, delay: number) => {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-    useEffect(() => {
-        const handler = setTimeout(() => { setDebouncedValue(value); }, delay);
-        return () => { clearTimeout(handler); };
-    }, [value, delay]);
-    return debouncedValue;
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => { setDebouncedValue(value); }, delay);
+    return () => { clearTimeout(handler); };
+  }, [value, delay]);
+  return debouncedValue;
 };
 
 export default function ChatInbox() {
@@ -94,11 +111,11 @@ export default function ChatInbox() {
 
   useEffect(() => {
     if (businessId) {
-      dispatch(resetConversations()); 
+      dispatch(resetConversations());
       dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter }));
     }
   }, [businessId, dispatch, debouncedSearchQuery, activeFilter]);
-  
+
   useEffect(() => {
     if (businessId) {
       dispatch(fetchHumanAgents());
@@ -117,18 +134,26 @@ export default function ChatInbox() {
     const handleNewMessage = (data: any) => {
       const { customerId, sender, message, customerName, conversationId } = data;
       if (!customerId) return;
+
       setIsTyping(prev => ({ ...prev, [customerId]: false }));
+
       const currentConversations = conversationsRef.current;
       const exists = currentConversations.some((c: any) => c.id === conversationId);
+
       if (!exists && (sender === 'customer' || sender === 'system')) {
         dispatch(addNewCustomer({ id: conversationId, customer: { id: customerId, name: customerName || "Unknown" }, preview: message, latestMessageTimestamp: new Date().toISOString(), status: 'ai_only' }));
       }
+
       dispatch(addRealtimeMessage({ customerId, message: { text: message, sentBy: sender, time: new Date().toISOString() } }));
+
       if (sender === 'customer') {
         toast.custom((t) => <NotificationToast t={t} name={customerName || "A customer"} msg={message} />);
-        if (audioInitialized.current) { notificationRef.current?.play().catch(err => console.warn("Audio playback failed:", err)); }
+        playNotificationSound(notificationRef);
       }
+
     };
+
+
     const handleNewAssignment = (data: any) => {
       const currentConversations = conversationsRef.current;
       if (!currentConversations.some(c => c.id === data.id)) { dispatch(addNewCustomer(data)); }
@@ -196,7 +221,7 @@ export default function ChatInbox() {
       dispatch(fetchCustomersByBusiness({ businessId, page: currentPage + 1, searchQuery: debouncedSearchQuery, status: activeFilter }));
     }
   };
-  
+
   const handlePrevPage = () => {
     if (currentPage > 1 && businessId) {
       dispatch(fetchCustomersByBusiness({ businessId, page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter }));
@@ -205,10 +230,20 @@ export default function ChatInbox() {
 
   const handleLoadMoreMessages = () => {
     if (selectedCustomer && messagesData && messagesData.hasMore && messagesData.status !== 'loading' && messageListRef.current) {
-        prevScrollHeightRef.current = messageListRef.current.scrollHeight;
-        dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 }));
+      prevScrollHeightRef.current = messageListRef.current.scrollHeight;
+      dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 }));
     }
   };
+
+  const handleCloseConversation = () => {
+    if (currentConversation?.id && businessId) {
+      dispatch(closeConversation({conversationId: currentConversation.id, businessId}))
+        .unwrap()
+        .then(() => toast.success('Conversation closed!'))
+        .catch((err) => toast.error(err || 'Failed to close conversation.'));
+    }
+  }
+
 
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== user?._id) : [], [agents, user]);
   const groupedMessages = useMemo(() => {
@@ -272,29 +307,44 @@ export default function ChatInbox() {
             <>
               <div className="flex items-center justify-between p-4 border-b">
                 <h2 className="font-semibold">{currentConversation?.customer?.name}</h2>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>Transfer Conversation</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {Array.isArray(channels) && channels.length > 0 ? (
-                      channels.map((channel: any) => (<DropdownMenuItem key={channel._id} onSelect={() => handleTransfer({ type: 'channel', id: channel._id })}><ChevronsRight className="mr-2 h-4 w-4" /> To {channel.name} Channel</DropdownMenuItem>))
-                    ) : (<DropdownMenuItem disabled>No channels available</DropdownMenuItem>)}
-                    <DropdownMenuSeparator />
-                    {onlineAgents.length > 0 ? (
-                      onlineAgents.map((agent: any) => (<DropdownMenuItem key={agent._id} onSelect={() => handleTransfer({ type: 'agent', id: agent._id })}><User className="mr-2 h-4 w-4" /> To {agent.name}</DropdownMenuItem>))
-                    ) : (
-                      <DropdownMenuItem disabled>No other agents online</DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Transfer Conversation</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {Array.isArray(channels) && channels.length > 0 ? (
+                        channels.map((channel: any) => (<DropdownMenuItem key={channel._id} onSelect={() => handleTransfer({ type: 'channel', id: channel._id })}><ChevronsRight className="mr-2 h-4 w-4" /> To {channel.name} Channel</DropdownMenuItem>))
+                      ) : (<DropdownMenuItem disabled>No channels available</DropdownMenuItem>)}
+                      <DropdownMenuSeparator />
+                      {onlineAgents.length > 0 ? (
+                        onlineAgents.map((agent: any) => (<DropdownMenuItem key={agent._id} onSelect={() => handleTransfer({ type: 'agent', id: agent._id })}><User className="mr-2 h-4 w-4" /> To {agent.name}</DropdownMenuItem>))
+                      ) : (
+                        <DropdownMenuItem disabled>No other agents online</DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button className="cursor-pointer" variant="ghost" size="icon" onClick={handleCloseConversation}>
+                          <XCircle className="h-5 w-5 text-red-500" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Close Conversation</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
               </div>
               <div ref={messageListRef} className="flex-1 p-6 space-y-2 overflow-y-auto scrollbar-hide">
                 <div className="text-center">
-                    {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
-                    {messagesData && messagesData.hasMore && messagesData.status !== 'loading' && (
-                        <Button variant="link" onClick={handleLoadMoreMessages}>Load More Messages</Button>
-                    )}
+                  {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
+                  {messagesData && messagesData.hasMore && messagesData.status !== 'loading' && (
+                    <Button variant="link" onClick={handleLoadMoreMessages}>Load More Messages</Button>
+                  )}
                 </div>
                 {Object.entries(groupedMessages).map(([date, group]: any) => (
                   <div key={date}>

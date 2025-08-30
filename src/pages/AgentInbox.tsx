@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } fr
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, MoreVertical, ChevronsRight, Wifi, WifiOff } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, MoreVertical, ChevronsRight, Wifi, WifiOff, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { io, Socket } from 'socket.io-client';
 import { useDispatch, useSelector } from "react-redux";
@@ -13,10 +13,11 @@ import {
   addAssignedConversation,
   removeConversation,
   resetAgentConversations,
+  updateConversationPreview, // <-- CRITICAL IMPORT
 } from "../features/humanAgent/humanAgentInboxSlice";
-import { fetchMessagesByCustomer, addRealtimeMessage, sendHumanMessage } from "@/features/chatInbox/chatInboxSlice";
+import { fetchMessagesByCustomer, addRealtimeMessage, sendHumanMessage, closeConversation } from "../features/chatInbox/chatInboxSlice";
 import { fetchHumanAgents, updateAgentStatus } from "@/features/humanAgent/humanAgentSlice";
-import { fetchChannels} from "@/features/channel/channelSlice";
+import { fetchChannels } from "@/features/channel/channelSlice";
 import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
@@ -26,23 +27,36 @@ import { api } from '../api/axios';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import NotificationToast from "@/components/custom/Notification/NotificationToast";
 import { ConversationInList } from "@/features/chatInbox/chatInboxSlice";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+const playNotificationSound = (notificationRef: React.RefObject<HTMLAudioElement | null>) => {
+  if (notificationRef.current) {
+    notificationRef.current.currentTime = 0;
+    const playPromise = notificationRef.current.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(error => {
+        console.warn("Audio playback was prevented by the browser.", error);
+      });
+    }
+  }
+};
+
 const SystemMessage = ({ text }: { text: string }) => (
-    <div className="flex items-center justify-center my-4"><div className="text-center text-xs text-muted-foreground px-4 py-1 bg-muted rounded-full">{text}</div></div>
+  <div className="flex items-center justify-center my-4"><div className="text-center text-xs text-muted-foreground px-4 py-1 bg-muted rounded-full">{text}</div></div>
 );
 
 const useDebounce = (value: string, delay: number) => {
-    const [debouncedValue, setDebouncedValue] = useState(value);
-    useEffect(() => {
-        const handler = setTimeout(() => { setDebouncedValue(value); }, delay);
-        return () => { clearTimeout(handler); };
-    }, [value, delay]);
-    return debouncedValue;
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => { setDebouncedValue(value); }, delay);
+    return () => { clearTimeout(handler); };
+  }, [value, delay]);
+  return debouncedValue;
 };
 
 export default function AgentInbox() {
@@ -54,7 +68,7 @@ export default function AgentInbox() {
   const [activeFilter, setActiveFilter] = useState<'open' | 'closed'>('open');
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearchQuery = useDebounce(searchInput, 500);
-  
+
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
   const [isInitialMessageLoad, setIsInitialMessageLoad] = useState(true);
@@ -70,21 +84,21 @@ export default function AgentInbox() {
 
   const { conversations, status: agentInboxStatus, currentPage, totalPages } = useSelector((state: RootState) => state.agentInbox);
   const messagesData = useSelector((state: RootState) => selectedCustomer ? state.chatInbox.chatData[selectedCustomer] : null);
-  
+
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
   const currentConversation = useMemo(() => {
     if (!Array.isArray(conversations)) return null;
     return conversations.find((c) => c.customer?.id === selectedCustomer);
   }, [conversations, selectedCustomer]);
-  
+
   const handleAppClick = useCallback(() => {
     if (!audioInitialized.current && notificationRef.current) {
-        notificationRef.current.load();
-        audioInitialized.current = true;
+      notificationRef.current.load();
+      audioInitialized.current = true;
     }
   }, []);
-  
+
   useEffect(() => {
     window.addEventListener('click', handleAppClick, { once: true });
     return () => window.removeEventListener('click', handleAppClick);
@@ -100,64 +114,86 @@ export default function AgentInbox() {
     dispatch(fetchChannels());
     const newSocket = io(API_BASE_URL, { query: { userId: agentId }, transports: ['websocket'] });
     setSocket(newSocket);
-    newSocket.on('connect', () => { setIsConnected(true); if (agentId) newSocket.emit('agentOnline', agentId); });
+    newSocket.on('connect', () => { setIsConnected(true); });
     newSocket.on('disconnect', () => setIsConnected(false));
     return () => { newSocket.disconnect(); };
   }, [dispatch, agentId]);
-  
+
   useEffect(() => {
     if (!socket) return;
     const handleNewMessage = (data: any) => {
-        dispatch(addRealtimeMessage({ customerId: data.customerId, message: { text: data.message, sentBy: data.sender, time: new Date().toISOString() } }));
-        if (data.sender === 'customer') {
+
+      dispatch(addRealtimeMessage({ customerId: data.customerId, message: { text: data.message, sentBy: data.sender, time: new Date().toISOString() } }));
+
+      if (data.conversationId) {
+        dispatch(updateConversationPreview({
+          conversationId: data.conversationId,
+          preview: data.message,
+          latestMessageTimestamp: data.timestamp || new Date().toISOString()
+        }));
+      }
+
+      if (data.sender === 'customer') {
+        const { assignment } = data;
+        const myChannelIds = Array.isArray(channels) ? channels.map(c => c._id) : [];
+
+        const isForMe =
+          (assignment?.type === 'agent' && assignment?.id === agentId) ||
+          (assignment?.type === 'channel' && assignment.id && myChannelIds.includes(assignment.id));
+
+        if (isForMe) {
           toast.custom((t) => <NotificationToast t={t} name={data.customerName || "A customer"} msg={data.message} />);
-          if (audioInitialized.current) { notificationRef.current?.play().catch(e => console.error("Audio play failed", e)); }
+          playNotificationSound(notificationRef);
         }
+      }
     };
+
     const handleNewAssignment = (data: ConversationInList) => {
-        toast.success(`New chat assigned from ${data.customer.name}`);
-        dispatch(addAssignedConversation(data));
+      toast.success(`New chat assigned from ${data.customer.name}`);
+      dispatch(addAssignedConversation(data));
     };
     const handleConversationRemoved = (data: { conversationId: string }) => {
-        dispatch(removeConversation(data));
-        if (currentConversation?.id === data.conversationId) {
-            setSelectedCustomer(null);
-        }
+      dispatch(removeConversation(data));
+      if (currentConversation?.id === data.conversationId) {
+        setSelectedCustomer(null);
+      }
     };
     const handleAgentStatusChange = (data: { userId: string, status: 'online' | 'offline' }) => {
-        dispatch(updateAgentStatus(data));
+      dispatch(updateAgentStatus(data));
     };
+
     socket.on("newMessage", handleNewMessage);
     socket.on("newChatAssigned", handleNewAssignment);
     socket.on("conversationRemoved", handleConversationRemoved);
     socket.on("agentStatusChanged", handleAgentStatusChange);
+
     return () => {
       socket.off("newMessage");
       socket.off("newChatAssigned");
       socket.off("conversationRemoved");
       socket.off("agentStatusChanged");
     };
-  }, [dispatch, socket, currentConversation]);
+  }, [dispatch, socket, currentConversation, agentId, channels]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-            dispatch(resetAgentConversations());
-            dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter }));
-        }
+      if (document.visibilityState === 'visible') {
+        dispatch(resetAgentConversations());
+        dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter }));
+      }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     }
   }, [dispatch, debouncedSearchQuery, activeFilter]);
 
   useEffect(() => { notificationRef.current = new Audio("/sounds/notification.mp3"); }, []);
 
   useEffect(() => {
-    if (selectedCustomer) { 
+    if (selectedCustomer) {
       setIsInitialMessageLoad(true);
-      dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); 
+      dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 }));
     }
   }, [selectedCustomer, dispatch]);
 
@@ -188,9 +224,9 @@ export default function AgentInbox() {
     const payload = target.type === 'agent' ? { targetAgentId: target.id } : { targetChannelId: target.id };
     const promise = api.post(`/api/v1/conversations/${currentConversation.id}/transfer`, payload);
     toast.promise(promise, {
-        loading: 'Transferring conversation...',
-        success: 'Conversation transferred!',
-        error: (err: any) => err.response?.data?.message || 'Transfer failed.'
+      loading: 'Transferring conversation...',
+      success: 'Conversation transferred!',
+      error: (err: any) => err.response?.data?.message || 'Transfer failed.'
     });
   };
 
@@ -208,10 +244,20 @@ export default function AgentInbox() {
 
   const handleLoadMoreMessages = () => {
     if (selectedCustomer && messagesData && messagesData.hasMore && messagesData.status !== 'loading' && messageListRef.current) {
-        prevScrollHeightRef.current = messageListRef.current.scrollHeight;
-        dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 }));
+      prevScrollHeightRef.current = messageListRef.current.scrollHeight;
+      dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 }));
     }
   };
+
+  const handleCloseConversation = () => {
+    if (currentConversation?.id && businessId) {
+      dispatch(closeConversation({conversationId: currentConversation.id, businessId}))
+        .unwrap()
+        .then(() => toast.success('Conversation closed!'))
+        .catch((err) => toast.error(err || 'Failed to close conversation.'));
+    }
+  }
+
 
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== agentId) : [], [agents, agentId]);
   const groupedMessages = useMemo(() => {
@@ -227,107 +273,128 @@ export default function AgentInbox() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] h-screen w-full gap-6 p-6">
       <aside className="flex flex-col border bg-card p-4 rounded-xl max-h-screen">
-          <div className="flex items-center justify-between px-2 mb-2">
-            <h1 className="text-2xl font-bold">My Inbox</h1>
-            <div className={cn("flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-full", isConnected ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300")}>
-                {isConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
-                {isConnected ? 'Online' : 'Offline'}
-            </div>
+        <div className="flex items-center justify-between px-2 mb-2">
+          <h1 className="text-2xl font-bold">My Inbox</h1>
+          <div className={cn("flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-full", isConnected ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300")}>
+            {isConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
+            {isConnected ? 'Online' : 'Offline'}
           </div>
-          <div className="flex items-center gap-2 p-2 border-y">
-              <Button variant={activeFilter === 'open' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('open')}>Open</Button>
-              <Button variant={activeFilter === 'closed' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('closed')}>Closed</Button>
-          </div>
-          <div className="px-2 my-4">
-              <Input placeholder="Search by customer name..." className="bg-muted border-none" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-2 scrollbar-hide pr-2 mt-2">
-              {agentInboxStatus === 'loading' ? (
-                  <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-              ) : conversations.length > 0 ? (
-                  conversations.map((convo) => (
-                      <div key={convo.id} onClick={() => setSelectedCustomer(convo.customer.id)} className={cn("flex items-center gap-4 p-3 rounded-lg cursor-pointer", selectedCustomer === convo.customer.id ? "bg-primary/10" : "hover:bg-muted/50")}>
-                          <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary shrink-0">{convo.customer.name?.charAt(0).toUpperCase()}</div>
-                          <div className="flex-1 overflow-hidden">
-                              <p className="font-semibold truncate">{convo.customer.name}</p>
-                              <p className="text-sm text-muted-foreground truncate">{convo.preview}</p>
-                          </div>
-                      </div>
-                  ))
-              ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
-                      <MessageSquareText className="h-12 w-12 mb-2" />
-                      <p>You have no {activeFilter} conversations.</p>
+        </div>
+        <div className="flex items-center gap-2 p-2 border-y">
+          <Button variant={activeFilter === 'open' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('open')}>Open</Button>
+          <Button variant={activeFilter === 'closed' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('closed')}>Closed</Button>
+        </div>
+        <div className="px-2 my-4">
+          <Input placeholder="Search by customer name..." className="bg-muted border-none" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-hide pr-2 mt-2">
+          {agentInboxStatus === 'loading' ? (
+            <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          ) : conversations.length > 0 ? (
+            conversations.map((convo) => (
+              <div key={convo.id} onClick={() => setSelectedCustomer(convo.customer.id)} className={cn("flex items-center gap-4 p-3 rounded-lg cursor-pointer", selectedCustomer === convo.customer.id ? "bg-primary/10" : "hover:bg-muted/50")}>
+                <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary shrink-0">{convo.customer.name?.charAt(0).toUpperCase()}</div>
+                <div className="flex-1 overflow-hidden">
+                  <div className="flex justify-between items-center">
+                    <p className="font-semibold truncate">{convo.customer.name}</p>
+                    <p className="text-xs text-muted-foreground shrink-0 ml-2">
+                      {dayjs(convo.latestMessageTimestamp).format("h:mm A")}
+                    </p>
                   </div>
-              )}
-          </div>
-          {totalPages > 0 && (
-            <div className="flex items-center justify-center gap-2 pt-4 border-t">
-                <Button size="sm" variant="outline" onClick={handlePrevPage} disabled={currentPage <= 1 || agentInboxStatus === 'loading'}>Previous</Button>
-                <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
-                <Button size="sm" variant="outline" onClick={handleNextPage} disabled={currentPage >= totalPages || agentInboxStatus === 'loading'}>Next</Button>
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">{convo.preview}</p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
+              <MessageSquareText className="h-12 w-12 mb-2" />
+              <p>You have no {activeFilter} conversations.</p>
             </div>
           )}
+        </div>
+        {totalPages > 0 && (
+          <div className="flex items-center justify-center gap-2 pt-4 border-t">
+            <Button size="sm" variant="outline" onClick={handlePrevPage} disabled={currentPage <= 1 || agentInboxStatus === 'loading'}>Previous</Button>
+            <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
+            <Button size="sm" variant="outline" onClick={handleNextPage} disabled={currentPage >= totalPages || agentInboxStatus === 'loading'}>Next</Button>
+          </div>
+        )}
       </aside>
       <main className="flex flex-col bg-card border rounded-xl max-h-screen">
-          {!selectedCustomer ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground"><MessageSquareText className="h-16 w-16 mb-4" /><h2 className="text-xl font-medium">Select a conversation</h2><p>Choose a conversation from your inbox to begin.</p></div>
-          ) : (
-              <>
-                  <div className="flex items-center justify-between p-4 border-b">
-                      <h2 className="font-semibold">{currentConversation?.customer?.name}</h2>
-                      <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5"/></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Transfer Conversation</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              {Array.isArray(channels) && channels.length > 0 ? (
-                                  channels.map((channel) => (
-                                      <DropdownMenuItem key={channel._id} onSelect={() => handleTransfer({ type: 'channel', id: channel._id })}>
-                                          <ChevronsRight className="mr-2 h-4 w-4" /> To {channel.name} Channel
-                                      </DropdownMenuItem>
-                                  ))
-                              ) : null}
-                              {Array.isArray(channels) && channels.length > 0 && onlineAgents.length > 0 && <DropdownMenuSeparator />}
-                              {onlineAgents.length > 0 ? (
-                                  onlineAgents.map((agent) => (
-                                      <DropdownMenuItem key={agent._id} onSelect={() => handleTransfer({ type: 'agent', id: agent._id })}>
-                                          <User className="mr-2 h-4 w-4" /> To {agent.name}
-                                      </DropdownMenuItem>
-                                  ))
-                              ) : null}
-                               {(Array.isArray(channels) && channels.length === 0 && onlineAgents.length === 0) && (
-                                <DropdownMenuItem disabled>No transfer options available</DropdownMenuItem>
-                               )}
-                          </DropdownMenuContent>
-                      </DropdownMenu>
-                  </div>
-                  <div ref={messageListRef} className="flex-1 p-6 space-y-2 overflow-y-auto scrollbar-hide">
-                      <div className="text-center">
-                          {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
-                          {messagesData && messagesData.hasMore && messagesData.status !== 'loading' && (
-                              <Button variant="link" onClick={handleLoadMoreMessages}>Load More Messages</Button>
-                          )}
-                      </div>
-                      {Object.entries(groupedMessages).map(([date, group]: any) => (
-                          <div key={date}>
-                              <div className="text-center text-xs text-muted-foreground my-4">{date}</div>
-                              {group?.map((msg: any, i: any) => {
-                                  if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />;
-                                  const isAgentSide = ["agent", "human"].includes(msg.sentBy);
-                                  return (<div key={i} className={cn("flex flex-col my-4", isAgentSide ? "items-end" : "items-start")}><div className={cn("max-w-[65%] p-3 rounded-2xl text-sm leading-snug", isAgentSide ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted text-muted-foreground rounded-bl-none")}>{msg.text}</div><p className="text-xs text-muted-foreground mt-1.5 px-1">{dayjs(msg.time).format("h:mm A")}</p></div>);
-                              })}
-                          </div>
-                      ))}
-                  </div>
-                  <div className="p-6 border-t">
-                      <div className="relative">
-                          <Textarea placeholder="Type your message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="w-full resize-none p-4 pr-14 rounded-lg bg-muted border-none" rows={1} />
-                          <Button onClick={handleSendMessage} size="icon" className="absolute right-3 bottom-2.5 h-9 w-9 bg-primary"><Send className="h-4 w-4" /></Button>
-                      </div>
-                  </div>
-              </>
-          )}
+        {!selectedCustomer ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground"><MessageSquareText className="h-16 w-16 mb-4" /><h2 className="text-xl font-medium">Select a conversation</h2><p>Choose a conversation from your inbox to begin.</p></div>
+        ) : (
+          <>
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="font-semibold">{currentConversation?.customer?.name}</h2>
+             <div>
+               <DropdownMenu>
+                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Transfer Conversation</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {Array.isArray(channels) && channels.length > 0 ? (
+                    channels.map((channel) => (
+                      <DropdownMenuItem key={channel._id} onSelect={() => handleTransfer({ type: 'channel', id: channel._id })}>
+                        <ChevronsRight className="mr-2 h-4 w-4" /> To {channel.name} Channel
+                      </DropdownMenuItem>
+                    ))
+                  ) : null}
+                  {Array.isArray(channels) && channels.length > 0 && onlineAgents.length > 0 && <DropdownMenuSeparator />}
+                  {onlineAgents.length > 0 ? (
+                    onlineAgents.map((agent) => (
+                      <DropdownMenuItem key={agent._id} onSelect={() => handleTransfer({ type: 'agent', id: agent._id })}>
+                        <User className="mr-2 h-4 w-4" /> To {agent.name}
+                      </DropdownMenuItem>
+                    ))
+                  ) : null}
+                  {(Array.isArray(channels) && channels.length === 0 && onlineAgents.length === 0) && (
+                    <DropdownMenuItem disabled>No transfer options available</DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button className="cursor-pointer" variant="ghost" size="icon" onClick={handleCloseConversation}>
+                      <XCircle className="h-5 w-5 text-red-500" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Close Conversation</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+             </div>
+
+            </div>
+            <div ref={messageListRef} className="flex-1 p-6 space-y-2 overflow-y-auto scrollbar-hide">
+              <div className="text-center">
+                {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
+                {messagesData && messagesData.hasMore && messagesData.status !== 'loading' && (
+                  <Button variant="link" onClick={handleLoadMoreMessages}>Load More Messages</Button>
+                )}
+              </div>
+              {Object.entries(groupedMessages).map(([date, group]: any) => (
+                <div key={date}>
+                  <div className="text-center text-xs text-muted-foreground my-4">{date}</div>
+                  {group?.map((msg: any, i: any) => {
+                    if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />;
+                    const isAgentSide = ["agent", "human"].includes(msg.sentBy);
+                    return (<div key={i} className={cn("flex flex-col my-4", isAgentSide ? "items-end" : "items-start")}><div className={cn("max-w-[65%] p-3 rounded-2xl text-sm leading-snug", isAgentSide ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted text-muted-foreground rounded-bl-none")}>{msg.text}</div><p className="text-xs text-muted-foreground mt-1.5 px-1">{dayjs(msg.time).format("h:mm A")}</p></div>);
+                  })}
+                </div>
+              ))}
+            </div>
+            <div className="p-6 border-t">
+              <div className="relative">
+                <Textarea placeholder="Type your message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="w-full resize-none p-4 pr-14 rounded-lg bg-muted border-none" rows={1} />
+                <Button onClick={handleSendMessage} size="icon" className="absolute right-3 bottom-2.5 h-9 w-9 bg-primary"><Send className="h-4 w-4" /></Button>
+              </div>
+            </div>
+          </>
+        )}
       </main>
     </div>
   );

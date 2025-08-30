@@ -1,90 +1,93 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from 'sonner';
+
+// Your Pages and Components
 import Signin from "./components/custom/signin/Signin";
 import Signup from "./components/custom/signup/Signup";
 import OnboardingStep from "./components/custom/onboard/Onboarding";
 import DashboardLayout from "./components/custom/dashboard/layout/DashboardLayout";
-import AiModelPage from "./pages/AiModelPage";
-import TrainModelForm from "./components/custom/aiModel/TrainModel";
-import AIAgent from "./components/custom/aiAgent/AiAgent";
-import AiAgentPage from "./pages/AiAgentPage";
-import CreateAiAgent from "./components/custom/aiAgent/CreateAiAgent";
-import ComingSoon from "./components/custom/comingSoon/ComingSoon";
 import Home from "./pages/Home";
-import PrivateRoute from "./routes/PrivateRoutes";
+
+// Routing and State
+import ProtectedRoute from "../src/routes/ProtectedRoute";
+import AuthLayoutGuard from "./routes/AuthLayoutGuard"; 
+import OnboardingGuard from "./routes/OnboardingGuard";
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
 import { useAppSelector } from "./app/hooks";
-import OnboardingGuard from "./routes/OnboardingGuard";
-import SingleAiAgent from "./pages/SingleAiAgent";
-import ChatInbox from "./pages/ChatInbox";
-import { Toaster } from 'sonner'
-import CustomersPage from "./pages/AllCustomerPage";
-import AllTicketPage from "./pages/AllTicketPage";
-import UpdateAIModelForm from "./components/custom/aiModel/UpdateAIModelForm";
-import { PricingPage } from "./pages/PricingPage";
-import { BillingManagement } from "./pages/BillingManagement";
-import AnalysisPage from "./pages/AnalysisPage";
-import DashboardOverviewPage from "./pages/OverviewPage";
-import AccountSettingsPage from "./pages/AccountSettingPage";
-import ChannelPage from "./pages/ChannelPage";
-import HumanAgentPage from "./pages/HumanAgentPage";
-import AgentInbox from "./pages/AgentInbox";
-
+import { menuRoutes, additionalProtectedRoutes, ROLES } from "./appRoutes";
 
 function App() {
-
-  // useAuthBootstrap is a custom hook that refreshes the access token on app load
   useAuthBootstrap();
   const bootstrapped = useAppSelector(state => state.auth.bootstrapped);
-  if (!bootstrapped) return <div className="text-center ">Loading session...</div>;
+  const user = useAppSelector(state => state.auth.user);
+
+  if (!bootstrapped) {
+    return <div className="flex items-center justify-center h-screen">Loading session...</div>;
+  }
+  
+  const defaultProtectedRoute = user?.role === ROLES.AGENT ? "/main-menu/agent/inbox" : "/main-menu/overview";
 
   return (
     <>
-     <Toaster position="top-right" richColors />
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/signin" element={<Signin />} />
-      <Route path="/signup" element={<Signup />} />
-
-      {/* Protected Routes */}
-      <Route element={<PrivateRoute />}>
+      <Toaster position="top-right" richColors />
+      <Routes>
+        {/* ======================================== */}
+        {/* PUBLIC ROUTES */}
+        {/* ======================================== */}
+        <Route path="/signin" element={<Signin />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/" element={<Home />} />
-        <Route path="/onboarding" element={
-          <OnboardingGuard>
-            <OnboardingStep />
-          </OnboardingGuard>
-        } />
 
-        <Route path="/main-menu" element={<DashboardLayout />}>
-          <Route path="ai-model" element={<AiModelPage />} />
-          <Route path="ai-model/train-model" element={<TrainModelForm />} />
-         <Route path="ai-model/update/:id" element={<UpdateAIModelForm />} />
-          <Route path="overview" element={<DashboardOverviewPage />} />
-          <Route path="inbox" element={<ChatInbox />} />
-          <Route path="agent/inbox" element={<AgentInbox />} />
+        {/* ======================================== */}
+        {/* PROTECTED ROUTES WRAPPER */}
+        {/* ======================================== */}
+        <Route element={<AuthLayoutGuard />}>
+          {/* All routes inside here are guaranteed to have an authenticated user */}
+          
+          <Route
+            path="/onboarding"
+            element={
+              <OnboardingGuard>
+                <OnboardingStep />
+              </OnboardingGuard>
+            }
+          />
 
-          <Route path="channel" element={<ChannelPage />} />
-          <Route path="human-agent" element={<HumanAgentPage />} />
+          <Route path="/main-menu" element={<DashboardLayout />}>
+            {/* Now we add role-based protection for each specific page */}
+            {menuRoutes.map(({ path, component, allowedRoles, action }) =>
+              !action && (
+                <Route
+                  key={path}
+                  path={path}
+                  element={
+                    <ProtectedRoute allowedRoles={allowedRoles}>
+                      {component}
+                    </ProtectedRoute>
+                  }
+                />
+              )
+            )}
 
-
-          <Route path="ticket" element={<AllTicketPage />} />
-
-          <Route path="ai-agent" element={<AIAgent />} />
-          <Route path="ai-agent/setup" element={<AiAgentPage />} />
-          <Route path="ai-agent/create" element={<CreateAiAgent />} />
-          <Route path="ai-agent/:id" element={<SingleAiAgent />} />
-
-
-          <Route path="customers" element={<CustomersPage />} />
-          <Route path="analytics" element={<AnalysisPage />} />
-          <Route path="pricing" element={<PricingPage />} />
-          <Route path="billing" element={<BillingManagement />} />
-          <Route path="help" element={<ComingSoon />} />
-          <Route path="settings" element={<AccountSettingsPage />} />
-          <Route path="logout" element={<ComingSoon />} />
+            {additionalProtectedRoutes.map(({ path, component, allowedRoles }) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <ProtectedRoute allowedRoles={allowedRoles}>
+                    {component}
+                  </ProtectedRoute>
+                }
+              />
+            ))}
+            
+            <Route index element={<Navigate to={defaultProtectedRoute} replace />} />
+          </Route>
         </Route>
-      </Route>
-    </Routes>
-    
+
+        {/* Fallback for any other route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </>
   );
 }

@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+// src/layouts/DashboardLayout.tsx
+
+import { useState, useEffect, useMemo } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { Menu, CircleUser, ChevronDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -7,109 +9,69 @@ import { cn } from "@/lib/utils";
 import logo from "@/assets/images/LogoColor.png";
 import logoWhite from "@/assets/images/logoWhiteColor.png";
 import { ModeToggle } from "@/components/mode-toggle";
+import { MdOutlinePayment } from "react-icons/md";
 
-// Icons
-import { FiGrid } from "react-icons/fi"; //overview
-import { GoInbox } from "react-icons/go" //inbox
-import { LuTicket } from "react-icons/lu"; //ticket
-import { SiProbot } from "react-icons/si"; //AI agent
-import { TbBoxModel2 } from "react-icons/tb"; //AI model
-import { FiUsers } from "react-icons/fi"; //customers & human agent
-import { FiTrendingUp } from "react-icons/fi"; //analytics
-import { MdOutlinePayment } from "react-icons/md"; //plan & payment
-import { IoSettingsOutline } from "react-icons/io5"; //settings
-import { IoIosLogOut } from "react-icons/io"; //log out
-
-// Redux and Routing
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
 import { logoutUser } from '@/features/auth/authSlice';
-import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
 import { fetchBusinessById } from "@/features/business/businessSlice";
+import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
-// =========================================================================
-// ROLE-BASED MENU DEFINITIONS
-// =========================================================================
 
-const businessMenuItems = [
-  {
-    title: "Main Menu",
-    links: [
-      { label: "Overview", to: "/main-menu/overview", icon: <FiGrid className="mr-2" /> },
-      { label: "Inbox", to: "/main-menu/inbox", icon: <GoInbox className="mr-2" /> },
-      { label: "Channel", to: "/main-menu/channel", icon: <GoInbox className="mr-2" /> },
-      { label: "Human Agent", to: "/main-menu/human-agent", icon: <FiUsers className="mr-2" /> },
-      { label: "Ticket", to: "/main-menu/ticket", icon: <LuTicket className="mr-2" /> },
-      { label: "AI Model", to: "/main-menu/ai-model", icon: <TbBoxModel2 className="mr-2" /> },
-      { label: "AI Agent", to: "/main-menu/ai-agent/setup", icon: <SiProbot className="mr-2" /> },
-    ],
-  },
-  {
-    title: "Business",
-    links: [
-      { label: "Customers", to: "/main-menu/customers", icon: <FiUsers className="mr-2" /> },
-      { label: "Analytics", to: "/main-menu/analytics", icon: <FiTrendingUp className="mr-2" /> },
-    ],
-  },
-  {
-    title: "Account",
-    links: [
-      { label: "Plan & Payment", to: "/main-menu/pricing", icon: <MdOutlinePayment className="mr-2" /> },
-      { label: "Settings", to: "/main-menu/settings", icon: <IoSettingsOutline className="mr-2" /> },
-      { label: "Log Out", to: "logout", icon: <IoIosLogOut className="mr-2" />, action: "logout" },
-    ],
-  },
-];
+import { menuRoutes } from "@/appRoutes";
 
-const agentMenuItems = [
-    {
-        title: "Main Menu",
-        links: [
-            { label: "Inbox", to: "/main-menu/agent/inbox", icon: <GoInbox className="mr-2" /> },
-        ]
-    },
-    {
-        title: "Account",
-        links: [
-            { label: "Settings", to: "/main-menu/settings", icon: <IoSettingsOutline className="mr-2" /> },
-            { label: "Log Out", to: "logout", icon: <IoIosLogOut className="mr-2" />, action: "logout" },
-        ]
-    }
-];
-
-// =========================================================================
-// MAIN LAYOUT COMPONENT
-// =========================================================================
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const [imageSrc, setImageSrc] = useState<string>(logoWhite);
 
   const dispatch = useDispatch<AppDispatch>();
-  const navigate = useNavigate();
+
 
   const { user } = useSelector((state: RootState) => state.auth);
   const { selectedBusiness } = useSelector((state: RootState) => state.business);
 
-  // --- THE CORE LOGIC FOR DYNAMIC MENUS ---
-  const menuItems = user?.role === 'agent' ? agentMenuItems : businessMenuItems;
 
-  const businessId = user?.businessId || '';
+  const menuItems = useMemo(() => {
+    if (!user) return [];
+
+    const accessibleRoutes = menuRoutes.filter(route => route.allowedRoles.includes(user.role));
+
+    const grouped = accessibleRoutes.reduce((acc, route) => {
+      if (!acc[route.section]) {
+        acc[route.section] = [];
+      }
+     
+      acc[route.section].push({
+        label: route.label,
+        to: `/main-menu/${route.path}`, 
+        icon: route.icon,
+        action: route.action,
+      });
+      return acc;
+    }, {} as Record<string, any[]>);
+
+    return [
+        { title: "Main Menu", links: grouped["Main Menu"] || [] },
+        { title: "Business", links: grouped["Business"] || [] },
+        { title: "Account", links: grouped["Account"] || [] }
+    ].filter(section => section.links.length > 0);
+
+  }, [user]);
+
   useEffect(() => {
-    // Only fetch business details if the user is a business owner/admin, not an agent
-    if (businessId && user?.role === 'business') {
-      dispatch(fetchBusinessById(businessId));
+    if (user?.businessId && user?.role === 'business') {
+      dispatch(fetchBusinessById(user.businessId));
     }
-  }, [dispatch, businessId, user?.role]);
+  }, [dispatch, user?.businessId, user?.role]);
 
   const handleMenuClick = async (item: any) => {
     if (item.action === 'logout') {
       try {
         await dispatch(logoutUser()).unwrap();
         toast.success('Logged out successfully');
-        navigate('/signin');
+ 
       } catch (err) {
         toast.error('Logout failed');
       }
@@ -142,22 +104,27 @@ export default function DashboardLayout() {
       </div>
       <ScrollArea className="h-[calc(100vh-64px)] px-4">
         <nav className="flex flex-col gap-6">
-          {menuItems?.map((section) => (
+          {menuItems.map((section) => (
             <div key={section.title}>
               <p className="text-[12px] font-400 text-[#A3ABB8] uppercase mb-2">{section.title}</p>
               <ul className="space-y-1">
                 {section.links.map((link) => (
+                  // The key should be the full path for uniqueness
                   <li key={link.to}>
                     {link.action === 'logout' ? (
-                      <button
+                     <a href="https://nuvro-user.vercel.app/signin">
+                       <button
                         onClick={() => handleMenuClick(link)}
                         className="w-full cursor-pointer text-left block rounded-md px-3 py-2 text-sm font-400 transition-colors text-[#A3ABB8] hover:text-[#ff21b0] hover:bg-muted/40"
                       >
                         <div className="flex items-center">{link.icon}{link.label}</div>
                       </button>
+                     </a>
                     ) : (
+                     
                       <NavLink
                         to={link.to}
+                        onClick={() => setSidebarOpen(false)}
                         className={({ isActive }) =>
                           cn(
                             "block rounded-md px-3 py-2 text-sm font-400 transition-colors",
@@ -194,33 +161,30 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Sidebar for md+ */}
       <div className="hidden md:block">
         {SidebarContent}
       </div>
 
-      {/* Main content area */}
       <div className="flex-1 flex flex-col md:ml-[300px]">
-        {/* Header */}
-        <header className="h-[64px] flex items-center sticky top-0 z-[50] bg-[#FAFAFA] dark:bg-[#1B1B20] border-b-[0.5px] border-[#D4D8DE] dark:border-[#2C3139] px-[20px] py-[40px] justify-end md:justify-between ">
-          {/* Sidebar for mobile */}
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetTrigger asChild>
-              <button className="md:hidden py-4 fixed top-4 left-4 z-51" onClick={() => setSidebarOpen(true)}>
-                <Menu className="h-6 w-6" />
-              </button>
-            </SheetTrigger>
-            <SheetContent side="left" className="p-0 w-[300px]">
-              {SidebarContent}
-            </SheetContent>
-          </Sheet>
+        <header className="h-[64px] flex items-center sticky top-0 z-[50] bg-[#FAFAFA] dark:bg-[#1B1B20] border-b-[0.5px] border-[#D4D8DE] dark:border-[#2C3139] px-[20px] py-[40px] justify-between">
+          <div className="flex items-center gap-4">
+             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetTrigger asChild>
+                <button className="md:hidden">
+                  <Menu className="h-6 w-6" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-[300px]">
+                {SidebarContent}
+              </SheetContent>
+            </Sheet>
 
-          <div className="text-sm md:flex hidden items-center">
-            {getBreadcrumb()}
+            <div className="text-sm hidden md:flex items-center">
+              {getBreadcrumb()}
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
-            {/* --- HIDE SUBSCRIPTION DETAILS FOR AGENTS --- */}
             {user?.role === 'business' && (
                 <div className="hidden md:flex flex-col items-center text-[16px] font-400 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] border-[1px] px-[16px] py-[8px] rounded-md cursor-pointer">
                     <div className="flex items-center"><MdOutlinePayment className="mr-2" />Current Subscription<ChevronDown size={16} className="ml-1" /></div>
@@ -234,11 +198,8 @@ export default function DashboardLayout() {
           </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-6 overflow-y-auto">
-          <div>
-            <Outlet />
-          </div>
+        <main className="flex-1 p-6 overflow-y-auto bg-gray-50 dark:bg-[#121212]">
+          <Outlet />
         </main>
       </div>
     </div>
