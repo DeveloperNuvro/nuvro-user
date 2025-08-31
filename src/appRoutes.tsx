@@ -64,7 +64,7 @@ export const menuRoutes: MenuRoute[] = [
   { path: "ticket", component: <AllTicketPage /> , label: "Ticket", icon: <LuTicket className="mr-2" />, allowedRoles: [ROLES.BUSINESS, ROLES.AGENT], section: "Main Menu" },
   { path: "ai-model", component: <AiModelPage />, label: "AI Model", icon: <TbBoxModel2 className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Main Menu" },
   { path: "ai-agent/setup", component: <AiAgentPage />, label: "AI Agent", icon: <SiProbot className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Main Menu" },
-  { path: "customers", component: <CustomersPage />, label: "Customers", icon: <FiUsers className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Business" },
+  { path: "customers", component: <CustomersPage />, label: "Customers", icon: <FiUsers className="mr-2" />, allowedRoles: [ROLES.BUSINESS, ROLES.AGENT], section: "Business" },
   { path: "analytics", component: <AnalysisPage />, label: "Analytics", icon: <FiTrendingUp className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Business" },
   { path: "pricing", component: <PricingPage />, label: "Plan & Payment", icon: <MdOutlinePayment className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Account" },
 

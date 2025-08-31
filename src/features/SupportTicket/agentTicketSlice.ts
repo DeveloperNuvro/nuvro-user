@@ -1,56 +1,60 @@
-import { createSlice, createAsyncThunk} from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '@/api/axios';
 import { ISupportTicket } from './supportTicketSlice'; 
-
 
 interface AgentTicketState {
   tickets: ISupportTicket[];
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
+  total: number;
   totalPages: number;
   currentPage: number;
+  limit: number;
 }
-
 
 const initialState: AgentTicketState = {
   tickets: [],
   status: 'idle',
   error: null,
-  totalPages: 1,
+  total: 0,
+  totalPages: 0,
   currentPage: 1,
+  limit: 10,
 };
 
-
 export const fetchAgentTickets = createAsyncThunk<
-  { data: ISupportTicket[]; pagination: { totalPages: number; currentPage: number } },
+  { tickets: ISupportTicket[]; pagination: { page: number; limit: number; total: number; pages: number } },
   { page?: number; limit?: number; status?: string; priority?: string; searchQuery?: string },
   { rejectValue: string }
 >(
   'agentTickets/fetchAgentTickets',
   async (params, thunkAPI) => {
     try {
-      
-      const response = await api.get('/api/v1/tickets/my-tickets', { params });
+      const response = await api.get('/api/v1/tickets/agent', { params });
       return response.data.data; 
     } catch (error: any) {
+      console.error('Error in fetchAgentTickets thunk:', error.response?.data || error.message);
       return thunkAPI.rejectWithValue(error.response?.data?.message || 'Failed to fetch your tickets');
     }
   }
 );
 
-
 const agentTicketSlice = createSlice({
   name: 'agentTickets',
   initialState,
   reducers: {
-    
     resetAgentTickets: (state) => {
       state.tickets = [];
       state.status = 'idle';
       state.currentPage = 1;
-      state.totalPages = 1;
+      state.totalPages = 0;
+      state.total = 0;
       state.error = null;
     },
+    // --- FIX: THIS ACTION IS NEEDED FOR CORRECT PAGINATION ---
+    setCurrentPage: (state, action: PayloadAction<number>) => {
+      state.currentPage = action.payload;
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -60,9 +64,11 @@ const agentTicketSlice = createSlice({
       })
       .addCase(fetchAgentTickets.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.tickets = action.payload.data;
-        state.totalPages = action.payload.pagination.totalPages;
-        state.currentPage = action.payload.pagination.currentPage;
+        state.tickets = action.payload.tickets;
+        state.total = action.payload.pagination.total;
+        state.totalPages = action.payload.pagination.pages;
+        state.currentPage = action.payload.pagination.page;
+        state.limit = action.payload.pagination.limit;
       })
       .addCase(fetchAgentTickets.rejected, (state, action) => {
         state.status = 'failed';
@@ -72,6 +78,6 @@ const agentTicketSlice = createSlice({
   },
 });
 
-export const { resetAgentTickets } = agentTicketSlice.actions;
+export const { resetAgentTickets, setCurrentPage } = agentTicketSlice.actions;
 
 export default agentTicketSlice.reducer;

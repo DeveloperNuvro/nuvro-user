@@ -51,7 +51,7 @@ export interface ISupportTicket {
   assignedAgent?: string;
   createdAt: string;
   updatedAt: string;
-  
+
   customerDetails?: PopulatedUser;
   business?: PopulatedBusiness;
   assignedAgentDetails?: PopulatedUser;
@@ -63,7 +63,7 @@ interface TicketState {
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
   total: number;
-  pages: number;
+  totalPages: number;
   currentPage: number;
   limit: number;
 }
@@ -74,9 +74,9 @@ const initialState: TicketState = {
   status: 'idle',
   error: null,
   total: 0,
-  pages: 0,
+  totalPages: 0,
   currentPage: 1,
-  limit: 10, 
+  limit: 10,
 };
 
 
@@ -150,7 +150,7 @@ export const getAllTickets = createAsyncThunk<{
   priority?: string;
   businessId?: string;
   customerId?: string;
-  searchQuery?: string; 
+  searchQuery?: string;
 }>(
   'tickets/getAllTickets',
   async (params, thunkAPI) => {
@@ -251,7 +251,7 @@ const ticketSlice = createSlice({
         state.status = 'succeeded';
         state.tickets = action.payload.tickets;
         state.total = action.payload.pagination.total;
-        state.pages = action.payload.pagination.pages;
+        state.totalPages = action.payload.pagination.pages;
         state.currentPage = action.payload.pagination.page;
         state.limit = action.payload.pagination.limit;
       })
@@ -260,7 +260,6 @@ const ticketSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // Get Ticket by ID
       .addCase(getTicketById.pending, (state) => {
         state.status = 'loading';
         state.error = null;
