@@ -12,5 +12,6 @@
       "@repo/ui/*": ["../../packages/ui/src/*"],
       "@/components/*": ["src/components/*"]
     }
-  }
+  },
+  
 }

@@ -85,30 +85,6 @@ const Signin = () => {
                     />
 
 
-                    <div className="flex items-center justify-between w-full mt-2 mb-2">
-                        {/* <Controller
-                            name="rememberMe"
-                            defaultValue={false}
-                            control={control}
-                            render={({ field }) => (
-                                <div className="flex items-start w-full gap-3">
-                                    <Checkbox
-                                        checked={field.value}
-                                        onCheckedChange={field.onChange}
-                                    />
-                                    <p className="text-sm text-[#101214] dark:text-white">
-                                        Remember Me
-
-                                    </p>
-                                </div>
-                            )}
-                        /> */}
-                        {/* <div>
-                            <Link to="#" className="text-sm w-full text-[#ff21b0] hover:underline">Forgot password?</Link>
-                        </div> */}
-                    </div>
-
-
                     <div className="text-sm text-[#101214] dark:text-white text-center w-full">
                         <Button value={`${status === 'loading' ? 'Signing in...' : 'Sign In'}`} type="submit" disabled={!isValid} />
                         Don’t have account?{' '}

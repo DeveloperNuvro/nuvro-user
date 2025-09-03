@@ -9,7 +9,10 @@ const __dirname = path.dirname(__filename);
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(),tailwindcss()],
+  // Your existing plugins are preserved
+  plugins: [react(), tailwindcss()],
+
+  // Your existing alias configuration is preserved
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

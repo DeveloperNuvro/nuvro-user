@@ -104,7 +104,7 @@ export default function DashboardLayout() {
       </div>
       <ScrollArea className="h-[calc(100vh-64px)] px-4">
         <nav className="flex flex-col gap-6">
-          {menuItems.map((section) => (
+          {menuItems?.map((section) => (
             <div key={section.title}>
               <p className="text-[12px] font-400 text-[#A3ABB8] uppercase mb-2">{section.title}</p>
               <ul className="space-y-1">
