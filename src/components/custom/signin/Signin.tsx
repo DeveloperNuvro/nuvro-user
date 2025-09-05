@@ -1,4 +1,3 @@
-import React from 'react';
 import SignUpAndSignInPageComponent from '../SignUpAndSignInPageComponent/SignUpAndSignInPageComponent'
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
