@@ -1,10 +1,11 @@
-
+import React from 'react';
 import SignUpAndSignInPageComponent from '../SignUpAndSignInPageComponent/SignUpAndSignInPageComponent'
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm} from 'react-hook-form';
 import { Button } from '../button/Button';
 import InputBox from '../inputbox/InputBox';
+import { useTranslation } from 'react-i18next';
 
 import { Link, useNavigate } from 'react-router-dom'
 import { loginUser } from '@/features/auth/authSlice';
@@ -13,14 +14,16 @@ import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { AppDispatch, RootState } from '@/app/store';
 
-const signinSchema = z.object({
-    email: z.string().email('Invalid email address'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type SigninFormData = z.infer<typeof signinSchema>;
-
 const Signin = () => {
+    const { t } = useTranslation();
+
+    // Zod schema with translated error messages
+    const signinSchema = z.object({
+        email: z.string().email(t('signinPage.validation.invalidEmail')),
+        password: z.string().min(6, t('signinPage.validation.passwordLength')),
+    });
+
+    type SigninFormData = z.infer<typeof signinSchema>;
 
     const {
         register,
@@ -32,63 +35,66 @@ const Signin = () => {
     });
     const dispatch = useDispatch<AppDispatch>();
     const navigate = useNavigate();
-    const { status} = useSelector((state: RootState) => state.auth);
+    const { status } = useSelector((state: RootState) => state.auth);
   
-
-     const onSubmit = async (data: SigninFormData) => {
+    const onSubmit = async (data: SigninFormData) => {
         try {
-          const payload = {
-            email: data.email,
-            password: data.password,
-          };
+            const payload = {
+                email: data.email,
+                password: data.password,
+            };
     
-          const result : any = await dispatch(loginUser(payload)).unwrap();
-
+            const result: any = await dispatch(loginUser(payload)).unwrap();
     
-          toast.success(result?.message || 'Logged in successfully!');
-          if(result.data.user.onboardingCompleted
-            === false) navigate('/onboarding');
-          else {
-            if(result.data.user.role === "agent") navigate('/main-menu/agent/inbox');
-            else navigate('/main-menu/overview');
-          }
+            toast.success(result?.message || t('signinPage.toast.loginSuccess'));
+            
+            if (result.data.user.onboardingCompleted === false) {
+                navigate('/onboarding');
+            } else {
+                if (result.data.user.role === "agent") {
+                    navigate('/main-menu/agent/inbox');
+                } else {
+                    navigate('/main-menu/overview');
+                }
+            }
           
         } catch (err: any) {
-          
-          if (err) {
-        
-            toast.error(err);
-            
-          }
+            if (err) {
+                toast.error(err);
+            }
         }
-      };
+    };
 
     return (
         <div>
-            <SignUpAndSignInPageComponent heading='Welcome Back!' paragraph="Let’s power up your AI-Chatbot and grow your business effortlessly.">
+            <SignUpAndSignInPageComponent 
+                heading={t('signinPage.heading')} 
+                paragraph={t('signinPage.paragraph')}
+            >
                 <form
                     onSubmit={handleSubmit(onSubmit)}
                     className="flex flex-col items-start w-full space-y-4"
                 >
-
                     <InputBox
-                        label="Email"
+                        label={t('signinPage.form.emailLabel')}
                         type="email"
                         {...register('email')}
                         error={errors.email?.message}
                     />
                     <InputBox
-                        label="Password"
+                        label={t('signinPage.form.passwordLabel')}
                         type="password"
                         {...register('password')}
                         error={errors.password?.message}
                     />
-
-
                     <div className="text-sm text-[#101214] dark:text-white text-center w-full">
-                        <Button value={`${status === 'loading' ? 'Signing in...' : 'Sign In'}`} type="submit" disabled={!isValid} />
-                        Don’t have account?{' '}
-                        <Link to="/signup" className="text-[#ff21b0] hover:underline">Sign Up</Link>
+                        <Button 
+                            value={status === 'loading' ? t('signinPage.form.signingInButton') : t('signinPage.form.signInButton')} 
+                            type="submit" 
+                            disabled={!isValid} 
+                        />
+                        {t('signinPage.form.noAccountPrompt')}{' '}
+                        <Link to="/signup" className="text-[#ff21b0] hover:underline">{t('signinPage.form.signUpLink')}</Link>
                     </div>
                 </form>
             </SignUpAndSignInPageComponent>
@@ -96,4 +102,4 @@ const Signin = () => {
     )
 }
 
-export default Signin
+export default Signin;

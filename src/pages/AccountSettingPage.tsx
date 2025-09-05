@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '@/app/store';
 import { fetchUserProfile } from '@/features/profile/profileSlice';
 import { User, Building, Shield } from 'lucide-react';
@@ -8,7 +9,7 @@ import { BusinessForm } from '../components/custom/settings/BusinessForm';
 import { SecurityForm } from '../components/custom/settings/SecurityForm';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// --- Loading Skeleton Component ---
+// --- Loading Skeleton Component (No text, no changes needed) ---
 const SettingsPageSkeleton = () => (
     <div className="grid md:grid-cols-4 gap-10">
         <div className="md:col-span-1">
@@ -25,9 +26,9 @@ const SettingsPageSkeleton = () => (
 // --- Main Page Component ---
 const AccountSettingsPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
+    const { t } = useTranslation();
     const { status } = useSelector((state: RootState) => state.profile);
 
-    // Use state to manage the active tab for a controlled component feel
     const [activeTab, setActiveTab] = useState<'profile' | 'business' | 'security'>('profile');
 
     useEffect(() => {
@@ -36,21 +37,22 @@ const AccountSettingsPage: React.FC = () => {
         }
     }, [dispatch, status]);
 
-    const TABS = [
-        { id: 'profile', label: 'Your Profile', icon: User },
-        { id: 'business', label: 'Business Settings', icon: Building },
-        { id: 'security', label: 'Password & Security', icon: Shield },
-    ];
+    // Use useMemo to prevent re-creating the array on every render
+    const TABS = useMemo(() => [
+        { id: 'profile', label: t('settingsPage.tabs.profile'), icon: User },
+        { id: 'business', label: t('settingsPage.tabs.business'), icon: Building },
+        { id: 'security', label: t('settingsPage.tabs.security'), icon: Shield },
+    ], [t]);
 
     return (
         <div className="bg-gray-50 dark:bg-black min-h-screen">
             <div className="container mx-auto max-w-6xl py-12 px-4 md:px-8">
                 <div className="space-y-1 mb-10">
                     <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
-                        Settings
+                        {t('settingsPage.title')}
                     </h1>
                     <p className="text-muted-foreground">
-                        Manage your account and business preferences.
+                        {t('settingsPage.subtitle')}
                     </p>
                 </div>
 

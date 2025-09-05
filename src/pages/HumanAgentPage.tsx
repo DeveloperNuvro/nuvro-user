@@ -3,6 +3,7 @@ import { Plus, User, MoreVertical, Trash2, Edit} from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next"; // --- IMPORT ---
 
 import { fetchHumanAgents, createHumanAgent, updateHumanAgent, deleteHumanAgent, HumanAgent } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels, Channel } from "@/features/channel/channelSlice";
@@ -17,6 +18,7 @@ import Checkbox from "@/components/custom/checkbox/Checkbox";
 
 export default function HumanAgentPage() {
   const dispatch = useDispatch<AppDispatch>();
+  const { t } = useTranslation(); // --- INITIALIZE ---
 
   const { agents, status: agentStatus, error: agentError } = useSelector((state: RootState) => state.humanAgent);
   const { channels, status: channelStatus } = useSelector((state: RootState) => state.channel);
@@ -34,14 +36,14 @@ export default function HumanAgentPage() {
   const handleCreateAgent = (formData: any) => {
     const promise = dispatch(createHumanAgent(formData)).unwrap();
     toast.promise(promise, {
-      loading: 'Creating agent...',
+      loading: t('humanAgentPage.toastCreating'),
       success: () => {
         setCreateModalOpen(false);
-        dispatch(fetchHumanAgents()); // Refetch agents
-        dispatch(fetchChannels()); // Refetch channels as memberships changed
-        return 'Agent created successfully!';
+        dispatch(fetchHumanAgents());
+        dispatch(fetchChannels());
+        return t('humanAgentPage.toastCreateSuccess');
       },
-      error: (err) => err.message || 'Failed to create agent.',
+      error: (err) => err.message || t('humanAgentPage.toastCreateError'),
     });
   };
   
@@ -49,14 +51,14 @@ export default function HumanAgentPage() {
     if (!selectedAgent) return;
     const promise = dispatch(updateHumanAgent({ agentId: selectedAgent._id, ...formData })).unwrap();
     toast.promise(promise, {
-      loading: 'Updating agent...',
+      loading: t('humanAgentPage.toastUpdating'),
       success: () => {
         setEditModalOpen(false);
-        dispatch(fetchHumanAgents()); // Refetch agents
-        dispatch(fetchChannels()); // Refetch channels as memberships changed
-        return 'Agent updated successfully!';
+        dispatch(fetchHumanAgents());
+        dispatch(fetchChannels());
+        return t('humanAgentPage.toastUpdateSuccess');
       },
-      error: (err) => err.message || 'Failed to update agent.',
+      error: (err) => err.message || t('humanAgentPage.toastUpdateError'),
     });
   };
 
@@ -64,12 +66,12 @@ export default function HumanAgentPage() {
     if (!selectedAgent) return;
     const promise = dispatch(deleteHumanAgent(selectedAgent._id)).unwrap();
     toast.promise(promise, {
-      loading: 'Deleting agent...',
+      loading: t('humanAgentPage.toastDeleting'),
       success: () => {
-        dispatch(fetchChannels()); // Refetch channels as memberships changed
-        return 'Agent deleted successfully!';
+        dispatch(fetchChannels());
+        return t('humanAgentPage.toastDeleteSuccess');
       },
-      error: (err) => err.message || 'Failed to delete agent.',
+      error: (err) => err.message || t('humanAgentPage.toastDeleteError'),
     });
     setDeleteConfirmOpen(false);
     setSelectedAgent(null);
@@ -84,17 +86,17 @@ export default function HumanAgentPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-foreground">Human Agents</h2>
+        <h2 className="text-2xl font-semibold text-foreground">{t('humanAgentPage.title')}</h2>
         <ButtonSmall 
-          value="Add Agent" 
+          value={t('humanAgentPage.addAgentButton')}
           onClick={() => setCreateModalOpen(true)} 
           customClass="w-auto flex items-center gap-2 mb-0"
         >
-          <Plus className="h-4 w-4" /> Add Agent
+          <Plus className="h-4 w-4" /> {t('humanAgentPage.addAgentButton')}
         </ButtonSmall>
       </div>
       
-      {agentStatus === 'failed' && <div className="text-red-500">Error: {agentError}</div>}
+      {agentStatus === 'failed' && <div className="text-red-500">{t('humanAgentPage.loadingError', { error: agentError })}</div>}
 
       {isLoading ? (
         <ComponentSkeleton />
@@ -107,18 +109,18 @@ export default function HumanAgentPage() {
       ) : (
         <div className="flex flex-col items-center justify-center text-center border-2 border-dashed rounded-lg p-12 min-h-[400px]">
             <User className="h-16 w-16 text-muted-foreground" />
-            <h3 className="mt-4 text-xl font-semibold">No Agents Found</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Add your first human agent to a channel to handle chats.</p>
+            <h3 className="mt-4 text-xl font-semibold">{t('humanAgentPage.noAgentsTitle')}</h3>
+            <p className="mt-2 text-sm text-muted-foreground">{t('humanAgentPage.noAgentsSubtitle')}</p>
             <div className="mt-6">
-                <ButtonSmall value="Create First Agent" onClick={() => setCreateModalOpen(true)} customClass="w-auto flex items-center gap-2 mb-0">
-                    <Plus className="h-4 w-4" /> Create First Agent
+                <ButtonSmall value={t('humanAgentPage.createFirstAgentButton')} onClick={() => setCreateModalOpen(true)} customClass="w-auto flex items-center gap-2 mb-0">
+                    <Plus className="h-4 w-4" /> {t('humanAgentPage.createFirstAgentButton')}
                 </ButtonSmall>
             </div>
         </div>
       )}
 
-      <AgentFormModal isOpen={isCreateModalOpen} onOpenChange={setCreateModalOpen} onSubmit={handleCreateAgent} channels={channels} title="Create New Agent" submitButtonText="Create Agent" />
-      {selectedAgent && <AgentFormModal isOpen={isEditModalOpen} onOpenChange={setEditModalOpen} onSubmit={handleUpdateAgent} channels={channels} agentData={selectedAgent} title="Edit Agent" submitButtonText="Save Changes" />}
+      <AgentFormModal isOpen={isCreateModalOpen} onOpenChange={setCreateModalOpen} onSubmit={handleCreateAgent} channels={channels} title={t('humanAgentPage.createModalTitle')} submitButtonText={t('humanAgentPage.createModalButton')} />
+      {selectedAgent && <AgentFormModal isOpen={isEditModalOpen} onOpenChange={setEditModalOpen} onSubmit={handleUpdateAgent} channels={channels} agentData={selectedAgent} title={t('humanAgentPage.editModalTitle')} submitButtonText={t('humanAgentPage.editModalButton')} />}
       {selectedAgent && <DeleteConfirmDialog isOpen={isDeleteConfirmOpen} onOpenChange={setDeleteConfirmOpen} onConfirm={handleDeleteAgent} itemName={selectedAgent.name} />}
     </div>
   );
@@ -129,6 +131,7 @@ export default function HumanAgentPage() {
 // =========================================================================
 
 const AgentCard = ({ agent, onEdit, onDelete }: { agent: HumanAgent, onEdit: (agent: HumanAgent) => void, onDelete: (agent: HumanAgent) => void }) => {
+    const { t } = useTranslation();
     const initials = agent.name.split(" ").map((n) => n[0]).join("").toUpperCase();
     return (
         <div className="rounded-xl bg-card border transition-all duration-200 overflow-hidden relative">
@@ -136,8 +139,8 @@ const AgentCard = ({ agent, onEdit, onDelete }: { agent: HumanAgent, onEdit: (ag
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(agent)}><Edit className="mr-2 h-4 w-4" /> Edit</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onDelete(agent)} className="text-red-500 focus:text-red-500"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(agent)}><Edit className="mr-2 h-4 w-4" /> {t('humanAgentPage.cardEdit')}</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDelete(agent)} className="text-red-500 focus:text-red-500"><Trash2 className="mr-2 h-4 w-4" /> {t('humanAgentPage.cardDelete')}</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
@@ -153,6 +156,7 @@ const AgentCard = ({ agent, onEdit, onDelete }: { agent: HumanAgent, onEdit: (ag
 };
 
 const AgentFormModal = ({ isOpen, onOpenChange, onSubmit, channels, agentData, title, submitButtonText }: any) => {
+    const { t } = useTranslation();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -163,87 +167,60 @@ const AgentFormModal = ({ isOpen, onOpenChange, onSubmit, channels, agentData, t
         if (isOpen) {
             if (isEditMode && agentData && Array.isArray(channels)) {
                 setName(agentData.name || '');
-                const agentChannelIds = channels
-                    .filter((ch: Channel) => Array.isArray(ch.members) && ch.members.some((mem: any) => mem._id === agentData._id))
-                    .map((ch: Channel) => ch._id);
+                const agentChannelIds = channels.filter((ch: Channel) => Array.isArray(ch.members) && ch.members.some((mem: any) => mem._id === agentData._id)).map((ch: Channel) => ch._id);
                 setSelectedChannels(agentChannelIds);
-            } else {
-                setName(''); setEmail(''); setPassword(''); setSelectedChannels([]);
-            }
+            } else { setName(''); setEmail(''); setPassword(''); setSelectedChannels([]); }
         }
     }, [agentData, isOpen, isEditMode, channels]);
 
-    const handleChannelChange = (channelId: string) => {
-        setSelectedChannels(prev => prev.includes(channelId) ? prev.filter(id => id !== channelId) : [...prev, channelId]);
-    };
+    const handleChannelChange = (channelId: string) => { setSelectedChannels(prev => prev.includes(channelId) ? prev.filter(id => id !== channelId) : [...prev, channelId]); };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const formData: any = { name, channelIds: selectedChannels };
-        if (!isEditMode) {
-            formData.email = email;
-            formData.password = password;
-        }
+        if (!isEditMode) { formData.email = email; formData.password = password; }
         onSubmit(formData);
     };
     
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="bg-background border text-foreground rounded-lg p-6 ">
-                <DialogHeader className="flex flex-row justify-between items-center">
-                    <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
-                   
-                </DialogHeader>
+                <DialogHeader className="flex flex-row justify-between items-center"><DialogTitle className="text-lg font-semibold">{title}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="mt-4 space-y-6">
                     <div className="space-y-2">
-                        <Label htmlFor="name" className="text-sm font-medium text-muted-foreground">Name</Label>
+                        <Label htmlFor="name" className="text-sm font-medium text-muted-foreground">{t('humanAgentPage.formName')}</Label>
                         <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
                     </div>
                     {!isEditMode && (
                         <>
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-sm font-medium text-muted-foreground">Email</Label>
+                                <Label htmlFor="email" className="text-sm font-medium text-muted-foreground">{t('humanAgentPage.formEmail')}</Label>
                                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="password" className="text-sm font-medium text-muted-foreground">Password</Label>
+                                <Label htmlFor="password" className="text-sm font-medium text-muted-foreground">{t('humanAgentPage.formPassword')}</Label>
                                 <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
                             </div>
                         </>
                     )}
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium text-muted-foreground">Assign to Channels</Label>
+                        <Label className="text-sm font-medium text-muted-foreground">{t('humanAgentPage.formAssignChannels')}</Label>
                         <div className="rounded-md border bg-muted/50 p-4 h-32 overflow-y-auto">
                             {channels && channels.length > 0 ? channels.map((channel: Channel) => (
                                 <div key={channel._id} className="flex items-center space-x-3 mb-2">
-                                    <Checkbox
-                                        checked={selectedChannels.includes(channel._id)}
-                                        onCheckedChange={() => handleChannelChange(channel._id)}
-                                    />
+                                    <Checkbox checked={selectedChannels.includes(channel._id)} onCheckedChange={() => handleChannelChange(channel._id)} />
                                     <Label htmlFor={channel._id} className="font-normal cursor-pointer">{channel.name}</Label>
                                 </div>
                             )) : (
                                 <div className="flex items-center justify-center h-full">
-                                    <p className="text-sm text-muted-foreground text-center">
-                                        No channels have been created yet. Please create a channel first to assign an agent.
-                                    </p>
+                                    <p className="text-sm text-muted-foreground text-center">{t('humanAgentPage.formNoChannels')}</p>
                                 </div>
                             )}
                         </div>
                     </div>
                     <div className="flex items-center justify-end gap-4 pt-4">
-                       <ButtonSmall 
-                         type="button" 
-                         isOutline 
-                         onClick={() => onOpenChange(false)} 
-                         value="Cancel" 
-                         customClass="mb-0 w-[120px]"
-                       />
-                       <ButtonSmall 
-                         type="submit" 
-                         value={submitButtonText} 
-                         customClass="mb-0 w-[160px]"
-                       />
+                       <ButtonSmall type="button" isOutline onClick={() => onOpenChange(false)} value={t('humanAgentPage.cancelButton')} customClass="mb-0 w-[120px]" />
+                       <ButtonSmall type="submit" value={submitButtonText} customClass="mb-0 w-[160px]" />
                     </div>
                 </form>
             </DialogContent>
@@ -252,18 +229,19 @@ const AgentFormModal = ({ isOpen, onOpenChange, onSubmit, channels, agentData, t
 };
 
 const DeleteConfirmDialog = ({ isOpen, onOpenChange, onConfirm, itemName }: any) => {
+    const { t } = useTranslation();
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="bg-background border text-foreground rounded-lg p-6 ">
                 <DialogHeader>
-                    <DialogTitle>Are you sure?</DialogTitle>
+                    <DialogTitle>{t('humanAgentPage.deleteConfirmTitle')}</DialogTitle>
                     <DialogDescription className="text-muted-foreground mt-2">
-                        This action will permanently delete the agent <span className="font-semibold text-foreground">{itemName}</span>.
+                        {t('humanAgentPage.deleteConfirmDescription', { itemName })}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex items-center justify-end gap-4 pt-6">
-                    <ButtonSmall isOutline onClick={() => onOpenChange(false)} value="Cancel" customClass="mb-0 w-[120px]" />
-                    <ButtonSmall onClick={onConfirm} value="Delete" customClass="mb-0 w-[120px] bg-red-600 hover:bg-red-700" />
+                    <ButtonSmall isOutline onClick={() => onOpenChange(false)} value={t('humanAgentPage.cancelButton')} customClass="mb-0 w-[120px]" />
+                    <ButtonSmall onClick={onConfirm} value={t('humanAgentPage.deleteButton')} customClass="mb-0 w-[120px] bg-red-600 hover:bg-red-700" />
                 </div>
             </DialogContent>
         </Dialog>

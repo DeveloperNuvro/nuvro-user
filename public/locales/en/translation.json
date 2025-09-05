@@ -1,0 +1,538 @@
+{
+  "mainmenu": "Main Menu",
+  "business": "Business",
+  "account": "Account",
+  "home": "Home",
+  "inbox": "Inbox",
+  "ticket": "Ticket",
+  "customers": "Customers",
+  "settings": "Settings",
+  "logout": "Logout",
+  "currentSubscription": "Current Subscription",
+  "subscriptionDetails": "You're on {{plan}} Plan, End: {{endDate}}",
+  "toastLogoutSuccess": "Logged out successfully",
+  "toastLogoutFailed": "Logout failed",
+  "loadingFailed": "Failed to Load Dashboard",
+  "noData": "No overview data available.",
+  "dashboardTitle": "Dashboard",
+  "totalCustomers": "Total Customers",
+  "totalCustomersDesc": "All unique customer interactions",
+  "totalConversations": "Total Conversations",
+  "totalConversationsDesc": "Total messages exchanged",
+  "supportTickets": "Support Tickets",
+  "supportTicketsDesc": "Tickets created by the AI agent",
+  "activeAiAgents": "Active AI Agents",
+  "activeAiAgentsDesc": "Your deployed AI workforce",
+  "trainedAiModels": "Trained AI Models",
+  "trainedAiModelsDesc": "Custom knowledge bases",
+  "performanceAnalyticsTitle": "Performance Analytics",
+  "avgScore7Day": "7-Day Avg Score",
+  "avgScore7DayDesc": "Agent performance this week",
+  "avgScore30Day": "30-Day Avg Score",
+  "avgScore30DayDesc": "Agent performance this month",
+  "conversationsAnalyzed": "Conversations Analyzed",
+  "conversationsAnalyzedDesc": "Total in the last 30 days",
+  "dailyAccuracyChartTitle": "Daily Accuracy Score (Last 30 Days)",
+  "recentCustomersTitle": "Recent Customers",
+  "tableHeaderCustomer": "Customer",
+  "tableHeaderEmail": "Email",
+  "tableHeaderSignedUp": "Signed Up",
+  "recentTicketsTitle": "Recent Support Tickets",
+  "createdTimeAgo": "Created {{time}}",
+  "status_open": "Open",
+  "status_closed": "Closed",
+  "status_in_progress": "In Progress",
+  "chatInbox": {
+    "title": "Inbox",
+    "filterOpen": "Open",
+    "filterClosed": "Closed",
+    "searchPlaceholder": "Search by customer name...",
+    "typing": "Typing...",
+    "tooltipAssignedTo": "Assigned to {{agentName}}",
+    "anAgent": "an agent",
+    "tooltipTicketCreated": "Ticket created",
+    "tooltipHandledByAI": "Handled by AI",
+    "noConversationsFound": "No {{filter}} conversations found.",
+    "filterOpenLabel": "open",
+    "filterClosedLabel": "closed",
+    "previousPage": "Previous",
+    "nextPage": "Next",
+    "pagination": "Page {{currentPage}} of {{totalPages}}",
+    "mainEmptyTitle": "Select a conversation",
+    "mainEmptySubtitle": "Choose from the list on the left to view messages.",
+    "transferTitle": "Transfer Conversation",
+    "transferToChannel": "To {{channelName}} Channel",
+    "noChannelsAvailable": "No channels available",
+    "transferToAgent": "To {{agentName}}",
+    "noAgentsOnline": "No other agents online",
+    "closeConversationTooltip": "Close Conversation",
+    "loadMoreMessages": "Load More Messages",
+    "dateToday": "Today",
+    "dateYesterday": "Yesterday",
+    "messagePlaceholder": "Type your message...",
+    "unknownCustomer": "Unknown",
+    "aCustomer": "A customer",
+    "toastNewChat": "New chat assigned from {{customerName}}",
+    "toastMessageFailed": "Message failed to send.",
+    "toastTransferNoId": "Cannot transfer: Conversation ID not found.",
+    "toastTransferLoading": "Transferring conversation...",
+    "toastTransferSuccess": "Conversation transferred!",
+    "toastTransferFailed": "Transfer failed.",
+    "toastCloseSuccess": "Conversation closed!",
+    "toastCloseFailed": "Failed to close conversation."
+  },
+  "channelPage": {
+    "title": "Channels",
+    "addChannelButton": "Add Channel",
+    "loadingError": "Error: {{error}}",
+    "noChannelsTitle": "No Channels Found",
+    "noChannelsSubtitle": "Get started by creating your first channel (e.g., Sales, Support).",
+    "createFirstChannelButton": "Create First Channel",
+    "createModalTitle": "Create New Channel",
+    "createModalButton": "Create Channel",
+    "editModalTitle": "Edit Channel",
+    "editModalButton": "Save Changes",
+    "cardEdit": "Edit",
+    "cardDelete": "Delete",
+    "cardMembersTitle": "Members ({{count}})",
+    "cardNoMembers": "No members assigned",
+    "cardAndMore": "...and {{count}} more",
+    "formChannelName": "Channel Name",
+    "formChannelPlaceholder": "e.g., Sales, Support",
+    "formAssignAgents": "Assign Agents",
+    "formNoAgents": "No agents have been created yet. You can create agents and assign them to this channel later.",
+    "cancelButton": "Cancel",
+    "deleteConfirmTitle": "Are you sure?",
+    "deleteConfirmDescription": "This action cannot be undone. This will permanently delete the channel {{itemName}}.",
+    "deleteButton": "Delete",
+    "toastCreating": "Creating channel...",
+    "toastCreateSuccess": "Channel created successfully!",
+    "toastCreateError": "Failed to create channel.",
+    "toastUpdating": "Updating channel...",
+    "toastUpdateSuccess": "Channel updated successfully!",
+    "toastUpdateError": "Failed to update channel.",
+    "toastDeleting": "Deleting channel...",
+    "toastDeleteSuccess": "Channel deleted successfully!",
+    "toastDeleteError": "Failed to delete channel."
+  },
+  "humanAgentPage": {
+    "title": "Human Agents",
+    "addAgentButton": "Add Agent",
+    "loadingError": "Error: {{error}}",
+    "noAgentsTitle": "No Agents Found",
+    "noAgentsSubtitle": "Add your first human agent to a channel to handle chats.",
+    "createFirstAgentButton": "Create First Agent",
+    "createModalTitle": "Create New Agent",
+    "createModalButton": "Create Agent",
+    "editModalTitle": "Edit Agent",
+    "editModalButton": "Save Changes",
+    "cardEdit": "Edit",
+    "cardDelete": "Delete",
+    "formName": "Name",
+    "formEmail": "Email",
+    "formPassword": "Password",
+    "formAssignChannels": "Assign to Channels",
+    "formNoChannels": "No channels have been created yet. Please create a channel first to assign an agent.",
+    "cancelButton": "Cancel",
+    "deleteConfirmTitle": "Are you sure?",
+    "deleteConfirmDescription": "This action will permanently delete the agent {{itemName}}.",
+    "deleteButton": "Delete",
+    "toastCreating": "Creating agent...",
+    "toastCreateSuccess": "Agent created successfully!",
+    "toastCreateError": "Failed to create agent.",
+    "toastUpdating": "Updating agent...",
+    "toastUpdateSuccess": "Agent updated successfully!",
+    "toastUpdateError": "Failed to update agent.",
+    "toastDeleting": "Deleting agent...",
+    "toastDeleteSuccess": "Agent deleted successfully!",
+    "toastDeleteError": "Failed to delete agent."
+  },
+  "ticketPage": {
+    "filters": {
+      "all": "All Tickets",
+      "open": "Open",
+      "unassigned": "Unassigned",
+      "solved": "Solved"
+    },
+    "searchPlaceholder": "Search tickets...",
+    "addTicketButton": "Add Ticket",
+    "editButton": "Edit",
+    "deleteButton": "Delete",
+    "viewClientDetails": "View details for {{name}}",
+    "notAvailable": "N/A",
+    "table": {
+      "no": "No.",
+      "ticketId": "Ticket ID",
+      "priority": "Priority",
+      "subject": "Subject",
+      "type": "Type",
+      "client": "Client",
+      "assignedAgent": "Assigned Agent",
+      "created": "Created",
+      "lastUpdated": "Last Updated",
+      "status": "Status",
+      "loading": "Loading tickets...",
+      "error": "Error: {{error}}",
+      "noTicketsFound": "No tickets found."
+    },
+    "pagination": {
+      "showing": "Showing {{start}} - {{end}} of {{total}} tickets",
+      "noTickets": "No tickets",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{currentPage}} of {{totalPages}}"
+    },
+    "modal": {
+      "createTitle": "Create New Ticket",
+      "editTitle": "Edit Ticket (#{{id}})",
+      "deleteTitle": "Confirm Deletion",
+      "deleteDescription": "Are you sure you want to delete ticket \"{{subject}}\" (ID: ...{{id}})?"
+    },
+    "form": {
+      "businessId": "Business ID",
+      "customerId": "Customer ID",
+      "customerIdPlaceholder": "Customer ID (e.g. 660f7b1...)",
+      "subject": "Subject",
+      "subjectPlaceholder": "Subject (min 5 characters)",
+      "description": "Description",
+      "descriptionPlaceholder": "Description (min 10 characters)",
+      "priority": "Priority",
+      "selectPriority": "Select Priority",
+      "type": "Type",
+      "selectType": "Select Type",
+      "status": "Status",
+      "selectStatus": "Select Status",
+      "agentId": "Agent ID",
+      "agentIdPlaceholder": "Assigned Agent ID (optional)",
+      "comment": "Comment",
+      "commentPlaceholder": "Add a comment (optional)",
+      "cancelButton": "Cancel",
+      "processingButton": "Processing...",
+      "createButton": "Create Ticket",
+      "saveButton": "Save Changes",
+      "deleteButton": "Delete Ticket"
+    },
+    "clientModal": {
+      "title": "Client Details",
+      "description": "Full information for client: {{name}}",
+      "clientId": "Client ID",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "noDetails": "No client details to display.",
+      "closeButton": "Close"
+    },
+    "validation": {
+      "subjectLength": "Subject must be at least 5 characters long.",
+      "descriptionLength": "Description must be at least 10 characters long.",
+      "customerIdRequired": "Customer ID is required for new tickets."
+    },
+    "toast": {
+      "deleting": "Deleting ticket...",
+      "deleteSuccess": "Ticket deleted successfully!",
+      "deleteError": "Failed to delete ticket.",
+      "creating": "Creating ticket...",
+      "createSuccess": "Ticket created successfully!",
+      "createError": "Failed to create ticket.",
+      "updating": "Updating ticket...",
+      "updateSuccess": "Ticket updated successfully!",
+      "updateError": "Failed to update ticket."
+    },
+    "priorities": {
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "urgent": "Urgent"
+    },
+    "statuses": {
+      "open": "Open",
+      "in_progress": "In Progress",
+      "on_hold": "On Hold",
+      "closed": "Closed"
+    },
+    "types": {
+      "billing": "Billing",
+      "technical": "Technical",
+      "general": "General",
+      "feedback": "Feedback",
+      "account": "Account"
+    }
+  },
+  "aiModelListPage": {
+    "title": "AI Models",
+    "createNewButton": "+ Create New",
+    "loading": "Loading models...",
+    "loadingError": "Error: {{error}}",
+    "noModelsTitle": "No AI Models Found",
+    "noModelsSubtitle": "Click \"+ Create New\" to get started.",
+    "modelTypeLabel": "Type",
+    "trainedFiles": "{{count}} Trained Files",
+    "statusLabel": "Status",
+    "editButton": "Edit Model",
+    "toastDeleteSuccess": "Model \"{{modelName}}\" deleted successfully.",
+    "toastDeleteError": "❌ {{error}}"
+  },
+  "aiAgentPage": {
+    "title": "AI Agents",
+    "modelLabel": "Model",
+    "unknown": "Unknown",
+    "modal": {
+      "viewingTitle": "Viewing",
+      "editingTitle": "Editing",
+      "deleteTitle": "Confirm Deletion",
+      "agentName": "Agent Name",
+      "personality": "Personality",
+      "aiModel": "AI Model",
+      "instructions": "Instructions",
+      "noInstructions": "No special instructions provided.",
+      "deleteDescription": "Are you sure you want to permanently delete the agent named \"{{agentName}}\"? This action cannot be undone."
+    },
+    "form": {
+      "name": "Name",
+      "aiModel": "AI Model",
+      "selectModel": "Select a model",
+      "tone": "Tone",
+      "selectTone": "Select a tone",
+      "instruction": "Instruction",
+      "instructionPlaceholder": "e.g., Be concise and helpful...",
+      "cancelButton": "Cancel",
+      "saveButton": "Save Changes",
+      "deleteButton": "Confirm Delete"
+    },
+    "tones": {
+      "friendly": "Friendly",
+      "formal": "Formal",
+      "neutral": "Neutral"
+    },
+    "toast": {
+      "updating": "Saving changes...",
+      "updateSuccess": "Agent updated successfully!",
+      "updateError": "Failed to update agent.",
+      "deleting": "Deleting agent...",
+      "deleteSuccess": "Agent deleted successfully!",
+      "deleteError": "Failed to delete agent."
+    }
+  },
+  "analysisPage": {
+    "loading": {
+      "title": "Generating AI Performance Insights...",
+      "subtitle": "This may take a moment as our analyst agent reviews recent conversations."
+    },
+    "error": "Error: {{error}}",
+    "empty": {
+      "title": "No Analysis Reports Available",
+      "subtitle": "Reports are generated automatically each day based on your chatbot's conversations. Once there is enough data, your first report will appear here."
+    },
+    "header": {
+      "title": "Performance Dashboard",
+      "subtitle": "AI Analysis for"
+    },
+    "stats": {
+      "overallScore": "Overall Score",
+      "overallScoreDesc": "Agent performance score",
+      "conversationsAnalyzed": "Conversations Analyzed",
+      "conversationsAnalyzedDesc": "Unique customer chats from yesterday",
+      "agentName": "Agent Name",
+      "agentNameDesc": "The AI agent being analyzed",
+      "customersInvolved": "Customers Involved",
+      "customersInvolvedDesc": "Unique customers in analysis"
+    },
+    "summary": {
+      "workingWell": "What's Working Well",
+      "improvementAreas": "Areas for Improvement",
+      "knowledgeSuggestions": "Knowledge Base Suggestions"
+    },
+    "details": {
+      "title": "Detailed Conversation Analysis",
+      "subtitle": "Performance scores and specific feedback for each conversation.",
+      "scoresByConversation": "Scores by Conversation",
+      "feedbackBreakdown": "Feedback Breakdown",
+      "conversationWith": "Conversation with {{name}}",
+      "score": "Score: {{score}}/10",
+      "reasoning": "Reasoning for Score",
+      "suggestions": "Improvement Suggestions"
+    }
+  },
+  "customersPage": {
+      "filters": {
+        "all": "All Customers"
+      },
+      "searchPlaceholder": "Search...",
+      "table": {
+        "loading": "Loading customers...",
+        "error": "Error: {{error}}",
+        "defaultError": "Could not load customers.",
+        "noCustomersFound": "No customers found.",
+        "customerId": "Customer ID",
+        "customerName": "Customer Name",
+        "email": "Email",
+        "phone": "Phone Number",
+        "dateJoined": "Date Joined"
+      },
+      "pagination": {
+        "previous": "Previous",
+        "next": "Next",
+        "page": "Page {{currentPage}} of {{totalPages}}"
+      }
+    },
+     "pricingPage": {
+    "nav": {
+      "planAndPayment": "Plan & Payment"
+    },
+    "trial": {
+      "onTrial": "You’re on the {{planLabel}} Trial.",
+      "endsIn": "Trial ends in {{count}} day.||Trial ends in {{count}} days.",
+      "ended": "Your trial has ended. Please select a plan to continue."
+    },
+    "usage": {
+      "noPlan": "No Plan",
+      "currentPlan": "Current Plan",
+      "nextPaymentOn": "Next Payment on {{date}}",
+      "expiration": "Plan Expiration",
+      "agentUsage": "AI Agent Usage",
+      "modelTraining": "Model Training",
+      "conversation": "Conversation",
+      "notAvailable": "N/A"
+    },
+    "plans": {
+      "title": "All Plans",
+      "subtitle": "Unlock the full potential of your AI chatbot with the right plan.",
+      "recommended": "Recommended",
+      "featuresTitle": "Features",
+      "basic": {
+        "label": "Basic",
+        "priceDisplay": "USD $19/month",
+        "description": "For individuals or small businesses testing the service with real resources (limited).",
+        "features": [
+          "Up to 1000 conversations per month", "1 AI Agent", "1 Training Model", "Whatsapp Integration", "Basic Support"
+        ]
+      },
+      "premium": {
+        "label": "Premium",
+        "priceDisplay": "USD $70/month",
+        "description": "For individuals, and small to medium-sized businesses with growing customer interaction needs.",
+        "features": [
+          "Up to 100,000 conversations per month", "3 AI Agents", "3 Training Models", "Whatsapp Integration", "Priority Support"
+        ]
+      },
+      "enterprise": {
+        "label": "Enterprise",
+        "priceDisplay": "USD $400/month",
+        "description": "Large enterprises or corporations with high chat volumes and complex operations.",
+        "features": [
+          "Up to 1,000,000 conversations per month", "10 AI Agents", "10 Training Models", "Whatsapp Integration", "24/7 Dedicated Support"
+        ]
+      }
+    },
+    "buttons": {
+      "selected": "Selected",
+      "openingPortal": "Opening Portal...",
+      "upgrade": "Upgrade Plan",
+      "downgrade": "Downgrade Plan",
+      "redirecting": "Redirecting...",
+      "selectPlan": "Select Plan",
+      "loadingPortal": "Loading Portal...",
+      "manageSubscription": "Manage Subscription & Billing"
+    },
+    "toast": {
+      "portalError": "Failed to open billing portal.",
+      "missingConfig": "Plan configuration is missing. Please contact support.",
+      "unexpectedError": "An unexpected error occurred."
+    }
+  },
+   "settingsPage": {
+    "title": "Settings",
+    "subtitle": "Manage your account and business preferences.",
+    "tabs": {
+      "profile": "Your Profile",
+      "business": "Business Settings",
+      "security": "Password & Security"
+    }
+  },
+  "signinPage": {
+    "heading": "Welcome Back!",
+    "paragraph": "Let’s power up your AI-Chatbot and grow your business effortlessly.",
+    "form": {
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "signInButton": "Sign In",
+      "signingInButton": "Signing in...",
+      "noAccountPrompt": "Don’t have an account?",
+      "signUpLink": "Sign Up"
+    },
+    "validation": {
+      "invalidEmail": "Invalid email address",
+      "passwordLength": "Password must be at least 6 characters"
+    },
+    "toast": {
+      "loginSuccess": "Logged in successfully!"
+    }
+  },
+    "signupPage": {
+    "heading": "Power Up Your Conversations — Start for Free!",
+    "paragraph": "Streamline support, enhance engagement, and let AI handle the rest, effortlessly.",
+    "form": {
+      "nameLabel": "Name",
+      "emailLabel": "Email",
+      "passwordLabel": "Password",
+      "termsPrefix": "I agree to Nuvro's",
+      "termsLink": "Terms & Conditions",
+      "termsAnd": "and",
+      "privacyLink": "Privacy Policy",
+      "getStartedButton": "Get Started",
+      "creatingButton": "Creating...",
+      "alreadyHaveAccount": "Already have an account?",
+      "signInLink": "Sign In"
+    },
+    "validation": {
+      "nameLength": "Name must be at least 2 characters",
+      "invalidEmail": "Invalid email address",
+      "passwordLength": "Password must be at least 6 characters",
+      "termsRequired": "You must accept the terms and conditions"
+    },
+    "toast": {
+      "registerSuccess": "Registered successfully!"
+    }
+  },
+    "updateAiModelPage": {
+    "loading": {
+      "loadingData": "Loading model data...",
+      "loadingError": "Error loading model. It may not exist.",
+      "notFound": "Model not found. It might have been deleted."
+    },
+    "form": {
+      "mainTitle": "Update Model Information",
+      "modelNameLabel": "Model Name",
+      "selectLlmLabel": "Select LLM",
+      "manageFilesTitle": "Manage Existing Files",
+      "undoDeleteTooltip": "Undo Delete",
+      "addFilesTitle": "Add More Files",
+      "dragAndDrop": "Drag & drop files here, or click to select files",
+      "newFilesTitle": "New files to be added"
+    },
+    "sidebar": {
+      "title": "Save Changes",
+      "updateButton": "Update AI Model",
+      "updatingButton": "Updating...",
+      "cancelButton": "Cancel"
+    },
+    "validation": {
+      "nameRequired": "Model name is required"
+    },
+    "toast": {
+      "noChanges": "No changes detected. Please edit the name, add new files, or remove existing ones.",
+      "updateSuccess": "Model updated successfully!",
+      "updateError": "Update failed: {{error}}"
+    }
+  },
+    "profileForm": {
+    "title": "Personal Information",
+    "subtitle": "This information will be displayed publicly so be careful what you share.",
+    "fullNameLabel": "Full Name",
+    "emailLabel": "Email Address",
+    "phoneLabel": "Phone Number",
+    "saveButton": "Save Changes",
+    "savingButton": "Saving..."
+  }
+
+}

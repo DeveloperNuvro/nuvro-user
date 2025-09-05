@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,11 +10,14 @@ import { MoreVertical, Loader2 } from "lucide-react";
 import { AppDispatch, RootState } from "@/app/store";
 import { fetchCustomersForTable } from "@/features/chatInbox/chatInboxSlice";
 import dayjs from "dayjs";
+import 'dayjs/locale/en';
+import 'dayjs/locale/es';
 
 const pageSize = 10;
 
 export default function CustomersPage() {
     const dispatch = useDispatch<AppDispatch>();
+    const { t, i18n } = useTranslation();
     const [debouncedSearch, setDebouncedSearch] = useState("");
 
     const {
@@ -31,10 +35,14 @@ export default function CustomersPage() {
     const [searchQuery, setSearchQuery] = useState("");
 
     useEffect(() => {
+        dayjs.locale(i18n.language);
+    }, [i18n.language]);
+
+    useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(searchQuery);
-            setCurrentPage(1); // Reset to page 1 on a new search
-        }, 500); // 500ms delay
+            setCurrentPage(1);
+        }, 500);
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
@@ -51,7 +59,7 @@ export default function CustomersPage() {
                     <td colSpan={7} className="text-center p-8">
                         <div className="flex justify-center items-center gap-2">
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            <span>Loading customers...</span>
+                            <span>{t('customersPage.table.loading')}</span>
                         </div>
                     </td>
                 </tr>
@@ -62,7 +70,7 @@ export default function CustomersPage() {
             return (
                 <tr>
                     <td colSpan={7} className="text-center p-8 text-red-500">
-                        Error: {error || "Could not load customers."}
+                        {t('customersPage.table.error', { error: error || t('customersPage.table.defaultError') })}
                     </td>
                 </tr>
             );
@@ -72,26 +80,21 @@ export default function CustomersPage() {
             return (
                 <tr>
                     <td colSpan={7} className="text-center p-8">
-                        No customers found.
+                        {t('customersPage.table.noCustomersFound')}
                     </td>
                 </tr>
             );
         }
 
         return customers.map((customer) => (
-            <tr
-                key={customer.id}
-                className="border-t hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            >
+            <tr key={customer.id} className="border-t hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td className="p-4">
                     <input type="checkbox" className="rounded border-gray-300" />
                 </td>
-                {/* --- 1. Replaced Serial No. with Customer ID --- */}
                 <td className="p-4 whitespace-nowrap font-mono text-xs text-gray-500 dark:text-gray-400">
                     {customer.id}
                 </td>
                 <td className="p-4 whitespace-nowrap">{customer.name}</td>
-                {/* --- 2. Removed responsive 'hidden' classes to enable horizontal scrolling --- */}
                 <td className="p-4 whitespace-nowrap">{customer.email}</td>
                 <td className="p-4 whitespace-nowrap">{customer.phone}</td>
                 <td className="p-4 whitespace-nowrap">
@@ -106,18 +109,17 @@ export default function CustomersPage() {
         ));
     };
 
-
     return (
         <div className="p-4 sm:p-6 md:p-8">
             <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <Tabs defaultValue="all" onValueChange={setSelectedTab}>
                     <TabsList>
-                        <TabsTrigger value="all">All Customers</TabsTrigger>
+                        <TabsTrigger value="all">{t('customersPage.filters.all')}</TabsTrigger>
                     </TabsList>
                 </Tabs>
                 <div className="flex items-center gap-2">
                     <Input
-                        placeholder="Search..."
+                        placeholder={t('customersPage.searchPlaceholder')}
                         className="w-60"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -127,7 +129,6 @@ export default function CustomersPage() {
 
             <Card className="overflow-hidden border">
                 <CardContent className="p-0">
-                    {/* This div enables horizontal scrolling on small screens */}
                     <div className="w-full overflow-x-auto">
                         <table className="min-w-full text-sm table-auto">
                             <thead className="bg-gray-100 dark:bg-gray-900/50 text-left">
@@ -135,13 +136,11 @@ export default function CustomersPage() {
                                     <th className="p-4 w-12">
                                         <input type="checkbox" className="rounded border-gray-300" />
                                     </th>
-                                    {/* --- 1. Update Table Headers --- */}
-                                    <th className="p-4 whitespace-nowrap">Customer ID</th>
-                                    <th className="p-4 whitespace-nowrap">Customer Name</th>
-                                    {/* --- 2. Remove 'hidden' classes --- */}
-                                    <th className="p-4 whitespace-nowrap">Email</th>
-                                    <th className="p-4 whitespace-nowrap">Phone Number</th>
-                                    <th className="p-4 whitespace-nowrap">Date Joined</th>
+                                    <th className="p-4 whitespace-nowrap">{t('customersPage.table.customerId')}</th>
+                                    <th className="p-4 whitespace-nowrap">{t('customersPage.table.customerName')}</th>
+                                    <th className="p-4 whitespace-nowrap">{t('customersPage.table.email')}</th>
+                                    <th className="p-4 whitespace-nowrap">{t('customersPage.table.phone')}</th>
+                                    <th className="p-4 whitespace-nowrap">{t('customersPage.table.dateJoined')}</th>
                                     <th className="p-4 whitespace-nowrap w-12"></th>
                                 </tr>
                             </thead>
@@ -153,7 +152,6 @@ export default function CustomersPage() {
                 </CardContent>
             </Card>
 
-            {/* Pagination */}
             <div className="flex justify-end mt-4 items-center gap-2 text-sm">
                 <Button
                     variant="outline"
@@ -161,10 +159,10 @@ export default function CustomersPage() {
                     disabled={currentPage === 1 || status === "loading"}
                     onClick={() => setCurrentPage((p) => p - 1)}
                 >
-                    Previous
+                    {t('customersPage.pagination.previous')}
                 </Button>
                 <span>
-                    Page {currentPage} of {totalPages || 1}
+                    {t('customersPage.pagination.page', { currentPage, totalPages: totalPages || 1 })}
                 </span>
                 <Button
                     variant="outline"
@@ -172,7 +170,7 @@ export default function CustomersPage() {
                     disabled={currentPage >= totalPages || status === "loading"}
                     onClick={() => setCurrentPage((p) => p + 1)}
                 >
-                    Next
+                    {t('customersPage.pagination.next')}
                 </Button>
             </div>
         </div>

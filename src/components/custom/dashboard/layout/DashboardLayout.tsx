@@ -9,8 +9,10 @@ import { cn } from "@/lib/utils";
 import logo from "@/assets/images/LogoColor.png";
 import logoWhite from "@/assets/images/logoWhiteColor.png";
 import { ModeToggle } from "@/components/mode-toggle";
+import { LanguageToggle } from "../../languageToggle";
 import { MdOutlinePayment } from "react-icons/md";
 
+import { useTranslation } from "react-i18next"; // --- IMPORT ---
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
 import { logoutUser } from '@/features/auth/authSlice';
@@ -18,31 +20,25 @@ import { fetchBusinessById } from "@/features/business/businessSlice";
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
-
 import { menuRoutes } from "@/appRoutes";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const [imageSrc, setImageSrc] = useState<string>(logoWhite);
-
+  const { t } = useTranslation(); // --- INITIALIZE ---
   const dispatch = useDispatch<AppDispatch>();
-
 
   const { user } = useSelector((state: RootState) => state.auth);
   const { selectedBusiness } = useSelector((state: RootState) => state.business);
 
-
   const menuItems = useMemo(() => {
     if (!user) return [];
-
     const accessibleRoutes = menuRoutes.filter(route => route.allowedRoles.includes(user.role));
-
     const grouped = accessibleRoutes.reduce((acc, route) => {
       if (!acc[route.section]) {
         acc[route.section] = [];
       }
-     
       acc[route.section].push({
         label: route.label,
         to: `/main-menu/${route.path}`, 
@@ -70,10 +66,9 @@ export default function DashboardLayout() {
     if (item.action === 'logout') {
       try {
         await dispatch(logoutUser()).unwrap();
-        toast.success('Logged out successfully');
- 
+        toast.success(t('toastLogoutSuccess'));
       } catch (err) {
-        toast.error('Logout failed');
+        toast.error(t('toastLogoutFailed'));
       }
     }
   };
@@ -106,10 +101,10 @@ export default function DashboardLayout() {
         <nav className="flex flex-col gap-6">
           {menuItems?.map((section) => (
             <div key={section.title}>
-              <p className="text-[12px] font-400 text-[#A3ABB8] uppercase mb-2">{section.title}</p>
+              {/* --- TRANSLATE SECTION TITLE --- */}
+              <p className="text-[12px] font-400 text-[#A3ABB8] uppercase mb-2">{t(section.title.replace(' ', '').toLowerCase())}</p>
               <ul className="space-y-1">
                 {section.links.map((link) => (
-                  // The key should be the full path for uniqueness
                   <li key={link.to}>
                     {link.action === 'logout' ? (
                      <a href="https://nuvro-user.vercel.app/signin">
@@ -117,11 +112,11 @@ export default function DashboardLayout() {
                         onClick={() => handleMenuClick(link)}
                         className="w-full cursor-pointer text-left block rounded-md px-3 py-2 text-sm font-400 transition-colors text-[#A3ABB8] hover:text-[#ff21b0] hover:bg-muted/40"
                       >
-                        <div className="flex items-center">{link.icon}{link.label}</div>
+                        {/* --- TRANSLATE MENU ITEM --- */}
+                        <div className="flex items-center">{link.icon}{t(link.label.toLowerCase())}</div>
                       </button>
                      </a>
                     ) : (
-                     
                       <NavLink
                         to={link.to}
                         onClick={() => setSidebarOpen(false)}
@@ -132,7 +127,8 @@ export default function DashboardLayout() {
                           )
                         }
                       >
-                        <div className="flex items-center">{link.icon}{link.label}</div>
+                        {/* --- TRANSLATE MENU ITEM --- */}
+                        <div className="flex items-center">{link.icon}{t(link.label.toLowerCase())}</div>
                       </NavLink>
                     )}
                   </li>
@@ -146,6 +142,7 @@ export default function DashboardLayout() {
   );
 
   const getBreadcrumb = () => {
+    // Note: Translating URL segments is complex. For now, we keep the original logic.
     const segments = location.pathname.split("/").filter(Boolean);
     return segments.map((segment, index) => {
       const label = segment.replace(/-/g, " ").replace(/\b\w/g, l => l.toUpperCase());
@@ -187,12 +184,15 @@ export default function DashboardLayout() {
           <div className="flex items-center gap-4">
             {user?.role === 'business' && (
                 <div className="hidden md:flex flex-col items-center text-[16px] font-400 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] border-[1px] px-[16px] py-[8px] rounded-md cursor-pointer">
-                    <div className="flex items-center"><MdOutlinePayment className="mr-2" />Current Subscription<ChevronDown size={16} className="ml-1" /></div>
+                    {/* --- TRANSLATE SUBSCRIPTION INFO --- */}
+                    <div className="flex items-center"><MdOutlinePayment className="mr-2" />{t('currentSubscription')}<ChevronDown size={16} className="ml-1" /></div>
                     <div className="text-[10px] text-[#A3ABB8] dark:text-[#ABA8B4]">
-                        You're on <span className="font-bold">{selectedBusiness?.subscriptionPlan}</span> Plan, <span className="font-bold">End: {endDate}</span>
+                        {t('subscriptionDetails', { plan: selectedBusiness?.subscriptionPlan, endDate: endDate })}
                     </div>
                 </div>
             )}
+            {/* --- ADD LANGUAGE TOGGLE --- */}
+            <LanguageToggle /> 
             <ModeToggle />
             <CircleUser className="w-6 h-6 cursor-pointer" />
           </div>

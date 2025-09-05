@@ -56,7 +56,7 @@ export const ButtonExtraSmall = ({ value, type = "button", isOutline = false, ..
       className={
         `
         ${isOutline ? 'bg-none border-[1px] border-[#ff21b0] text-[#ff21b0] ' : 'bg-[#ff21b0] text-[#FFFFFF]'}
-        md:h-[40px] w-[120px]
+        md:h-[40px] w-[150px]
         rounded-[8px] px-[10px] py-[8px] mb-[10px]
         text-[16px]
         disabled:opacity-50 disabled:cursor-not-allowed
