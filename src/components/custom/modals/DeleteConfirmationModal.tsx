@@ -8,6 +8,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -24,28 +25,28 @@ export function DeleteConfirmationModal({
   modelName,
   isLoading,
 }: DeleteConfirmationModalProps) {
+  const { t } = useTranslation();
+
   return (
     <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogTitle>{t('deleteConfirmModal.title')}</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete the model "{modelName}" and all of its associated data. This action cannot be undone.
+            {t('deleteConfirmModal.description', { modelName })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          {/* The cancel button will simply close the modal */}
           <AlertDialogCancel onClick={onClose} disabled={isLoading}>
-            Cancel
+            {t('deleteConfirmModal.cancelButton')}
           </AlertDialogCancel>
           
-          {/* We use a custom button for the action to show a loading state */}
           <Button
             variant="destructive"
             onClick={onConfirm}
             disabled={isLoading}
           >
-            {isLoading ? 'Deleting...' : 'Delete'}
+            {isLoading ? t('deleteConfirmModal.deletingButton') : t('deleteConfirmModal.deleteButton')}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

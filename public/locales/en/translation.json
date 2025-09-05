@@ -533,6 +533,112 @@
     "phoneLabel": "Phone Number",
     "saveButton": "Save Changes",
     "savingButton": "Saving..."
+  },
+    "agentInbox": {
+    "title": "My Inbox",
+    "status": {
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "filters": {
+      "open": "Open",
+      "closed": "Closed"
+    },
+    "searchPlaceholder": "Search by customer name...",
+    "noConversations": "You have no {{filter}} conversations.",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{currentPage}} of {{totalPages}}"
+    },
+    "empty": {
+      "title": "Select a conversation",
+      "subtitle": "Choose a conversation from your inbox to begin."
+    },
+    "transfer": {
+      "title": "Transfer Conversation",
+      "toChannel": "To {{channelName}} Channel",
+      "toAgent": "To {{agentName}}",
+      "noOptions": "No transfer options available",
+      "closeConversation": "Close Conversation"
+    },
+    "loadMoreMessages": "Load More Messages",
+    "messagePlaceholder": "Type your message...",
+    "aCustomer": "A customer",
+    "dates": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "toast": {
+      "newChatAssigned": "New chat assigned from {{customerName}}",
+      "messageFailed": "Message failed to send.",
+      "transferNoId": "Cannot transfer: Conversation ID not found.",
+      "transferring": "Transferring conversation...",
+      "transferSuccess": "Conversation transferred!",
+      "transferFailed": "Transfer failed.",
+      "closeSuccess": "Conversation closed!",
+      "closeFailed": "Failed to close conversation."
+    }
+  },
+    "trainModelPage": {
+    "step1": {
+      "title": "Model Information",
+      "modelNameLabel": "Model Name",
+      "selectLlmLabel": "Select LLM",
+      "cancelButton": "Cancel",
+      "nextButton": "Next"
+    },
+    "step2": {
+      "title": "Data Sources",
+      "fileTab": "File",
+      "dragAndDrop": "Drag & drop files here, or click to select files",
+      "supportedFiles": "Supported File Types: .pdf, .docx, .txt, .xlsx"
+    },
+    "sidebar": {
+      "title": "Sources",
+      "totalChars": "Total Detected Characters",
+      "createButton": "Create AI Model",
+      "trainingButton": "Training..."
+    },
+    "validation": {
+      "nameRequired": "Model name is required",
+      "modelTypeRequired": "Model type is required"
+    },
+    "toast": {
+      "noFilesError": "Please upload at least one file.",
+      "trainSuccess": "Model trained successfully!",
+      "trainError": "❌ {{error}}"
+    }
+  },
+  "deleteConfirmModal": {
+    "title": "Are you absolutely sure?",
+    "description": "This will permanently delete the model \"{{modelName}}\" and all of its associated data. This action cannot be undone.",
+    "cancelButton": "Cancel",
+    "deleteButton": "Delete",
+    "deletingButton": "Deleting..."
+  },
+   "businessForm": {
+    "title": "Business Information",
+    "subtitle": "Update your company's name and logo.",
+    "logoLabel": "Business Logo",
+    "uploadingButton": "Uploading...",
+    "changeLogoButton": "Change Logo",
+    "nameLabel": "Business Name",
+    "saveButton": "Save Changes",
+    "savingButton": "Saving..."
+  },
+    "securityForm": {
+    "title": "Change Password",
+    "subtitle": "Update the password used to log in to your account.",
+    "currentPasswordLabel": "Current Password",
+    "newPasswordLabel": "New Password",
+    "confirmPasswordLabel": "Confirm New Password",
+    "updateButton": "Update Password",
+    "updatingButton": "Updating...",
+    "toast": {
+      "passwordMismatch": "New passwords do not match.",
+      "updateSuccess": "Password updated successfully!"
+    }
   }
 
 }

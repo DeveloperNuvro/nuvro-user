@@ -1,6 +1,5 @@
-// src/pages/AgentInbox.tsx
-
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,7 +12,7 @@ import {
   addAssignedConversation,
   removeConversation,
   resetAgentConversations,
-  updateConversationPreview, // <-- CRITICAL IMPORT
+  updateConversationPreview,
 } from "../features/humanAgent/humanAgentInboxSlice";
 import { fetchMessagesByCustomer, addRealtimeMessage, sendHumanMessage, closeConversation } from "../features/chatInbox/chatInboxSlice";
 import { fetchHumanAgents, updateAgentStatus } from "@/features/humanAgent/humanAgentSlice";
@@ -21,6 +20,8 @@ import { fetchChannels } from "@/features/channel/channelSlice";
 import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
 import isYesterday from "dayjs/plugin/isYesterday";
+import 'dayjs/locale/en';
+import 'dayjs/locale/es';
 import { AppDispatch, RootState } from "@/app/store";
 import toast from 'react-hot-toast';
 import { api } from '../api/axios';
@@ -61,6 +62,7 @@ const useDebounce = (value: string, delay: number) => {
 
 export default function AgentInbox() {
   const dispatch = useDispatch<AppDispatch>();
+  const { t, i18n } = useTranslation();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
@@ -84,6 +86,10 @@ export default function AgentInbox() {
 
   const { conversations, status: agentInboxStatus, currentPage, totalPages } = useSelector((state: RootState) => state.agentInbox);
   const messagesData = useSelector((state: RootState) => selectedCustomer ? state.chatInbox.chatData[selectedCustomer] : null);
+
+  useEffect(() => {
+    dayjs.locale(i18n.language);
+  }, [i18n.language]);
 
   useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
 
@@ -122,9 +128,7 @@ export default function AgentInbox() {
   useEffect(() => {
     if (!socket) return;
     const handleNewMessage = (data: any) => {
-
       dispatch(addRealtimeMessage({ customerId: data.customerId, message: { text: data.message, sentBy: data.sender, time: new Date().toISOString() } }));
-
       if (data.conversationId) {
         dispatch(updateConversationPreview({
           conversationId: data.conversationId,
@@ -132,48 +136,40 @@ export default function AgentInbox() {
           latestMessageTimestamp: data.timestamp || new Date().toISOString()
         }));
       }
-
       if (data.sender === 'customer') {
         const { assignment } = data;
         const myChannelIds = Array.isArray(channels) ? channels.map(c => c._id) : [];
-
         const isForMe =
           (assignment?.type === 'agent' && assignment?.id === agentId) ||
           (assignment?.type === 'channel' && assignment.id && myChannelIds.includes(assignment.id));
-
         if (isForMe) {
-          toast.custom((t) => <NotificationToast t={t} name={data.customerName || "A customer"} msg={data.message} />);
+          toast.custom((t) => <NotificationToast t={t} name={data.customerName} msg={data.message} />);
           playNotificationSound(notificationRef);
         }
       }
     };
-
     const handleNewAssignment = (data: ConversationInList) => {
-      toast.success(`New chat assigned from ${data.customer.name}`);
+      toast.success(t('agentInbox.toast.newChatAssigned', { customerName: data.customer.name }));
       dispatch(addAssignedConversation(data));
     };
     const handleConversationRemoved = (data: { conversationId: string }) => {
       dispatch(removeConversation(data));
-      if (currentConversation?.id === data.conversationId) {
-        setSelectedCustomer(null);
-      }
+      if (currentConversation?.id === data.conversationId) { setSelectedCustomer(null); }
     };
     const handleAgentStatusChange = (data: { userId: string, status: 'online' | 'offline' }) => {
       dispatch(updateAgentStatus(data));
     };
-
     socket.on("newMessage", handleNewMessage);
     socket.on("newChatAssigned", handleNewAssignment);
     socket.on("conversationRemoved", handleConversationRemoved);
     socket.on("agentStatusChanged", handleAgentStatusChange);
-
     return () => {
       socket.off("newMessage");
       socket.off("newChatAssigned");
       socket.off("conversationRemoved");
       socket.off("agentStatusChanged");
     };
-  }, [dispatch, socket, currentConversation, agentId, channels]);
+  }, [dispatch, socket, currentConversation, agentId, channels, t]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -215,18 +211,18 @@ export default function AgentInbox() {
   const handleSendMessage = useCallback(() => {
     if (!newMessage.trim() || !selectedCustomer || !businessId || !socket) return;
     dispatch(sendHumanMessage({ businessId, customerId: selectedCustomer, message: newMessage.trim(), senderSocketId: socket.id ?? "" }))
-      .unwrap().catch((error) => toast.error(error || "Message failed to send."));
+      .unwrap().catch((error) => toast.error(error || t('agentInbox.toast.messageFailed')));
     setNewMessage("");
-  }, [newMessage, selectedCustomer, businessId, dispatch, socket]);
+  }, [newMessage, selectedCustomer, businessId, dispatch, socket, t]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
-    if (!currentConversation?.id) { toast.error("Cannot transfer: Conversation ID not found."); return; }
+    if (!currentConversation?.id) { toast.error(t('agentInbox.toast.transferNoId')); return; }
     const payload = target.type === 'agent' ? { targetAgentId: target.id } : { targetChannelId: target.id };
     const promise = api.post(`/api/v1/conversations/${currentConversation.id}/transfer`, payload);
     toast.promise(promise, {
-      loading: 'Transferring conversation...',
-      success: 'Conversation transferred!',
-      error: (err: any) => err.response?.data?.message || 'Transfer failed.'
+      loading: t('agentInbox.toast.transferring'),
+      success: t('agentInbox.toast.transferSuccess'),
+      error: (err: any) => err.response?.data?.message || t('agentInbox.toast.transferFailed')
     });
   };
 
@@ -253,39 +249,38 @@ export default function AgentInbox() {
     if (currentConversation?.id && businessId) {
       dispatch(closeConversation({conversationId: currentConversation.id, businessId}))
         .unwrap()
-        .then(() => toast.success('Conversation closed!'))
-        .catch((err) => toast.error(err || 'Failed to close conversation.'));
+        .then(() => toast.success(t('agentInbox.toast.closeSuccess')))
+        .catch((err) => toast.error(err || t('agentInbox.toast.closeFailed')));
     }
   }
-
 
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== agentId) : [], [agents, agentId]);
   const groupedMessages = useMemo(() => {
     const allMessages = messagesData?.list || [];
     return allMessages.reduce((acc: any, msg: any) => {
-      const dateLabel = dayjs(msg.time).isToday() ? "Today" : dayjs(msg.time).isYesterday() ? "Yesterday" : dayjs(msg.time).format("MMMM D, YYYY");
+      const dateLabel = dayjs(msg.time).isToday() ? t('agentInbox.dates.today') : dayjs(msg.time).isYesterday() ? t('agentInbox.dates.yesterday') : dayjs(msg.time).format("MMMM D, YYYY");
       if (!acc[dateLabel]) acc[dateLabel] = [];
       acc[dateLabel].push(msg);
       return acc;
     }, {});
-  }, [messagesData?.list]);
+  }, [messagesData?.list, t]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] h-screen w-full gap-6 p-6">
       <aside className="flex flex-col border bg-card p-4 rounded-xl max-h-screen">
         <div className="flex items-center justify-between px-2 mb-2">
-          <h1 className="text-2xl font-bold">My Inbox</h1>
+          <h1 className="text-2xl font-bold">{t('agentInbox.title')}</h1>
           <div className={cn("flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-full", isConnected ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300")}>
             {isConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
-            {isConnected ? 'Online' : 'Offline'}
+            {isConnected ? t('agentInbox.status.online') : t('agentInbox.status.offline')}
           </div>
         </div>
         <div className="flex items-center gap-2 p-2 border-y">
-          <Button variant={activeFilter === 'open' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('open')}>Open</Button>
-          <Button variant={activeFilter === 'closed' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('closed')}>Closed</Button>
+          <Button variant={activeFilter === 'open' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('open')}>{t('agentInbox.filters.open')}</Button>
+          <Button variant={activeFilter === 'closed' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('closed')}>{t('agentInbox.filters.closed')}</Button>
         </div>
         <div className="px-2 my-4">
-          <Input placeholder="Search by customer name..." className="bg-muted border-none" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
+          <Input placeholder={t('agentInbox.searchPlaceholder')} className="bg-muted border-none" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
         </div>
         <div className="flex-1 overflow-y-auto space-y-2 scrollbar-hide pr-2 mt-2">
           {agentInboxStatus === 'loading' ? (
@@ -308,21 +303,21 @@ export default function AgentInbox() {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-center">
               <MessageSquareText className="h-12 w-12 mb-2" />
-              <p>You have no {activeFilter} conversations.</p>
+              <p>{t('agentInbox.noConversations', { filter: activeFilter })}</p>
             </div>
           )}
         </div>
         {totalPages > 0 && (
           <div className="flex items-center justify-center gap-2 pt-4 border-t">
-            <Button size="sm" variant="outline" onClick={handlePrevPage} disabled={currentPage <= 1 || agentInboxStatus === 'loading'}>Previous</Button>
-            <span className="text-sm font-medium">Page {currentPage} of {totalPages}</span>
-            <Button size="sm" variant="outline" onClick={handleNextPage} disabled={currentPage >= totalPages || agentInboxStatus === 'loading'}>Next</Button>
+            <Button size="sm" variant="outline" onClick={handlePrevPage} disabled={currentPage <= 1 || agentInboxStatus === 'loading'}>{t('agentInbox.pagination.previous')}</Button>
+            <span className="text-sm font-medium">{t('agentInbox.pagination.page', { currentPage, totalPages })}</span>
+            <Button size="sm" variant="outline" onClick={handleNextPage} disabled={currentPage >= totalPages || agentInboxStatus === 'loading'}>{t('agentInbox.pagination.next')}</Button>
           </div>
         )}
       </aside>
       <main className="flex flex-col bg-card border rounded-xl max-h-screen">
         {!selectedCustomer ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground"><MessageSquareText className="h-16 w-16 mb-4" /><h2 className="text-xl font-medium">Select a conversation</h2><p>Choose a conversation from your inbox to begin.</p></div>
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground"><MessageSquareText className="h-16 w-16 mb-4" /><h2 className="text-xl font-medium">{t('agentInbox.empty.title')}</h2><p>{t('agentInbox.empty.subtitle')}</p></div>
         ) : (
           <>
             <div className="flex items-center justify-between p-4 border-b">
@@ -331,12 +326,12 @@ export default function AgentInbox() {
                <DropdownMenu>
                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>Transfer Conversation</DropdownMenuLabel>
+                  <DropdownMenuLabel>{t('agentInbox.transfer.title')}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {Array.isArray(channels) && channels.length > 0 ? (
                     channels.map((channel) => (
                       <DropdownMenuItem key={channel._id} onSelect={() => handleTransfer({ type: 'channel', id: channel._id })}>
-                        <ChevronsRight className="mr-2 h-4 w-4" /> To {channel.name} Channel
+                        <ChevronsRight className="mr-2 h-4 w-4" /> {t('agentInbox.transfer.toChannel', { channelName: channel.name })}
                       </DropdownMenuItem>
                     ))
                   ) : null}
@@ -344,12 +339,12 @@ export default function AgentInbox() {
                   {onlineAgents.length > 0 ? (
                     onlineAgents.map((agent) => (
                       <DropdownMenuItem key={agent._id} onSelect={() => handleTransfer({ type: 'agent', id: agent._id })}>
-                        <User className="mr-2 h-4 w-4" /> To {agent.name}
+                        <User className="mr-2 h-4 w-4" /> {t('agentInbox.transfer.toAgent', { agentName: agent.name })}
                       </DropdownMenuItem>
                     ))
                   ) : null}
                   {(Array.isArray(channels) && channels.length === 0 && onlineAgents.length === 0) && (
-                    <DropdownMenuItem disabled>No transfer options available</DropdownMenuItem>
+                    <DropdownMenuItem disabled>{t('agentInbox.transfer.noOptions')}</DropdownMenuItem>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -362,18 +357,17 @@ export default function AgentInbox() {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Close Conversation</p>
+                    <p>{t('agentInbox.transfer.closeConversation')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
              </div>
-
             </div>
             <div ref={messageListRef} className="flex-1 p-6 space-y-2 overflow-y-auto scrollbar-hide">
               <div className="text-center">
                 {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
                 {messagesData && messagesData.hasMore && messagesData.status !== 'loading' && (
-                  <Button variant="link" onClick={handleLoadMoreMessages}>Load More Messages</Button>
+                  <Button variant="link" onClick={handleLoadMoreMessages}>{t('agentInbox.loadMoreMessages')}</Button>
                 )}
               </div>
               {Object.entries(groupedMessages).map(([date, group]: any) => (
@@ -389,7 +383,7 @@ export default function AgentInbox() {
             </div>
             <div className="p-6 border-t">
               <div className="relative">
-                <Textarea placeholder="Type your message..." value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="w-full resize-none p-4 pr-14 rounded-lg bg-muted border-none" rows={1} />
+                <Textarea placeholder={t('agentInbox.messagePlaceholder')} value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} className="w-full resize-none p-4 pr-14 rounded-lg bg-muted border-none" rows={1} />
                 <Button onClick={handleSendMessage} size="icon" className="absolute right-3 bottom-2.5 h-9 w-9 bg-primary"><Send className="h-4 w-4" /></Button>
               </div>
             </div>
