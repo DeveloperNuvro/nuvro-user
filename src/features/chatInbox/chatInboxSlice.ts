@@ -26,9 +26,11 @@ export interface CustomerTableRow {
 }
 
 export interface Message {
+    _id: string;
     text: string;
     time: string;
     sentBy: "customer" | "agent" | "human" | "system";
+    status?: 'sending' | 'failed';
 }
 
 // --- STATE INTERFACE ---
@@ -136,7 +138,7 @@ export const fetchMessagesByCustomer = createAsyncThunk<
             return thunkAPI.rejectWithValue("Message data from API was not an array");
         }
         const formatted = messagesArray.map((msg: any) => ({
-            text: msg.message, time: msg.timestamp, sentBy: msg.sender,
+           _id:msg._id, text: msg.message, time: msg.timestamp, sentBy: msg.sender,
         })).reverse();
         return {
             customerId,
@@ -149,14 +151,15 @@ export const fetchMessagesByCustomer = createAsyncThunk<
     }
 });
 
-export const sendHumanMessage = createAsyncThunk<void, { businessId: string; customerId: string; message: string; senderSocketId: string; }, { rejectValue: string }>("chatInbox/sendHumanMessage", async (payload, thunkAPI) => {
+export const sendHumanMessage = createAsyncThunk<Message, { businessId: string; customerId: string; message: string; senderSocketId: string; }, { rejectValue: string }>("chatInbox/sendHumanMessage", async (payload, thunkAPI) => {
     try {
-        await api.post('/api/v1/messages/send-human', payload);
+
+        const { data } = await api.post('/api/v1/messages/send-human', payload);
+        return data.data.message;
     } catch (error: any) {
         return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to send message");
     }
 });
-
 
 export const closeConversation = createAsyncThunk<
     string,
@@ -288,6 +291,70 @@ const chatInboxSlice = createSlice({
                 state.customerTable.status = "failed";
                 state.customerTable.error = action.payload || "Failed to load customers";
             })
+
+            // --- Handlers for Sending Human Messages with Optimistic UI Updates ---
+            .addCase(sendHumanMessage.pending, (state, action) => {
+                const { customerId, message } = action.meta.arg;
+
+                
+                if (!state.chatData[customerId]) {
+                    state.chatData[customerId] = {
+                        list: [], currentPage: 1, totalPages: 1, hasMore: true, status: 'idle'
+                    };
+                }
+
+              
+                const optimisticMessage: Message = {
+                    _id: `temp_${Date.now()}`, 
+                    text: message,
+                    sentBy: 'human', 
+                    time: new Date().toISOString(),
+                    status: 'sending' 
+                };
+                state.chatData[customerId].list.push(optimisticMessage);
+            })
+            .addCase(sendHumanMessage.fulfilled, (state, action) => {
+                const finalMessage: any = action.payload; 
+                const customerId = finalMessage.customerId;
+
+                if (state.chatData[customerId]) {
+                  
+                    const optimisticMessageIndex = state.chatData[customerId].list.findIndex(
+                        msg => msg._id && msg._id.startsWith('temp_')
+                    );
+
+                    if (optimisticMessageIndex !== -1) {
+                       
+                        state.chatData[customerId].list[optimisticMessageIndex] = {
+                            _id: finalMessage._id,
+                            text: finalMessage.message,
+                            sentBy: finalMessage.sender,
+                            time: finalMessage.createdAt,
+                        };
+                    }
+                }
+
+              
+                const convoIndex = state.conversations.findIndex(c => c.customer.id === customerId);
+                if (convoIndex !== -1) {
+                    state.conversations[convoIndex].preview = finalMessage.message;
+                    state.conversations[convoIndex].latestMessageTimestamp = finalMessage.createdAt;
+                }
+            })
+            .addCase(sendHumanMessage.rejected, (state, action) => {
+                const { customerId } = action.meta.arg;
+                if (state.chatData[customerId]) {
+               
+                    const optimisticMessageIndex = state.chatData[customerId].list.findIndex(
+                        msg => msg._id && msg._id.startsWith('temp_')
+                    );
+                    if (optimisticMessageIndex !== -1) {
+                     
+                        state.chatData[customerId].list[optimisticMessageIndex].status = 'failed';
+                    }
+                }
+            })
+
 
             .addCase(closeConversation.fulfilled, (state, action) => {
                 state.conversations = state.conversations.filter(c => c.id !== action.payload);

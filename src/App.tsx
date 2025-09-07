@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { useEffect} from "react";
+import { Routes, Route, Navigate} from "react-router-dom";
 import { Toaster } from "sonner";
 
 // Your Pages and Components
@@ -18,89 +18,17 @@ import { useAppSelector } from "./app/hooks";
 import { menuRoutes, additionalProtectedRoutes, ROLES } from "./appRoutes";
 
 
-// TypeScript declaration for the global OneSignal object
-declare global {
-  interface Window {
-    OneSignal: any; // Use `any` because OneSignal is dynamic
-  }
-}
-
 function App() {
   useAuthBootstrap();
-  const navigate = useNavigate();
   const { user, bootstrapped }: any = useAppSelector((state) => state.auth);
 
   const isAuthenticated =
     !!user && (user.role === ROLES.AGENT || user.role === ROLES.BUSINESS);
+ 
 
-  const oneSignalInitStarted = useRef(false);
-
-  // ✅ Effect for OneSignal Initialization
-  useEffect(() => {
-    if (oneSignalInitStarted.current) return;
-    oneSignalInitStarted.current = true;
-
-    const oneSignalAppId = import.meta.env.VITE_ONESIGNAL_APP_ID;
-    if (!oneSignalAppId) {
-      console.error("VITE_ONESIGNAL_APP_ID is not set in your .env file.");
-      return;
-    }
-
-    window.OneSignal = window.OneSignal || [];
-    const OneSignal = window.OneSignal;
-
-    OneSignal.push([
-      "init",
-      {
-        appId: oneSignalAppId,
-        allowLocalhostAsSecureOrigin: true,
-      },
-    ]);
-
-    // Push a function to run after init
-    OneSignal.push(() => {
-      console.log("✅ OneSignal SDK Initialized and ready.");
-      OneSignal.showSlidedownPrompt();
-
-      OneSignal.on("notificationClick", (event: any) => {
-        console.log("🔔 Notification clicked:", event);
-        const conversationId =
-          event.notification.additionalData?.conversationId;
-        if (conversationId) {
-          navigate(`/main-menu/inbox?conversationId=${conversationId}`);
-        }
-      });
-
-    });
-  }, [navigate]);
-
-  // ✅ Effect for Managing the User's External ID
   useEffect(() => {
     if (!bootstrapped) {
       return;
-    }
-
-    const OneSignal = window.OneSignal || [];
-
-    if (isAuthenticated && user?._id) {
-      console.log(`[OneSignal] Logging in with external ID: ${user._id}`);
-      OneSignal.push(async () => {
-
-        const perm = await OneSignal.getNotificationPermission?.();
-        const playerId = await OneSignal.User?.PushSubscription?.getId?.();
-
-        if (perm === 'granted' && playerId && user?._id) {
-          await OneSignal.login(user._id);
-          console.log("[OneSignal] External ID set after subscription.");
-        } else {
-          console.log("[OneSignal] Not subscribed yet; will try after prompt.");
-        }
-
-      });
-    } else {
-      OneSignal.push(() => {
-        OneSignal.logout?.().catch((e: any) => console.error(e));
-      });
     }
   }, [bootstrapped, isAuthenticated, user]);
 

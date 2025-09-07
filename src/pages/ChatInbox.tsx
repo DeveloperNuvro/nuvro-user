@@ -114,7 +114,7 @@ export default function ChatInbox() {
       if (!exists && (sender === 'customer' || sender === 'system')) {
         dispatch(addNewCustomer({ id: conversationId, customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') }, preview: message, latestMessageTimestamp: new Date().toISOString(), status: 'ai_only' }));
       }
-      dispatch(addRealtimeMessage({ customerId, message: { text: message, sentBy: sender, time: new Date().toISOString() } }));
+      dispatch(addRealtimeMessage({ customerId, message: { _id: message._id, text: message, sentBy: sender, time: new Date().toISOString() } }));
       if (sender === 'customer') {
         toast.custom((t) => <NotificationToast t={t} name={customerName} msg={message} />);
         playNotificationSound(notificationRef);
@@ -145,10 +145,12 @@ export default function ChatInbox() {
 
   const handleSendMessage = useCallback(() => {
     if (!newMessage.trim() || !selectedCustomer || !businessId || !socket) return;
+    
     dispatch(sendHumanMessage({ businessId, customerId: selectedCustomer, message: newMessage.trim(), senderSocketId: socket.id ?? "" }))
-      .unwrap().catch((error) => toast.error(error || t('chatInbox.toastMessageFailed')));
+      .unwrap().catch((error) => toast.error(error.message || t('chatInbox.toastMessageFailed')));
+      
     setNewMessage("");
-  }, [newMessage, selectedCustomer, businessId, dispatch, socket, t]);
+}, [newMessage, selectedCustomer, businessId, dispatch, socket, t]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
     if (!currentConversation?.id) { toast.error(t('chatInbox.toastTransferNoId')); return; }

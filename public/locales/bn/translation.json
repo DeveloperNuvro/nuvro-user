@@ -1,0 +1,643 @@
+{
+  "mainmenu": "প্রধান মেনু",
+  "business": "ব্যবসা",
+  "account": "অ্যাকাউন্ট",
+  "home": "হোম",
+  "inbox": "ইনবক্স",
+  "ticket": "টিকেট",
+  "customers": "গ্রাহক",
+  "settings": "সেটিংস",
+  "logout": "লগ আউট",
+  "currentSubscription": "বর্তমান সাবস্ক্রিপশন",
+  "subscriptionDetails": "আপনি {{plan}} প্ল্যানে আছেন, শেষ হবে: {{endDate}}",
+  "toastLogoutSuccess": "সফলভাবে লগ আউট করা হয়েছে",
+  "toastLogoutFailed": "লগ আউট ব্যর্থ হয়েছে",
+  "loadingFailed": "ড্যাশবোর্ড লোড করতে ব্যর্থ",
+  "noData": "কোনো ওভারভিউ ডেটা উপলব্ধ নেই।",
+  "dashboardTitle": "ড্যাশবোর্ড",
+  "totalCustomers": "মোট গ্রাহক",
+  "totalCustomersDesc": "সমস্ত স্বতন্ত্র গ্রাহকের মিথস্ক্রিয়া",
+  "totalConversations": "মোট কথোপকথন",
+  "totalConversationsDesc": "মোট বার্তা বিনিময়",
+  "supportTickets": "সাপোর্ট টিকেট",
+  "supportTicketsDesc": "এআই এজেন্ট দ্বারা তৈরি টিকেট",
+  "activeAiAgents": "সক্রিয় এআই এজেন্ট",
+  "activeAiAgentsDesc": "আপনার নিয়োজিত এআই কর্মী",
+  "trainedAiModels": "প্রশিক্ষিত এআই মডেল",
+  "trainedAiModelsDesc": "কাস্টম জ্ঞান ভান্ডার",
+  "performanceAnalyticsTitle": "কর্মক্ষমতা বিশ্লেষণ",
+  "avgScore7Day": "৭-দিনের গড় স্কোর",
+  "avgScore7DayDesc": "এই সপ্তাহে এজেন্টের কর্মক্ষমতা",
+  "avgScore30Day": "৩০-দিনের গড় স্কোর",
+  "avgScore30DayDesc": "এই মাসে এজেন্টের কর্মক্ষমতা",
+  "conversationsAnalyzed": "বিশ্লেষিত কথোপকথন",
+  "conversationsAnalyzedDesc": "গত ৩০ দিনে মোট",
+  "dailyAccuracyChartTitle": "দৈনিক নির্ভুলতার স্কোর (গত ৩০ দিন)",
+  "recentCustomersTitle": "সাম্প্রতিক গ্রাহক",
+  "tableHeaderCustomer": "গ্রাহক",
+  "tableHeaderEmail": "ইমেল",
+  "tableHeaderSignedUp": "সাইন আপ করেছেন",
+  "recentTicketsTitle": "সাম্প্রতিক সাপোর্ট টিকেট",
+  "createdTimeAgo": "{{time}} আগে তৈরি হয়েছে",
+  "status_open": "খোলা",
+  "status_closed": "বন্ধ",
+  "status_in_progress": "চলছে",
+  "chatInbox": {
+    "title": "ইনবক্স",
+    "filterOpen": "খোলা",
+    "filterClosed": "বন্ধ",
+    "searchPlaceholder": "গ্রাহকের নাম দিয়ে খুঁজুন...",
+    "typing": "টাইপ করছেন...",
+    "tooltipAssignedTo": "{{agentName}}-কে নিযুক্ত করা হয়েছে",
+    "anAgent": "একজন এজেন্ট",
+    "tooltipTicketCreated": "টিকেট তৈরি হয়েছে",
+    "tooltipHandledByAI": "এআই দ্বারা পরিচালিত",
+    "noConversationsFound": "কোনো {{filter}} কথোপকথন পাওয়া যায়নি।",
+    "filterOpenLabel": "খোলা",
+    "filterClosedLabel": "বন্ধ",
+    "previousPage": "পূর্ববর্তী",
+    "nextPage": "পরবর্তী",
+    "pagination": "{{totalPages}} এর মধ্যে পৃষ্ঠা {{currentPage}}",
+    "mainEmptyTitle": "একটি কথোপকথন নির্বাচন করুন",
+    "mainEmptySubtitle": "বার্তা দেখতে বাম দিকের তালিকা থেকে বেছে নিন।",
+    "transferTitle": "কথোপকথন স্থানান্তর করুন",
+    "transferToChannel": "{{channelName}} চ্যানেলে",
+    "noChannelsAvailable": "কোনো চ্যানেল উপলব্ধ নেই",
+    "transferToAgent": "{{agentName}}-এর কাছে",
+    "noAgentsOnline": "অন্য কোনো এজেন্ট অনলাইনে নেই",
+    "closeConversationTooltip": "কথোপকথন বন্ধ করুন",
+    "loadMoreMessages": "আরও বার্তা লোড করুন",
+    "dateToday": "আজ",
+    "dateYesterday": "গতকাল",
+    "messagePlaceholder": "আপনার বার্তা টাইপ করুন...",
+    "unknownCustomer": "অজানা",
+    "aCustomer": "একজন গ্রাহক",
+    "toastNewChat": "{{customerName}} থেকে নতুন চ্যাট নিযুক্ত হয়েছে",
+    "toastMessageFailed": "বার্তা পাঠাতে ব্যর্থ হয়েছে।",
+    "toastTransferNoId": "স্থানান্তর করা যাবে না: কথোপকথন আইডি পাওয়া যায়নি।",
+    "toastTransferLoading": "কথোপকথন স্থানান্তর করা হচ্ছে...",
+    "toastTransferSuccess": "কথোপকথন স্থানান্তরিত হয়েছে!",
+    "toastTransferFailed": "স্থানান্তর ব্যর্থ হয়েছে।",
+    "toastCloseSuccess": "কথোপকথন বন্ধ হয়েছে!",
+    "toastCloseFailed": "কথোপকথন বন্ধ করতে ব্যর্থ হয়েছে।"
+  },
+  "channelPage": {
+    "title": "চ্যানেল",
+    "addChannelButton": "চ্যানেল যোগ করুন",
+    "loadingError": "ত্রুটি: {{error}}",
+    "noChannelsTitle": "কোনো চ্যানেল পাওয়া যায়নি",
+    "noChannelsSubtitle": "আপনার প্রথম চ্যানেল (যেমন, সেলস, সাপোর্ট) তৈরি করে শুরু করুন।",
+    "createFirstChannelButton": "প্রথম চ্যানেল তৈরি করুন",
+    "createModalTitle": "নতুন চ্যানেল তৈরি করুন",
+    "createModalButton": "চ্যানেল তৈরি করুন",
+    "editModalTitle": "চ্যানেল সম্পাদনা করুন",
+    "editModalButton": "পরিবর্তন সংরক্ষণ করুন",
+    "cardEdit": "সম্পাদনা",
+    "cardDelete": "মুছে ফেলুন",
+    "cardMembersTitle": "সদস্য ({{count}})",
+    "cardNoMembers": "কোনো সদস্য নিযুক্ত নেই",
+    "cardAndMore": "...এবং আরও {{count}} জন",
+    "formChannelName": "চ্যানেলের নাম",
+    "formChannelPlaceholder": "যেমন, সেলস, সাপোর্ট",
+    "formAssignAgents": "এজেন্ট নিযুক্ত করুন",
+    "formNoAgents": "এখনো কোনো এজেন্ট তৈরি করা হয়নি। আপনি এজেন্ট তৈরি করে পরে এই চ্যানেলে নিযুক্ত করতে পারেন।",
+    "cancelButton": "বাতিল",
+    "deleteConfirmTitle": "আপনি কি নিশ্চিত?",
+    "deleteConfirmDescription": "এই কাজটি আর ফেরানো যাবে না। এটি {{itemName}} চ্যানেলটি স্থায়ীভাবে মুছে ফেলবে।",
+    "deleteButton": "মুছে ফেলুন",
+    "toastCreating": "চ্যানেল তৈরি করা হচ্ছে...",
+    "toastCreateSuccess": "চ্যানেল সফলভাবে তৈরি হয়েছে!",
+    "toastCreateError": "চ্যানেল তৈরি করতে ব্যর্থ হয়েছে।",
+    "toastUpdating": "চ্যানেল আপডেট করা হচ্ছে...",
+    "toastUpdateSuccess": "চ্যানেল সফলভাবে আপডেট হয়েছে!",
+    "toastUpdateError": "চ্যানেল আপডেট করতে ব্যর্থ হয়েছে।",
+    "toastDeleting": "চ্যানেল মুছে ফেলা হচ্ছে...",
+    "toastDeleteSuccess": "চ্যানেল সফলভাবে মুছে ফেলা হয়েছে!",
+    "toastDeleteError": "চ্যানেল মুছতে ব্যর্থ হয়েছে।"
+  },
+  "humanAgentPage": {
+    "title": "হিউম্যান এজেন্ট",
+    "addAgentButton": "এজেন্ট যোগ করুন",
+    "loadingError": "ত্রুটি: {{error}}",
+    "noAgentsTitle": "কোনো এজেন্ট পাওয়া যায়নি",
+    "noAgentsSubtitle": "চ্যাট পরিচালনা করার জন্য আপনার প্রথম হিউম্যান এজেন্টকে একটি চ্যানেলে যুক্ত করুন।",
+    "createFirstAgentButton": "প্রথম এজেন্ট তৈরি করুন",
+    "createModalTitle": "নতুন এজেন্ট তৈরি করুন",
+    "createModalButton": "এজেন্ট তৈরি করুন",
+    "editModalTitle": "এজেন্ট সম্পাদনা করুন",
+    "editModalButton": "পরিবর্তন সংরক্ষণ করুন",
+    "cardEdit": "সম্পাদনা",
+    "cardDelete": "মুছে ফেলুন",
+    "formName": "নাম",
+    "formEmail": "ইমেল",
+    "formPassword": "পাসওয়ার্ড",
+    "formAssignChannels": "চ্যানেলে নিযুক্ত করুন",
+    "formNoChannels": "এখনো কোনো চ্যানেল তৈরি করা হয়নি। এজেন্ট নিযুক্ত করার জন্য অনুগ্রহ করে প্রথমে একটি চ্যানেল তৈরি করুন।",
+    "cancelButton": "বাতিল",
+    "deleteConfirmTitle": "আপনি কি নিশ্চিত?",
+    "deleteConfirmDescription": "এই কাজটি {{itemName}} এজেন্টকে স্থায়ীভাবে মুছে ফেলবে।",
+    "deleteButton": "মুছে ফেলুন",
+    "toastCreating": "এজেন্ট তৈরি করা হচ্ছে...",
+    "toastCreateSuccess": "এজেন্ট সফলভাবে তৈরি হয়েছে!",
+    "toastCreateError": "এজেন্ট তৈরি করতে ব্যর্থ হয়েছে।",
+    "toastUpdating": "এজেন্ট আপডেট করা হচ্ছে...",
+    "toastUpdateSuccess": "এজেন্ট সফলভাবে আপডেট হয়েছে!",
+    "toastUpdateError": "এজেন্ট আপডেট করতে ব্যর্থ হয়েছে।",
+    "toastDeleting": "এজেন্ট মুছে ফেলা হচ্ছে...",
+    "toastDeleteSuccess": "এজেন্ট সফলভাবে মুছে ফেলা হয়েছে!",
+    "toastDeleteError": "এজেন্ট মুছতে ব্যর্থ হয়েছে।"
+  },
+  "ticketPage": {
+    "filters": {
+      "all": "সমস্ত টিকেট",
+      "open": "খোলা",
+      "unassigned": "অনিযুক্ত",
+      "solved": "সমাধান করা হয়েছে"
+    },
+    "searchPlaceholder": "টিকেট খুঁজুন...",
+    "addTicketButton": "টিকেট যোগ করুন",
+    "editButton": "সম্পাদনা",
+    "deleteButton": "মুছে ফেলুন",
+    "viewClientDetails": "{{name}}-এর জন্য বিবরণ দেখুন",
+    "notAvailable": "প্রযোজ্য নয়",
+    "table": {
+      "no": "নং",
+      "ticketId": "টিকেট আইডি",
+      "priority": "গুরুত্ব",
+      "subject": "বিষয়",
+      "type": "ধরন",
+      "client": "ক্লায়েন্ট",
+      "assignedAgent": "নিযুক্ত এজেন্ট",
+      "created": "তৈরি হয়েছে",
+      "lastUpdated": "শেষ আপডেট",
+      "status": "অবস্থা",
+      "loading": "টিকেট লোড হচ্ছে...",
+      "error": "ত্রুটি: {{error}}",
+      "noTicketsFound": "কোনো টিকেট পাওয়া যায়নি।"
+    },
+    "pagination": {
+      "showing": "{{total}} টিকেটের মধ্যে {{start}} - {{end}} দেখানো হচ্ছে",
+      "noTickets": "কোনো টিকেট নেই",
+      "previous": "পূর্ববর্তী",
+      "next": "পরবর্তী",
+      "page": "{{totalPages}} এর মধ্যে পৃষ্ঠা {{currentPage}}"
+    },
+    "modal": {
+      "createTitle": "নতুন টিকেট তৈরি করুন",
+      "editTitle": "টিকেট সম্পাদনা করুন (#{{id}})",
+      "deleteTitle": "মুছে ফেলা নিশ্চিত করুন",
+      "deleteDescription": "আপনি কি \"{{subject}}\" (আইডি: ...{{id}}) টিকেটটি মুছতে নিশ্চিত?"
+    },
+    "form": {
+      "businessId": "ব্যবসা আইডি",
+      "customerId": "গ্রাহক আইডি",
+      "customerIdPlaceholder": "গ্রাহক আইডি (যেমন: 660f7b1...)",
+      "subject": "বিষয়",
+      "subjectPlaceholder": "বিষয় (সর্বনিম্ন ৫ অক্ষর)",
+      "description": "বিবরণ",
+      "descriptionPlaceholder": "বিবরণ (সর্বনিম্ন ১০ অক্ষর)",
+      "priority": "গুরুত্ব",
+      "selectPriority": "গুরুত্ব নির্বাচন করুন",
+      "type": "ধরন",
+      "selectType": "ধরন নির্বাচন করুন",
+      "status": "অবস্থা",
+      "selectStatus": "অবস্থা নির্বাচন করুন",
+      "agentId": "এজেন্ট আইডি",
+      "agentIdPlaceholder": "নিযুক্ত এজেন্ট আইডি (ঐচ্ছিক)",
+      "comment": "মন্তব্য",
+      "commentPlaceholder": "একটি মন্তব্য যোগ করুন (ঐচ্ছিক)",
+      "cancelButton": "বাতিল",
+      "processingButton": "প্রসেস হচ্ছে...",
+      "createButton": "টিকেট তৈরি করুন",
+      "saveButton": "পরিবর্তন সংরক্ষণ করুন",
+      "deleteButton": "টিকেট মুছুন"
+    },
+    "clientModal": {
+      "title": "ক্লায়েন্টের বিবরণ",
+      "description": "ক্লায়েন্টের জন্য সম্পূর্ণ তথ্য: {{name}}",
+      "clientId": "ক্লায়েন্ট আইডি",
+      "name": "নাম",
+      "email": "ইমেল",
+      "phone": "ফোন",
+      "noDetails": "দেখানোর জন্য কোনো ক্লায়েন্টের বিবরণ নেই।",
+      "closeButton": "বন্ধ করুন"
+    },
+    "validation": {
+      "subjectLength": "বিষয় অবশ্যই কমপক্ষে ৫ অক্ষরের হতে হবে।",
+      "descriptionLength": "বিবরণ অবশ্যই কমপক্ষে ১০ অক্ষরের হতে হবে।",
+      "customerIdRequired": "নতুন টিকেটের জন্য গ্রাহক আইডি প্রয়োজন।"
+    },
+    "toast": {
+      "deleting": "টিকেট মুছে ফেলা হচ্ছে...",
+      "deleteSuccess": "টিকেট সফলভাবে মুছে ফেলা হয়েছে!",
+      "deleteError": "টিকেট মুছতে ব্যর্থ হয়েছে।",
+      "creating": "টিকেট তৈরি করা হচ্ছে...",
+      "createSuccess": "টিকেট সফলভাবে তৈরি হয়েছে!",
+      "createError": "টিকেট তৈরি করতে ব্যর্থ হয়েছে।",
+      "updating": "টিকেট আপডেট করা হচ্ছে...",
+      "updateSuccess": "টিকেট সফলভাবে আপডেট হয়েছে!",
+      "updateError": "টিকেট আপডেট করতে ব্যর্থ হয়েছে।"
+    },
+    "priorities": {
+      "high": "উচ্চ",
+      "medium": "মধ্যম",
+      "low": "নিম্ন",
+      "urgent": "জরুরী"
+    },
+    "statuses": {
+      "open": "খোলা",
+      "in_progress": "চলছে",
+      "on_hold": "স্থগিত",
+      "closed": "বন্ধ"
+    },
+    "types": {
+      "billing": "বিলিং",
+      "technical": "কারিগরি",
+      "general": "সাধারণ",
+      "feedback": "মতামত",
+      "account": "অ্যাকাউন্ট"
+    }
+  },
+  "aiModelListPage": {
+    "title": "এআই মডেল",
+    "createNewButton": "+ নতুন তৈরি করুন",
+    "loading": "মডেল লোড হচ্ছে...",
+    "loadingError": "ত্রুটি: {{error}}",
+    "noModelsTitle": "কোনো এআই মডেল পাওয়া যায়নি",
+    "noModelsSubtitle": "শুরু করতে \"+ নতুন তৈরি করুন\" ক্লিক করুন।",
+    "modelTypeLabel": "ধরন",
+    "trainedFiles": "{{count}} প্রশিক্ষিত ফাইল",
+    "statusLabel": "অবস্থা",
+    "editButton": "মডেল সম্পাদনা করুন",
+    "toastDeleteSuccess": "\"{{modelName}}\" মডেলটি সফলভাবে মুছে ফেলা হয়েছে।",
+    "toastDeleteError": "❌ {{error}}"
+  },
+  "aiAgentPage": {
+    "title": "এআই এজেন্ট",
+    "modelLabel": "মডেল",
+    "unknown": "অজানা",
+    "modal": {
+      "viewingTitle": "দেখছেন",
+      "editingTitle": "সম্পাদনা করছেন",
+      "deleteTitle": "মুছে ফেলা নিশ্চিত করুন",
+      "agentName": "এজেন্টের নাম",
+      "personality": "ব্যক্তিত্ব",
+      "aiModel": "এআই মডেল",
+      "instructions": "নির্দেশাবলী",
+      "noInstructions": "কোনো বিশেষ নির্দেশনা প্রদান করা হয়নি।",
+      "deleteDescription": "আপনি কি \"{{agentName}}\" নামের এজেন্টটি স্থায়ীভাবে মুছতে নিশ্চিত? এই কাজটি আর ফেরানো যাবে না।"
+    },
+    "form": {
+      "name": "নাম",
+      "aiModel": "এআই মডেল",
+      "selectModel": "একটি মডেল নির্বাচন করুন",
+      "tone": "ধরন",
+      "selectTone": "একটি ধরন নির্বাচন করুন",
+      "instruction": "নির্দেশনা",
+      "instructionPlaceholder": "যেমন, সংক্ষিপ্ত এবং সহায়ক হন...",
+      "cancelButton": "বাতিল",
+      "saveButton": "পরিবর্তন সংরক্ষণ করুন",
+      "deleteButton": "মুছে ফেলা নিশ্চিত করুন"
+    },
+    "tones": {
+      "friendly": " বন্ধুত্বপূর্ণ",
+      "formal": "আনুষ্ঠানিক",
+      "neutral": "নিরপেক্ষ"
+    },
+    "toast": {
+      "updating": "পরিবর্তন সংরক্ষণ করা হচ্ছে...",
+      "updateSuccess": "এজেন্ট সফলভাবে আপডেট হয়েছে!",
+      "updateError": "এজেন্ট আপডেট করতে ব্যর্থ হয়েছে।",
+      "deleting": "এজেন্ট মুছে ফেলা হচ্ছে...",
+      "deleteSuccess": "এজেন্ট সফলভাবে মুছে ফেলা হয়েছে!",
+      "deleteError": "এজেন্ট মুছতে ব্যর্থ হয়েছে।"
+    }
+  },
+  "analysisPage": {
+    "loading": {
+      "title": "এআই পারফরম্যান্স ইনসাইট তৈরি হচ্ছে...",
+      "subtitle": "আমাদের বিশ্লেষক এজেন্ট সাম্প্রতিক কথোপকথন পর্যালোচনা করার সময় এটি কিছু মুহূর্ত নিতে পারে।"
+    },
+    "error": "ত্রুটি: {{error}}",
+    "empty": {
+      "title": "কোনো বিশ্লেষণ রিপোর্ট উপলব্ধ নেই",
+      "subtitle": "আপনার চ্যাটবটের কথোপকথনের উপর ভিত্তি করে প্রতিদিন রিপোর্ট স্বয়ংক্রিয়ভাবে তৈরি হয়। পর্যাপ্ত ডেটা হয়ে গেলে, আপনার প্রথম রিপোর্ট এখানে প্রদর্শিত হবে।"
+    },
+    "header": {
+      "title": "পারফরম্যান্স ড্যাশবোর্ড",
+      "subtitle": "এর জন্য এআই বিশ্লেষণ"
+    },
+    "stats": {
+      "overallScore": "সামগ্রিক স্কোর",
+      "overallScoreDesc": "এজেন্টের কর্মক্ষমতা স্কোর",
+      "conversationsAnalyzed": "বিশ্লেষিত কথোপকথন",
+      "conversationsAnalyzedDesc": "গতকাল থেকে অনন্য গ্রাহক চ্যাট",
+      "agentName": "এজেন্টের নাম",
+      "agentNameDesc": "বিশ্লেষণ করা এআই এজেন্ট",
+      "customersInvolved": "জড়িত গ্রাহক",
+      "customersInvolvedDesc": "বিশ্লেষণে অনন্য গ্রাহক"
+    },
+    "summary": {
+      "workingWell": "কী ভালো কাজ করছে",
+      "improvementAreas": "উন্নতির ক্ষেত্র",
+      "knowledgeSuggestions": "জ্ঞান ভান্ডারের জন্য পরামর্শ"
+    },
+    "details": {
+      "title": "বিস্তারিত কথোপকথন বিশ্লেষণ",
+      "subtitle": "প্রতিটি কথোপকথনের জন্য পারফরম্যান্স স্কোর এবং নির্দিষ্ট প্রতিক্রিয়া।",
+      "scoresByConversation": "কথোপকথন অনুযায়ী স্কোর",
+      "feedbackBreakdown": "প্রতিক্রিয়া ভাঙ্গন",
+      "conversationWith": "{{name}} এর সাথে কথোপকথন",
+      "score": "স্কোর: {{score}}/১০",
+      "reasoning": "স্কোরের কারণ",
+      "suggestions": "উন্নতির জন্য পরামর্শ"
+    }
+  },
+  "customersPage": {
+    "filters": {
+      "all": "সমস্ত গ্রাহক"
+    },
+    "searchPlaceholder": "অনুসন্ধান...",
+    "table": {
+      "loading": "গ্রাহকদের লোড করা হচ্ছে...",
+      "error": "ত্রুটি: {{error}}",
+      "defaultError": "গ্রাহকদের লোড করা যায়নি।",
+      "noCustomersFound": "কোনো গ্রাহক পাওয়া যায়নি।",
+      "customerId": "গ্রাহক আইডি",
+      "customerName": "গ্রাহকের নাম",
+      "email": "ইমেল",
+      "phone": "ফোন নম্বর",
+      "dateJoined": "যোগদানের তারিখ"
+    },
+    "pagination": {
+      "previous": "পূর্ববর্তী",
+      "next": "পরবর্তী",
+      "page": "পৃষ্ঠা {{currentPage}} এর {{totalPages}}"
+    }
+  },
+  "pricingPage": {
+    "nav": {
+      "planAndPayment": "প্ল্যান ও পেমেন্ট"
+    },
+    "trial": {
+      "onTrial": "আপনি {{planLabel}} ট্রায়ালে আছেন।",
+      "endsIn": "ট্রায়াল {{count}} দিনের মধ্যে শেষ হবে।",
+      "ended": "আপনার ট্রায়াল শেষ হয়ে গেছে। চালিয়ে যেতে অনুগ্রহ করে একটি প্ল্যান নির্বাচন করুন।"
+    },
+    "usage": {
+      "noPlan": "কোনো প্ল্যান নেই",
+      "currentPlan": "বর্তমান প্ল্যান",
+      "nextPaymentOn": "পরবর্তী পেমেন্ট {{date}} তারিখে",
+      "expiration": "প্ল্যানের মেয়াদ শেষ",
+      "agentUsage": "এআই এজেন্ট ব্যবহার",
+      "modelTraining": "মডেল প্রশিক্ষণ",
+      "conversation": "কথোপকথন",
+      "notAvailable": "প্রযোজ্য নয়"
+    },
+    "plans": {
+      "title": "সমস্ত প্ল্যান",
+      "subtitle": "সঠিক প্ল্যানের মাধ্যমে আপনার এআই চ্যাটবটের সম্পূর্ণ সম্ভাবনা উন্মোচন করুন।",
+      "recommended": "প্রস্তাবিত",
+      "featuresTitle": "বৈশিষ্ট্য",
+      "basic": {
+        "label": "বেসিক",
+        "priceDisplay": "USD $১৯/মাস",
+        "description": "ব্যক্তি বা ছোট ব্যবসার জন্য যারা সীমিত সম্পদ দিয়ে পরিষেবা পরীক্ষা করছেন।",
+        "features": [
+          "প্রতি মাসে ১০০০ পর্যন্ত কথোপকথন", "১ এআই এজেন্ট", "১ প্রশিক্ষণ মডেল", "হোয়াটসঅ্যাপ ইন্টিগ্রেশন", "বেসিক সাপোর্ট"
+        ]
+      },
+      "premium": {
+        "label": "প্রিমিয়াম",
+        "priceDisplay": "USD $৭০/মাস",
+        "description": "ব্যক্তি এবং ছোট থেকে মাঝারি আকারের ব্যবসার জন্য যাদের গ্রাহক যোগাযোগের চাহিদা বাড়ছে।",
+        "features": [
+          "প্রতি মাসে ১,০০,০০০ পর্যন্ত কথোপকথন", "৩ এআই এজেন্ট", "৩ প্রশিক্ষণ মডেল", "হোয়াটসঅ্যাপ ইন্টিগ্রেশন", "অগ্রাধিকার সাপোর্ট"
+        ]
+      },
+      "enterprise": {
+        "label": "এন্টারপ্রাইজ",
+        "priceDisplay": "USD $৪০০/মাস",
+        "description": "বড় এন্টারপ্রাইজ বা কর্পোরেশন যাদের উচ্চ চ্যাট ভলিউম এবং জটিল কার্যক্রম রয়েছে।",
+        "features": [
+          "প্রতি মাসে ১০,০০,০০০ পর্যন্ত কথোপকথন", "১০ এআই এজেন্ট", "১০ প্রশিক্ষণ মডেল", "হোয়াটসঅ্যাপ ইন্টিগ্রেশন", "২৪/৭ ডেডিকেটেড সাপোর্ট"
+        ]
+      }
+    },
+    "buttons": {
+      "selected": "নির্বাচিত",
+      "openingPortal": "পোর্টাল খোলা হচ্ছে...",
+      "upgrade": "প্ল্যান আপগ্রেড করুন",
+      "downgrade": "প্ল্যান ডাউনগ্রেড করুন",
+      "redirecting": "পুনঃনির্দেশিত করা হচ্ছে...",
+      "selectPlan": "প্ল্যান নির্বাচন করুন",
+      "loadingPortal": "পোর্টাল লোড হচ্ছে...",
+      "manageSubscription": "সাবস্ক্রিপশন ও বিলিং পরিচালনা করুন"
+    },
+    "toast": {
+      "portalError": "বিলিং পোর্টাল খুলতে ব্যর্থ হয়েছে।",
+      "missingConfig": "প্ল্যান কনফিগারেশন অনুপস্থিত। অনুগ্রহ করে সাপোর্টে যোগাযোগ করুন।",
+      "unexpectedError": "একটি অপ্রত্যাশিত ত্রুটি ঘটেছে।"
+    }
+  },
+  "settingsPage": {
+    "title": "সেটিংস",
+    "subtitle": "আপনার অ্যাকাউন্ট এবং ব্যবসার পছন্দগুলি পরিচালনা করুন।",
+    "tabs": {
+      "profile": "আপনার প্রোফাইল",
+      "business": "ব্যবসা সেটিংস",
+      "security": "পাসওয়ার্ড ও নিরাপত্তা"
+    }
+  },
+  "signinPage": {
+    "heading": "স্বাগতম!",
+    "paragraph": "আপনার এআই-চ্যাটবটকে শক্তিশালী করুন এবং আপনার ব্যবসা অনায়াসে বাড়ান।",
+    "form": {
+      "emailLabel": "ইমেল",
+      "passwordLabel": "পাসওয়ার্ড",
+      "signInButton": "সাইন ইন করুন",
+      "signingInButton": "সাইন ইন করা হচ্ছে...",
+      "noAccountPrompt": "কোনো অ্যাকাউন্ট নেই?",
+      "signUpLink": "সাইন আপ করুন"
+    },
+    "validation": {
+      "invalidEmail": "অবৈধ ইমেল ঠিকানা",
+      "passwordLength": "পাসওয়ার্ড অবশ্যই কমপক্ষে ৬ অক্ষরের হতে হবে"
+    },
+    "toast": {
+      "loginSuccess": "সফলভাবে লগইন করা হয়েছে!"
+    }
+  },
+  "signupPage": {
+    "heading": "আপনার কথোপকথনকে শক্তিশালী করুন — বিনামূল্যে শুরু করুন!",
+    "paragraph": "সাপোর্টকে সহজ করুন, সম্পৃক্ততা বাড়ান এবং এআইকে বাকিটা অনায়াসে পরিচালনা করতে দিন।",
+    "form": {
+      "nameLabel": "নাম",
+      "emailLabel": "ইমেল",
+      "passwordLabel": "পাসওয়ার্ড",
+      "termsPrefix": "আমি নুভরোর",
+      "termsLink": "শর্তাবলী ও নিয়মাবলী",
+      "termsAnd": "এবং",
+      "privacyLink": "গোপনীয়তা নীতি",
+      "getStartedButton": "শুরু করুন",
+      "creatingButton": "তৈরি করা হচ্ছে...",
+      "alreadyHaveAccount": "ইতিমধ্যেই একটি অ্যাকাউন্ট আছে?",
+      "signInLink": "সাইন ইন করুন"
+    },
+    "validation": {
+      "nameLength": "নাম অবশ্যই কমপক্ষে ২ অক্ষরের হতে হবে",
+      "invalidEmail": "অবৈধ ইমেল ঠিকানা",
+      "passwordLength": "পাসওয়ার্ড অবশ্যই কমপক্ষে ৬ অক্ষরের হতে হবে",
+      "termsRequired": "আপনাকে অবশ্যই শর্তাবলী গ্রহণ করতে হবে"
+    },
+    "toast": {
+      "registerSuccess": "সফলভাবে নিবন্ধিত হয়েছেন!"
+    }
+  },
+  "updateAiModelPage": {
+    "loading": {
+      "loadingData": "মডেল ডেটা লোড হচ্ছে...",
+      "loadingError": "মডেল লোড করতে ত্রুটি। এটি হয়তো বিদ্যমান নেই।",
+      "notFound": "মডেল পাওয়া যায়নি। এটি হয়তো মুছে ফেলা হয়েছে।"
+    },
+    "form": {
+      "mainTitle": "মডেল তথ্য আপডেট করুন",
+      "modelNameLabel": "মডেলের নাম",
+      "selectLlmLabel": "এলএলএম নির্বাচন করুন",
+      "manageFilesTitle": "বিদ্যমান ফাইলগুলি পরিচালনা করুন",
+      "undoDeleteTooltip": "মুছে ফেলা বাতিল করুন",
+      "addFilesTitle": "আরও ফাইল যোগ করুন",
+      "dragAndDrop": "এখানে ফাইল টেনে আনুন, অথবা ফাইল নির্বাচন করতে ক্লিক করুন",
+      "newFilesTitle": "নতুন ফাইল যোগ করা হবে"
+    },
+    "sidebar": {
+      "title": "পরিবর্তন সংরক্ষণ করুন",
+      "updateButton": "এআই মডেল আপডেট করুন",
+      "updatingButton": "আপডেট করা হচ্ছে...",
+      "cancelButton": "বাতিল"
+    },
+    "validation": {
+      "nameRequired": "মডেলের নাম প্রয়োজন"
+    },
+    "toast": {
+      "noChanges": "কোনো পরিবর্তন সনাক্ত করা হয়নি। অনুগ্রহ করে নাম সম্পাদনা করুন, নতুন ফাইল যোগ করুন, বা বিদ্যমান ফাইলগুলি সরান।",
+      "updateSuccess": "মডেল সফলভাবে আপডেট হয়েছে!",
+      "updateError": "আপডেট ব্যর্থ হয়েছে: {{error}}"
+    }
+  },
+  "profileForm": {
+    "title": "ব্যক্তিগত তথ্য",
+    "subtitle": "এই তথ্য সর্বজনীনভাবে প্রদর্শিত হবে তাই আপনি যা শেয়ার করছেন সে সম্পর্কে সতর্ক থাকুন।",
+    "fullNameLabel": "পুরো নাম",
+    "emailLabel": "ইমেল ঠিকানা",
+    "phoneLabel": "ফোন নম্বর",
+    "saveButton": "পরিবর্তন সংরক্ষণ করুন",
+    "savingButton": "সংরক্ষণ করা হচ্ছে..."
+  },
+  "agentInbox": {
+    "title": "আমার ইনবক্স",
+    "status": {
+      "online": "অনলাইন",
+      "offline": "অফলাইন"
+    },
+    "filters": {
+      "open": "খোলা",
+      "closed": "বন্ধ"
+    },
+    "searchPlaceholder": "গ্রাহকের নাম দিয়ে খুঁজুন...",
+    "noConversations": "আপনার কোনো {{filter}} কথোপকথন নেই।",
+    "pagination": {
+      "previous": "পূর্ববর্তী",
+      "next": "পরবর্তী",
+      "page": "পৃষ্ঠা {{currentPage}} এর {{totalPages}}"
+    },
+    "empty": {
+      "title": "একটি কথোপকথন নির্বাচন করুন",
+      "subtitle": "শুরু করতে আপনার ইনবক্স থেকে একটি কথোপকথন বেছে নিন।"
+    },
+    "transfer": {
+      "title": "কথোপকথন স্থানান্তর করুন",
+      "toChannel": "{{channelName}} চ্যানেলে",
+      "toAgent": "{{agentName}} এর কাছে",
+      "noOptions": "কোনো স্থানান্তর বিকল্প উপলব্ধ নেই",
+      "closeConversation": "কথোপকথন বন্ধ করুন"
+    },
+    "loadMoreMessages": "আরও বার্তা লোড করুন",
+    "messagePlaceholder": "আপনার বার্তা টাইপ করুন...",
+    "aCustomer": "একজন গ্রাহক",
+    "dates": {
+      "today": "আজ",
+      "yesterday": "গতকাল"
+    },
+    "toast": {
+      "newChatAssigned": "{{customerName}} থেকে নতুন চ্যাট নিযুক্ত হয়েছে",
+      "messageFailed": "বার্তা পাঠাতে ব্যর্থ হয়েছে।",
+      "transferNoId": "স্থানান্তর করা যাবে না: কথোপকথন আইডি পাওয়া যায়নি।",
+      "transferring": "কথোপকথন স্থানান্তর করা হচ্ছে...",
+      "transferSuccess": "কথোপকথন স্থানান্তরিত হয়েছে!",
+      "transferFailed": "স্থানান্তর ব্যর্থ হয়েছে।",
+      "closeSuccess": "কথোপকথন বন্ধ হয়েছে!",
+      "closeFailed": "কথোপকথন বন্ধ করতে ব্যর্থ হয়েছে।"
+    }
+  },
+  "trainModelPage": {
+    "step1": {
+      "title": "মডেল তথ্য",
+      "modelNameLabel": "মডেলের নাম",
+      "selectLlmLabel": "এলএলএম নির্বাচন করুন",
+      "cancelButton": "বাতিল",
+      "nextButton": "পরবর্তী"
+    },
+    "step2": {
+      "title": "ডেটা উৎস",
+      "fileTab": "ফাইল",
+      "dragAndDrop": "এখানে ফাইল টেনে আনুন, অথবা ফাইল নির্বাচন করতে ক্লিক করুন",
+      "supportedFiles": "সমর্থিত ফাইলের ধরন: .pdf, .docx, .txt, .xlsx"
+    },
+    "sidebar": {
+      "title": "উৎস",
+      "totalChars": "মোট সনাক্ত করা অক্ষর",
+      "createButton": "এআই মডেল তৈরি করুন",
+      "trainingButton": "প্রশিক্ষণ চলছে..."
+    },
+    "validation": {
+      "nameRequired": "মডেলের নাম প্রয়োজন",
+      "modelTypeRequired": "মডেলের ধরন প্রয়োজন"
+    },
+    "toast": {
+      "noFilesError": "অনুগ্রহ করে কমপক্ষে একটি ফাইল আপলোড করুন।",
+      "trainSuccess": "মডেল সফলভাবে প্রশিক্ষিত হয়েছে!",
+      "trainError": "❌ {{error}}"
+    }
+  },
+  "deleteConfirmModal": {
+    "title": "আপনি কি পুরোপুরি নিশ্চিত?",
+    "description": "এটি \"{{modelName}}\" মডেল এবং এর সাথে সম্পর্কিত সমস্ত ডেটা স্থায়ীভাবে মুছে ফেলবে। এই কাজটি আর ফেরানো যাবে না।",
+    "cancelButton": "বাতিল",
+    "deleteButton": "মুছে ফেলুন",
+    "deletingButton": "মুছে ফেলা হচ্ছে..."
+  },
+  "businessForm": {
+    "title": "ব্যবসার তথ্য",
+    "subtitle": "আপনার কোম্পানির নাম এবং লোগো আপডেট করুন।",
+    "logoLabel": "ব্যবসার লোগো",
+    "uploadingButton": "আপলোড করা হচ্ছে...",
+    "changeLogoButton": "লোগো পরিবর্তন করুন",
+    "nameLabel": "ব্যবসার নাম",
+    "saveButton": "পরিবর্তন সংরক্ষণ করুন",
+    "savingButton": "সংরক্ষণ করা হচ্ছে..."
+  },
+  "securityForm": {
+    "title": "পাসওয়ার্ড পরিবর্তন করুন",
+    "subtitle": "আপনার অ্যাকাউন্টে লগইন করার জন্য ব্যবহৃত পাসওয়ার্ড আপডেট করুন।",
+    "currentPasswordLabel": "বর্তমান পাসওয়ার্ড",
+    "newPasswordLabel": "নতুন পাসওয়ার্ড",
+    "confirmPasswordLabel": "নতুন পাসওয়ার্ড নিশ্চিত করুন",
+    "updateButton": "পাসওয়ার্ড আপডেট করুন",
+    "updatingButton": "আপডেট করা হচ্ছে...",
+    "toast": {
+      "passwordMismatch": "নতুন পাসওয়ার্ড মিলছে না।",
+      "updateSuccess": "পাসওয়ার্ড সফলভাবে আপডেট হয়েছে!"
+    }
+  }
+}

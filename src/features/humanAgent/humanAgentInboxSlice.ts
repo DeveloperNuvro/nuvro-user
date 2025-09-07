@@ -65,23 +65,23 @@ const agentInboxSlice = createSlice({
         removeConversation: (state, action: PayloadAction<{ conversationId: string }>) => {
             state.conversations = state.conversations.filter(c => c.id !== action.payload.conversationId);
         },
-        // --- THIS IS THE CRITICAL ADDITION ---
+  
         updateConversationPreview: (state, action: PayloadAction<{ conversationId: string; preview: string; latestMessageTimestamp: string }>) => {
             const { conversationId, preview, latestMessageTimestamp } = action.payload;
             const conversationIndex = state.conversations.findIndex(c => c.id === conversationId);
 
             if (conversationIndex !== -1) {
-                // Found the conversation, update it and move to the top
+            
                 const conversationToUpdate = {
                     ...state.conversations[conversationIndex],
                     preview,
                     latestMessageTimestamp,
                 };
                 
-                // Remove the old version
+          
                 const filteredConversations = state.conversations.filter(c => c.id !== conversationId);
                 
-                // Add the updated version to the beginning of the list
+                
                 state.conversations = [conversationToUpdate, ...filteredConversations];
             }
         },

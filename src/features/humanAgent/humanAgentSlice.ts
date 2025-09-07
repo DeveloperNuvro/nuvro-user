@@ -76,10 +76,11 @@ const humanAgentSlice = createSlice({
   reducers: {
     updateAgentStatus: (state, action: PayloadAction<{ userId: string; status: 'online' | 'offline' }>) => {
       const { userId, status } = action.payload;
-      const agentIndex = state.agents.findIndex(agent => agent._id === userId);
-      if (agentIndex !== -1) {
-        state.agents[agentIndex].status = status;
-      }
+       state.agents = state.agents.map(agent => 
+        agent._id === userId 
+          ? { ...agent, status: status } 
+          : agent 
+      );
     }
   },
   extraReducers: (builder) => {

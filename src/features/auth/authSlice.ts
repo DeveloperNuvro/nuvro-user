@@ -8,19 +8,35 @@ export interface User {
   email: string;
   role: string;
   businessId?: string;
+  language?: string;
 }
+
+
 
 export interface AuthState {
   user: User | null;
   accessToken: string | null;
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
-  bootstrapped: boolean; // New property to track bootstrap status
+  bootstrapped: boolean;
 }
 
 
+export const updateUserLanguage = createAsyncThunk<
+  User, 
+  { language: string } 
+>('auth/updateUserLanguage', async (payload, thunkAPI) => {
+  try {
+   
+    const response = await api.post('/api/v1/users/change-language', payload);
+    
+    return response.data.data;
+  } catch (error: any) {
+    return thunkAPI.rejectWithValue(error.response?.data?.message || 'Failed to update language');
+  }
+});
 
-// 🔐 REGISTER
+
 export const registerUser = createAsyncThunk<
   { user: User; accessToken: string },
   { name: string; email: string; password: string; role?: string }
@@ -34,7 +50,7 @@ export const registerUser = createAsyncThunk<
   }
 });
 
-// 🔐 LOGIN
+
 export const loginUser = createAsyncThunk<
   { user: User; accessToken: string },
   { email: string; password: string }
@@ -48,7 +64,7 @@ export const loginUser = createAsyncThunk<
   }
 });
 
-// 🔄 REFRESH TOKEN 
+
 export const refreshAccessToken = createAsyncThunk<
   { accessToken: string }
 >('auth/refreshAccessToken', async (_, thunkAPI) => {
@@ -82,7 +98,7 @@ const initialState: AuthState = {
   bootstrapped: false,
 };
 
-// ✅ SLICE
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -104,7 +120,7 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Register
+
       .addCase(registerUser.pending, (state) => {
         state.status = 'loading';
         state.error = null;
@@ -127,7 +143,6 @@ const authSlice = createSlice({
         state.accessToken = action.payload.data.accessToken;
       })
 
-      // Refresh
       .addCase(refreshAccessToken.pending, (state) => {
         state.status = 'loading';
       })
@@ -146,6 +161,24 @@ const authSlice = createSlice({
         state.bootstrapped = true;
       })
       
+     
+      .addCase(updateUserLanguage.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      }
+      )
+      .addCase(updateUserLanguage.fulfilled, (state, action: any) => {
+        state.status = 'succeeded';
+        if (state.user) {
+          state.user.language = action.payload.language;
+        }
+      })
+      .addCase(updateUserLanguage.rejected, (state, action: any) => {
+        state.status = 'failed';
+        state.error = action.payload || 'Failed to update language';
+      }
+      )
+
       // Error handler
       .addMatcher(
         (action): action is { type: string; error: { message: string } } =>

@@ -8,17 +8,16 @@ const AuthLayoutGuard = () => {
   
     const isAuthenticated = user.role === 'agent' || user.role === 'business' && accessToken && status === 'succeeded';
 
-  // Don't make a decision until the session has been checked
   if (!bootstrapped) {
     return <div>Loading session...</div>;
   }
   
-  // If the user is authenticated, render the nested routes (e.g., DashboardLayout).
+
   if (isAuthenticated) {
     return <Outlet />;
   }
 
-  // If the user is not authenticated, redirect them to the sign-in page.
+  
   return <Navigate to="/signin" state={{ from: location }} replace />;
 };
 

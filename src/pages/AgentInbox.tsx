@@ -128,7 +128,7 @@ export default function AgentInbox() {
   useEffect(() => {
     if (!socket) return;
     const handleNewMessage = (data: any) => {
-      dispatch(addRealtimeMessage({ customerId: data.customerId, message: { text: data.message, sentBy: data.sender, time: new Date().toISOString() } }));
+      dispatch(addRealtimeMessage({ customerId: data.customerId, message: { _id: data.messageId, text: data.message, sentBy: data.sender, time: new Date().toISOString() } }));
       if (data.conversationId) {
         dispatch(updateConversationPreview({
           conversationId: data.conversationId,
@@ -255,6 +255,7 @@ export default function AgentInbox() {
   }
 
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== agentId) : [], [agents, agentId]);
+  
   const groupedMessages = useMemo(() => {
     const allMessages = messagesData?.list || [];
     return allMessages.reduce((acc: any, msg: any) => {

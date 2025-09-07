@@ -8,7 +8,7 @@ const OnboardingGuard = ({ children }: any) => {
 
   console.log(user)
   if (user?.onboardingCompleted) {
-    if(user?.role === 'agent') return <Navigate to="/main-menu/agent/inbox" replace />
+    if(user?.role === 'agent') return <Navigate to="/main-menu/Customers" replace />
     else return <Navigate to="/main-menu/overview" replace />
   }
 
