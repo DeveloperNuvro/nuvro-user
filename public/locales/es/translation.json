@@ -1,635 +1,720 @@
 {
-    "mainmenu": "Menú Principal",
-    "business": "Negocio",
-    "account": "Cuenta",
-    "home": "Inicio",
-    "inbox": "Bandeja de Entrada",
-    "ticket": "boleto",
-    "customers": "Clientes",
-    "settings": "Configuración",
-    "logout": "Cerrar Sesión",
-    "currentSubscription": "Suscripción Actual",
-    "subscriptionDetails": "Estás en el Plan {{plan}}, Finaliza: {{endDate}}",
-    "toastLogoutSuccess": "Sesión cerrada exitosamente",
-    "toastLogoutFailed": "Error al cerrar sesión",
-    "loadingFailed": "Error al Cargar el Panel",
-    "noData": "No hay datos de resumen disponibles.",
-    "dashboardTitle": "Panel",
-    "totalCustomers": "Clientes Totales",
-    "totalCustomersDesc": "Todas las interacciones únicas de clientes",
-    "totalConversations": "Conversaciones Totales",
-    "totalConversationsDesc": "Total de mensajes intercambiados",
-    "supportTickets": "Tickets de Soporte",
-    "supportTicketsDesc": "Tickets creados por el agente de IA",
-    "activeAiAgents": "Agentes de IA Activos",
-    "activeAiAgentsDesc": "Tu fuerza de trabajo de IA desplegada",
-    "trainedAiModels": "Modelos de IA Entrenados",
-    "trainedAiModelsDesc": "Bases de conocimiento personalizadas",
-    "performanceAnalyticsTitle": "Análisis de Rendimiento",
-    "avgScore7Day": "Puntuación Promedio (7 Días)",
-    "avgScore7DayDesc": "Rendimiento del agente esta semana",
-    "avgScore30Day": "Puntuación Promedio (30 Días)",
-    "avgScore30DayDesc": "Rendimiento del agente este mes",
-    "conversationsAnalyzed": "Conversaciones Analizadas",
-    "conversationsAnalyzedDesc": "Total en los últimos 30 días",
-    "dailyAccuracyChartTitle": "Puntuación de Precisión Diaria (Últimos 30 Días)",
-    "recentCustomersTitle": "Clientes Recientes",
-    "tableHeaderCustomer": "Cliente",
-    "tableHeaderEmail": "Correo Electrónico",
-    "tableHeaderSignedUp": "Registrado",
-    "recentTicketsTitle": "Tickets de Soporte Recientes",
-    "createdTimeAgo": "Creado {{time}}",
-    "status_open": "Abierto",
-    "status_closed": "Cerrado",
-    "status_in_progress": "En Progreso",
-    "chatInbox": {
-        "title": "Bandeja de Entrada",
-        "filterOpen": "Abiertas",
-        "filterClosed": "Cerradas",
-        "searchPlaceholder": "Buscar por nombre de cliente...",
-        "typing": "Escribiendo...",
-        "tooltipAssignedTo": "Asignado a {{agentName}}",
-        "anAgent": "un agente",
-        "tooltipTicketCreated": "Ticket creado",
-        "tooltipHandledByAI": "Gestionado por IA",
-        "noConversationsFound": "No se encontraron conversaciones {{filter}}.",
-        "filterOpenLabel": "abiertas",
-        "filterClosedLabel": "cerradas",
-        "previousPage": "Anterior",
-        "nextPage": "Siguiente",
-        "pagination": "Página {{currentPage}} de {{totalPages}}",
-        "mainEmptyTitle": "Seleccione una conversación",
-        "mainEmptySubtitle": "Elija de la lista de la izquierda para ver los mensajes.",
-        "transferTitle": "Transferir Conversación",
-        "transferToChannel": "Al canal {{channelName}}",
-        "noChannelsAvailable": "No hay canales disponibles",
-        "transferToAgent": "A {{agentName}}",
-        "noAgentsOnline": "No hay otros agentes en línea",
-        "closeConversationTooltip": "Cerrar Conversación",
-        "loadMoreMessages": "Cargar más mensajes",
-        "dateToday": "Hoy",
-        "dateYesterday": "Ayer",
-        "messagePlaceholder": "Escribe tu mensaje...",
-        "unknownCustomer": "Desconocido",
-        "aCustomer": "Un cliente",
-        "toastNewChat": "Nuevo chat asignado de {{customerName}}",
-        "toastMessageFailed": "El mensaje no se pudo enviar.",
-        "toastTransferNoId": "No se puede transferir: No se encontró el ID de la conversación.",
-        "toastTransferLoading": "Transfiriendo conversación...",
-        "toastTransferSuccess": "¡Conversación transferida!",
-        "toastTransferFailed": "La transferencia falló.",
-        "toastCloseSuccess": "¡Conversación cerrada!",
-        "toastCloseFailed": "No se pudo cerrar la conversación."
+    "onboardingPage": {
+    "titles": {
+      "introduce": "Preséntate y Presenta tu Negocio",
+      "interactions": "Comprendiendo las Interacciones con tus Clientes",
+      "goals": "Objetivos de tu Chatbot de IA"
     },
-    "channelPage": {
-        "title": "Canales",
-        "addChannelButton": "Añadir Canal",
-        "loadingError": "Error: {{error}}",
-        "noChannelsTitle": "No se encontraron Canales",
-        "noChannelsSubtitle": "Comienza creando tu primer canal (p. ej., Ventas, Soporte).",
-        "createFirstChannelButton": "Crear Primer Canal",
-        "createModalTitle": "Crear Nuevo Canal",
-        "createModalButton": "Crear Canal",
-        "editModalTitle": "Editar Canal",
-        "editModalButton": "Guardar Cambios",
-        "cardEdit": "Editar",
-        "cardDelete": "Eliminar",
-        "cardMembersTitle": "Miembros ({{count}})",
-        "cardNoMembers": "No hay miembros asignados",
-        "cardAndMore": "...y {{count}} más",
-        "formChannelName": "Nombre del Canal",
-        "formChannelPlaceholder": "p. ej., Ventas, Soporte",
-        "formAssignAgents": "Asignar Agentes",
-        "formNoAgents": "Aún no se han creado agentes. Puedes crear agentes y asignarlos a este canal más tarde.",
-        "cancelButton": "Cancelar",
-        "deleteConfirmTitle": "¿Estás seguro?",
-        "deleteConfirmDescription": "Esta acción no se puede deshacer. Esto eliminará permanentemente el canal {{itemName}}.",
-        "deleteButton": "Eliminar",
-        "toastCreating": "Creando canal...",
-        "toastCreateSuccess": "¡Canal creado exitosamente!",
-        "toastCreateError": "Error al crear el canal.",
-        "toastUpdating": "Actualizando canal...",
-        "toastUpdateSuccess": "¡Canal actualizado exitosamente!",
-        "toastUpdateError": "Error al actualizar el canal.",
-        "toastDeleting": "Eliminando canal...",
-        "toastDeleteSuccess": "¡Canal eliminado exitosamente!",
-        "toastDeleteError": "Error al eliminar el canal."
+    "subtitles": {
+      "step1": "¡Estamos emocionados de comenzar! Por favor, cuéntanos un poco sobre ti.",
+      "step2": "Escribe con cuidado el dominio de tu negocio, ya que se usará para conectar tu chatbot de IA a tu sitio web.",
+      "step3": "Esto nos ayuda a adaptar nuestros servicios a tus necesidades.",
+      "step4_5_6": "Esto nos ayuda a entender mejor tu negocio.",
+      "step7": "Esto nos ayuda a entender tu configuración actual.",
+      "step8": "Esto nos ayuda a entender a tu audiencia.",
+      "step9": "Esto nos ayuda a entender tus interacciones con los clientes.",
+      "step10": "Esto nos ayuda a adaptar nuestros servicios a tus objetivos."
     },
-    "humanAgentPage": {
-        "title": "Agentes Humanos",
-        "addAgentButton": "Añadir Agente",
-        "loadingError": "Error: {{error}}",
-        "noAgentsTitle": "No se encontraron Agentes",
-        "noAgentsSubtitle": "Añade tu primer agente humano a un canal para gestionar chats.",
-        "createFirstAgentButton": "Crear Primer Agente",
-        "createModalTitle": "Crear Nuevo Agente",
-        "createModalButton": "Crear Agente",
-        "editModalTitle": "Editar Agente",
-        "editModalButton": "Guardar Cambios",
-        "cardEdit": "Editar",
-        "cardDelete": "Eliminar",
-        "formName": "Nombre",
-        "formEmail": "Correo Electrónico",
-        "formPassword": "Contraseña",
-        "formAssignChannels": "Asignar a Canales",
-        "formNoChannels": "Aún no se han creado canales. Por favor, crea un canal primero para asignar un agente.",
-        "cancelButton": "Cancelar",
-        "deleteConfirmTitle": "¿Estás seguro?",
-        "deleteConfirmDescription": "Esta acción eliminará permanentemente al agente {{itemName}}.",
-        "deleteButton": "Eliminar",
-        "toastCreating": "Creando agente...",
-        "toastCreateSuccess": "¡Agente creado exitosamente!",
-        "toastCreateError": "Error al crear el agente.",
-        "toastUpdating": "Actualizando agente...",
-        "toastUpdateSuccess": "¡Agente actualizado exitosamente!",
-        "toastUpdateError": "Error al actualizar el agente.",
-        "toastDeleting": "Eliminando agente...",
-        "toastDeleteSuccess": "¡Agente eliminado exitosamente!",
-        "toastDeleteError": "Error al eliminar el agente."
+    "steps": {
+      "step1": {
+        "label": "¿Cuál es el nombre de tu negocio?",
+        "placeholder": "El Nombre de tu Negocio"
+      },
+      "step2": {
+        "label": "¿Cuál es el nombre de dominio de tu negocio?",
+        "placeholder": "El Dominio de tu Negocio (ej., ejemplo.com)"
+      },
+      "step3": { "label": "¿Qué industria describe mejor a tu negocio?" },
+      "step4": { "label": "¿Cómo opera tu negocio?" },
+      "step5": { "label": "¿En qué plataforma funciona tu sitio web?" },
+      "step6": { "label": "¿Cuál es el tamaño de tu equipo de soporte al cliente?" },
+      "step7": {
+        "label": "¿Cuáles son tus herramientas o canales actuales para la comunicación con clientes?",
+        "select_all": "(Selecciona todas las que apliquen)"
+      },
+      "step8": { "label": "¿Cuál es el tráfico mensual de tu sitio web?" },
+      "step9": { "label": "¿Cuántas conversaciones tienes con clientes cada mes?" },
+      "step10": {
+        "label": "¿Cuáles son tus principales objetivos al usar Nuvro?",
+        "select_all": "(Selecciona todas las que apliquen)"
+      },
+      "step11": {
+        "title": "🎉 ¡Todo Listo!",
+        "subtitle": "Tu soporte impulsado por IA está listo para llevar tu negocio al siguiente nivel."
+      }
     },
-    "ticketPage": {
-        "filters": {
-            "all": "Todos los Tickets",
-            "open": "Abiertos",
-            "unassigned": "Sin Asignar",
-            "solved": "Resueltos"
-        },
-        "searchPlaceholder": "Buscar tickets...",
-        "addTicketButton": "Añadir Ticket",
-        "editButton": "Editar",
-        "deleteButton": "Eliminar",
-        "viewClientDetails": "Ver detalles de {{name}}",
-        "notAvailable": "N/D",
-        "table": {
-            "no": "N.º",
-            "ticketId": "ID de Ticket",
-            "priority": "Prioridad",
-            "subject": "Asunto",
-            "type": "Tipo",
-            "client": "Cliente",
-            "assignedAgent": "Agente Asignado",
-            "created": "Creado",
-            "lastUpdated": "Última Actualización",
-            "status": "Estado",
-            "loading": "Cargando tickets...",
-            "error": "Error: {{error}}",
-            "noTicketsFound": "No se encontraron tickets."
-        },
-        "pagination": {
-            "showing": "Mostrando {{start}} - {{end}} de {{total}} tickets",
-            "noTickets": "Sin tickets",
-            "previous": "Anterior",
-            "next": "Siguiente",
-            "page": "Página {{currentPage}} de {{totalPages}}"
-        },
-        "modal": {
-            "createTitle": "Crear Nuevo Ticket",
-            "editTitle": "Editar Ticket (#{{id}})",
-            "deleteTitle": "Confirmar Eliminación",
-            "deleteDescription": "¿Estás seguro de que quieres eliminar el ticket \"{{subject}}\" (ID: ...{{id}})?"
-        },
-        "form": {
-            "businessId": "ID de Negocio",
-            "customerId": "ID de Cliente",
-            "customerIdPlaceholder": "ID de Cliente (ej. 660f7b1...)",
-            "subject": "Asunto",
-            "subjectPlaceholder": "Asunto (mín. 5 caracteres)",
-            "description": "Descripción",
-            "descriptionPlaceholder": "Descripción (mín. 10 caracteres)",
-            "priority": "Prioridad",
-            "selectPriority": "Seleccionar Prioridad",
-            "type": "Tipo",
-            "selectType": "Seleccionar Tipo",
-            "status": "Estado",
-            "selectStatus": "Seleccionar Estado",
-            "agentId": "ID de Agente",
-            "agentIdPlaceholder": "ID de Agente Asignado (opcional)",
-            "comment": "Comentario",
-            "commentPlaceholder": "Añadir un comentario (opcional)",
-            "cancelButton": "Cancelar",
-            "processingButton": "Procesando...",
-            "createButton": "Crear Ticket",
-            "saveButton": "Guardar Cambios",
-            "deleteButton": "Eliminar Ticket"
-        },
-        "clientModal": {
-            "title": "Detalles del Cliente",
-            "description": "Información completa del cliente: {{name}}",
-            "clientId": "ID de Cliente",
-            "name": "Nombre",
-            "email": "Correo",
-            "phone": "Teléfono",
-            "noDetails": "No hay detalles del cliente para mostrar.",
-            "closeButton": "Cerrar"
-        },
-        "validation": {
-            "subjectLength": "El asunto debe tener al menos 5 caracteres.",
-            "descriptionLength": "La descripción debe tener al menos 10 caracteres.",
-            "customerIdRequired": "Se requiere el ID del cliente para nuevos tickets."
-        },
-        "toast": {
-            "deleting": "Eliminando ticket...",
-            "deleteSuccess": "¡Ticket eliminado exitosamente!",
-            "deleteError": "Error al eliminar el ticket.",
-            "creating": "Creando ticket...",
-            "createSuccess": "¡Ticket creado exitosamente!",
-            "createError": "Error al crear el ticket.",
-            "updating": "Actualizando ticket...",
-            "updateSuccess": "¡Ticket actualizado exitosamente!",
-            "updateError": "Error al actualizar el ticket."
-        },
-        "priorities": {
-            "high": "Alta",
-            "medium": "Media",
-            "low": "Baja",
-            "urgent": "Urgente"
-        },
-        "statuses": {
-            "open": "Abierto",
-            "in_progress": "En Progreso",
-            "on_hold": "En Espera",
-            "closed": "Cerrado"
-        },
-        "types": {
-            "billing": "Facturación",
-            "technical": "Técnico",
-            "general": "General",
-            "feedback": "Comentarios",
-            "account": "Cuenta"
-        }
+    "buttons": {
+      "loading": "Cargando...",
+      "launch": "Lanzar Nuvro",
+      "back": "← Atrás",
+      "complete": "Completar",
+      "next": "Siguiente →"
     },
-    "aiModelListPage": {
-        "title": "Modelos de IA",
-        "createNewButton": "+ Crear Nuevo",
-        "loading": "Cargando modelos...",
-        "loadingError": "Error: {{error}}",
-        "noModelsTitle": "No se encontraron Modelos de IA",
-        "noModelsSubtitle": "Haz clic en \"+ Crear Nuevo\" para comenzar.",
-        "modelTypeLabel": "Tipo",
-        "trainedFiles": "{{count}} Archivos Entrenados",
-        "statusLabel": "Estado",
-        "editButton": "Editar Modelo",
-        "toastDeleteSuccess": "Modelo \"{{modelName}}\" eliminado exitosamente.",
-        "toastDeleteError": "❌ {{error}}"
+    "footer": {
+      "progressText": "¡Tu respuesta nos ayudará a crear la mejor experiencia de incorporación para ti!"
     },
-    "aiAgentPage": {
-        "title": "Agentes de IA",
-        "modelLabel": "Modelo",
-        "unknown": "Desconocido",
-        "modal": {
-            "viewingTitle": "Viendo",
-            "editingTitle": "Editando",
-            "deleteTitle": "Confirmar Eliminación",
-            "agentName": "Nombre del Agente",
-            "personality": "Personalidad",
-            "aiModel": "Modelo de IA",
-            "instructions": "Instrucciones",
-            "noInstructions": "No se proporcionaron instrucciones especiales.",
-            "deleteDescription": "¿Estás seguro de que quieres eliminar permanentemente el agente llamado \"{{agentName}}\"? Esta acción no se puede deshacer."
-        },
-        "form": {
-            "name": "Nombre",
-            "aiModel": "Modelo de IA",
-            "selectModel": "Selecciona un modelo",
-            "tone": "Tono",
-            "selectTone": "Selecciona un tono",
-            "instruction": "Instrucción",
-            "instructionPlaceholder": "p. ej., Sé conciso y servicial...",
-            "cancelButton": "Cancelar",
-            "saveButton": "Guardar Cambios",
-            "deleteButton": "Confirmar Eliminación"
-        },
-        "tones": {
-            "friendly": "Amigable",
-            "formal": "Formal",
-            "neutral": "Neutral"
-        },
-        "toast": {
-            "updating": "Guardando cambios...",
-            "updateSuccess": "¡Agente actualizado exitosamente!",
-            "updateError": "Error al actualizar el agente.",
-            "deleting": "Eliminando agente...",
-            "deleteSuccess": "¡Agente eliminado exitosamente!",
-            "deleteError": "Error al eliminar el agente."
-        }
+    "toasts": {
+      "success": "¡Incorporación completada! Redirigiendo...",
+      "error": "Algo salió mal"
     },
-    "analysisPage": {
-        "loading": {
-            "title": "Generando Perspectivas de Rendimiento de IA...",
-            "subtitle": "Esto puede tardar un momento mientras nuestro agente analista revisa las conversaciones recientes."
-        },
-        "error": "Error: {{error}}",
-        "empty": {
-            "title": "No Hay Informes de Análisis Disponibles",
-            "subtitle": "Los informes se generan automáticamente cada día en función de las conversaciones de su chatbot. Una vez que haya suficientes datos, su primer informe aparecerá aquí."
-        },
-        "header": {
-            "title": "Panel de Rendimiento",
-            "subtitle": "Análisis de IA para"
-        },
-        "stats": {
-            "overallScore": "Puntuación General",
-            "overallScoreDesc": "Puntuación de rendimiento del agente",
-            "conversationsAnalyzed": "Conversaciones Analizadas",
-            "conversationsAnalyzedDesc": "Chats de clientes únicos de ayer",
-            "agentName": "Nombre del Agente",
-            "agentNameDesc": "El agente de IA que se está analizando",
-            "customersInvolved": "Clientes Involucrados",
-            "customersInvolvedDesc": "Clientes únicos en el análisis"
-        },
-        "summary": {
-            "workingWell": "Qué Funciona Bien",
-            "improvementAreas": "Áreas de Mejora",
-            "knowledgeSuggestions": "Sugerencias para la Base de Conocimiento"
-        },
-        "details": {
-            "title": "Análisis Detallado de Conversaciones",
-            "subtitle": "Puntuaciones y comentarios específicos para cada conversación.",
-            "scoresByConversation": "Puntuaciones por Conversación",
-            "feedbackBreakdown": "Desglose de Comentarios",
-            "conversationWith": "Conversación con {{name}}",
-            "score": "Puntuación: {{score}}/10",
-            "reasoning": "Razonamiento de la Puntuación",
-            "suggestions": "Sugerencias de Mejora"
-        }
+    "options": {
+      "businessType": { "b2b": "B2B", "b2c": "B2C", "ecommerce": "Tienda de e-Commerce", "other": "Otro" },
+      "industry": { "ecommerce": "Comercio Electrónico", "retail": "Venta al por menor", "education": "Educación", "healthcare": "Salud", "finance": "Finanzas", "travel": "Viajes y Hotelería", "realEstate": "Bienes Raíces", "food": "Alimentos y Bebidas", "technology": "Tecnología", "entertainment": "Entretenimiento", "other": "Otro" },
+      "platform": { "custom": "Sitio Web Personalizado", "webflow": "Webflow", "wordpress": "WordPress", "shopify": "Shopify", "wooCommerce": "WooCommerce", "bigCommerce": "BigCommerce", "other": "Otro" },
+      "supportSize": { "justMe": "Solo yo", "size2_5": "2-5", "size6_9": "6-9", "size10plus": "10 o más" },
+      "supportChannels": { "gettingStarted": "Apenas comenzando", "email": "Correo Electrónico", "messenger": "Messenger", "zoho": "Zoho Desk", "zendesk": "ZenDesk", "livechat": "LiveChat", "tawkto": "Tawk.to", "intercom": "Intercom", "other": "Otro" },
+      "websiteTraffic": { "upTo1k": "Hasta 1000", "size1k_5k": "1000-5000", "size5k_10k": "5000-10000", "over10k": "Más de 10000", "dontKnow": "No lo sé" },
+      "monthlyConversations": { "upTo200": "Hasta 200", "size200_1k": "200-1000", "size1k_5k": "1000-5000", "size5k_10k": "5000-10000", "over10k": "Más de 10000", "dontKnow": "No lo sé" },
+      "goals": { "support247": "Ofrecer Soporte 24/7", "boostSales": "Impulsar la Generación de Leads y Ventas", "automateTickets": "Automatizar Sistema de Tickets", "reduceCosts": "Reducir Costos Operativos", "streamlineProcesses": "Optimizar Procesos Internos" }
+    }
+  },
+  "sidebar": {
+    "labels": {
+      "overview": "Resumen",
+      "inbox": "Bandeja de entrada",
+      "channel": "Canal",
+      "humanagent": "Agente Humano",
+      "ticket": "boleto",
+      "aimodel": "Modelo de IA",
+      "aiagent": "Agente de IA",
+      "customers": "Clientes",
+      "analytics": "Analíticas",
+      "planpayment": "Plan y Pagos",
+      "settings": "Configuración",
+      "logout": "Cerrar Sesión"
     },
-    "customersPage": {
-        "filters": {
-            "all": "Todos los Clientes"
-        },
-        "searchPlaceholder": "Buscar...",
-        "table": {
-            "loading": "Cargando clientes...",
-            "error": "Error: {{error}}",
-            "defaultError": "No se pudieron cargar los clientes.",
-            "noCustomersFound": "No se encontraron clientes.",
-            "customerId": "ID de Cliente",
-            "customerName": "Nombre del Cliente",
-            "email": "Correo Electrónico",
-            "phone": "Número de Teléfono",
-            "dateJoined": "Fecha de Ingreso"
-        },
-        "pagination": {
-            "previous": "Anterior",
-            "next": "Siguiente",
-            "page": "Página {{currentPage}} de {{totalPages}}"
-        }
+    "sections": {
+      "mainmenu": "Menú Principal",
+      "business": "Negocio",
+      "account": "Cuenta"
+    }
+  },
+  "home": "Inicio",
+  "currentSubscription": "Suscripción Actual",
+  "subscriptionDetails": "Estás en el Plan {{plan}}, Finaliza: {{endDate}}",
+  "toastLogoutSuccess": "Sesión cerrada exitosamente",
+  "toastLogoutFailed": "Error al cerrar sesión",
+  "loadingFailed": "Error al Cargar el Panel",
+  "noData": "No hay datos de resumen disponibles.",
+  "dashboardTitle": "Panel",
+  "totalCustomers": "Clientes Totales",
+  "totalCustomersDesc": "Todas las interacciones únicas de clientes",
+  "totalConversations": "Conversaciones Totales",
+  "totalConversationsDesc": "Total de mensajes intercambiados",
+  "supportTickets": "Tickets de Soporte",
+  "supportTicketsDesc": "Tickets creados por el agente de IA",
+  "activeAiAgents": "Agentes de IA Activos",
+  "activeAiAgentsDesc": "Tu fuerza de trabajo de IA desplegada",
+  "trainedAiModels": "Modelos de IA Entrenados",
+  "trainedAiModelsDesc": "Bases de conocimiento personalizadas",
+  "performanceAnalyticsTitle": "Análisis de Rendimiento",
+  "avgScore7Day": "Puntuación Promedio (7 Días)",
+  "avgScore7DayDesc": "Rendimiento del agente esta semana",
+  "avgScore30Day": "Puntuación Promedio (30 Días)",
+  "avgScore30DayDesc": "Rendimiento del agente este mes",
+  "conversationsAnalyzed": "Conversaciones Analizadas",
+  "conversationsAnalyzedDesc": "Total en los últimos 30 días",
+  "dailyAccuracyChartTitle": "Puntuación de Precisión Diaria (Últimos 30 Días)",
+  "recentCustomersTitle": "Clientes Recientes",
+  "tableHeaderCustomer": "Cliente",
+  "tableHeaderEmail": "Correo Electrónico",
+  "tableHeaderSignedUp": "Registrado",
+  "recentTicketsTitle": "Tickets de Soporte Recientes",
+  "createdTimeAgo": "Creado {{time}}",
+  "status_open": "Abierto",
+  "status_closed": "Cerrado",
+  "status_in_progress": "En Progreso",
+  "chatInbox": {
+    "title": "Bandeja de Entrada",
+    "filterOpen": "Abiertas",
+    "filterClosed": "Cerradas",
+    "searchPlaceholder": "Buscar por nombre de cliente...",
+    "typing": "Escribiendo...",
+    "tooltipAssignedTo": "Asignado a {{agentName}}",
+    "anAgent": "un agente",
+    "tooltipTicketCreated": "Ticket creado",
+    "tooltipHandledByAI": "Gestionado por IA",
+    "noConversationsFound": "No se encontraron conversaciones {{filter}}.",
+    "filterOpenLabel": "abiertas",
+    "filterClosedLabel": "cerradas",
+    "previousPage": "Anterior",
+    "nextPage": "Siguiente",
+    "pagination": "Página {{currentPage}} de {{totalPages}}",
+    "mainEmptyTitle": "Seleccione una conversación",
+    "mainEmptySubtitle": "Elija de la lista de la izquierda para ver los mensajes.",
+    "transferTitle": "Transferir Conversación",
+    "transferToChannel": "Al canal {{channelName}}",
+    "noChannelsAvailable": "No hay canales disponibles",
+    "transferToAgent": "A {{agentName}}",
+    "noAgentsOnline": "No hay otros agentes en línea",
+    "closeConversationTooltip": "Cerrar Conversación",
+    "loadMoreMessages": "Cargar más mensajes",
+    "dateToday": "Hoy",
+    "dateYesterday": "Ayer",
+    "messagePlaceholder": "Escribe tu mensaje...",
+    "unknownCustomer": "Desconocido",
+    "aCustomer": "Un cliente",
+    "toastNewChat": "Nuevo chat asignado de {{customerName}}",
+    "toastMessageFailed": "El mensaje no se pudo enviar.",
+    "toastTransferNoId": "No se puede transferir: No se encontró el ID de la conversación.",
+    "toastTransferLoading": "Transfiriendo conversación...",
+    "toastTransferSuccess": "¡Conversación transferida!",
+    "toastTransferFailed": "La transferencia falló.",
+    "toastCloseSuccess": "¡Conversación cerrada!",
+    "toastCloseFailed": "No se pudo cerrar la conversación."
+  },
+  "channelPage": {
+    "title": "Canales",
+    "addChannelButton": "Añadir Canal",
+    "loadingError": "Error: {{error}}",
+    "noChannelsTitle": "No se encontraron Canales",
+    "noChannelsSubtitle": "Comienza creando tu primer canal (p. ej., Ventas, Soporte).",
+    "createFirstChannelButton": "Crear Primer Canal",
+    "createModalTitle": "Crear Nuevo Canal",
+    "createModalButton": "Crear Canal",
+    "editModalTitle": "Editar Canal",
+    "editModalButton": "Guardar Cambios",
+    "cardEdit": "Editar",
+    "cardDelete": "Eliminar",
+    "cardMembersTitle": "Miembros ({{count}})",
+    "cardNoMembers": "No hay miembros asignados",
+    "cardAndMore": "...y {{count}} más",
+    "formChannelName": "Nombre del Canal",
+    "formChannelPlaceholder": "p. ej., Ventas, Soporte",
+    "formAssignAgents": "Asignar Agentes",
+    "formNoAgents": "Aún no se han creado agentes. Puedes crear agentes y asignarlos a este canal más tarde.",
+    "cancelButton": "Cancelar",
+    "deleteConfirmTitle": "¿Estás seguro?",
+    "deleteConfirmDescription": "Esta acción no se puede deshacer. Esto eliminará permanentemente el canal {{itemName}}.",
+    "deleteButton": "Eliminar",
+    "toastCreating": "Creando canal...",
+    "toastCreateSuccess": "¡Canal creado exitosamente!",
+    "toastCreateError": "Error al crear el canal.",
+    "toastUpdating": "Actualizando canal...",
+    "toastUpdateSuccess": "¡Canal actualizado exitosamente!",
+    "toastUpdateError": "Error al actualizar el canal.",
+    "toastDeleting": "Eliminando canal...",
+    "toastDeleteSuccess": "¡Canal eliminado exitosamente!",
+    "toastDeleteError": "Error al eliminar el canal."
+  },
+  "humanAgentPage": {
+    "title": "Agentes Humanos",
+    "addAgentButton": "Añadir Agente",
+    "loadingError": "Error: {{error}}",
+    "noAgentsTitle": "No se encontraron Agentes",
+    "noAgentsSubtitle": "Añade tu primer agente humano a un canal para gestionar chats.",
+    "createFirstAgentButton": "Crear Primer Agente",
+    "createModalTitle": "Crear Nuevo Agente",
+    "createModalButton": "Crear Agente",
+    "editModalTitle": "Editar Agente",
+    "editModalButton": "Guardar Cambios",
+    "cardEdit": "Editar",
+    "cardDelete": "Eliminar",
+    "formName": "Nombre",
+    "formEmail": "Correo Electrónico",
+    "formPassword": "Contraseña",
+    "formAssignChannels": "Asignar a Canales",
+    "formNoChannels": "Aún no se han creado canales. Por favor, crea un canal primero para asignar un agente.",
+    "cancelButton": "Cancelar",
+    "deleteConfirmTitle": "¿Estás seguro?",
+    "deleteConfirmDescription": "Esta acción eliminará permanentemente al agente {{itemName}}.",
+    "deleteButton": "Eliminar",
+    "toastCreating": "Creando agente...",
+    "toastCreateSuccess": "¡Agente creado exitosamente!",
+    "toastCreateError": "Error al crear el agente.",
+    "toastUpdating": "Actualizando agente...",
+    "toastUpdateSuccess": "¡Agente actualizado exitosamente!",
+    "toastUpdateError": "Error al actualizar el agente.",
+    "toastDeleting": "Eliminando agente...",
+    "toastDeleteSuccess": "¡Agente eliminado exitosamente!",
+    "toastDeleteError": "Error al eliminar el agente."
+  },
+  "ticketPage": {
+    "filters": {
+      "all": "Todos los Tickets",
+      "open": "Abiertos",
+      "unassigned": "Sin Asignar",
+      "solved": "Resueltos"
     },
-    "pricingPage": {
-        "nav": {
-            "planAndPayment": "Plan y Pago"
-        },
-        "trial": {
-            "onTrial": "Estás en la prueba del Plan {{planLabel}}.",
-            "endsIn": "La prueba termina en {{count}} día.||La prueba termina en {{count}} días.",
-            "ended": "Tu prueba ha finalizado. Por favor, selecciona un plan para continuar."
-        },
-        "usage": {
-            "noPlan": "Sin Plan",
-            "currentPlan": "Plan Actual",
-            "nextPaymentOn": "Próximo Pago el {{date}}",
-            "expiration": "Expiración del Plan",
-            "agentUsage": "Uso de Agentes de IA",
-            "modelTraining": "Entrenamiento de Modelos",
-            "conversation": "Conversación",
-            "notAvailable": "N/D"
-        },
-        "plans": {
-            "title": "Todos los Planes",
-            "subtitle": "Desbloquea todo el potencial de tu chatbot de IA con el plan adecuado.",
-            "recommended": "Recomendado",
-            "featuresTitle": "Características",
-            "basic": {
-                "label": "Básico",
-                "priceDisplay": "USD $19/mes",
-                "description": "Para individuos o pequeñas empresas que prueban el servicio con recursos reales (limitados).",
-                "features": [
-                    "Hasta 1,000 conversaciones al mes",
-                    "1 Agente de IA",
-                    "1 Modelo de Entrenamiento",
-                    "Integración con Whatsapp",
-                    "Soporte Básico"
-                ]
-            },
-            "premium": {
-                "label": "Premium",
-                "priceDisplay": "USD $70/mes",
-                "description": "Para individuos y pequeñas a medianas empresas con crecientes necesidades de interacción con clientes.",
-                "features": [
-                    "Hasta 100,000 conversaciones al mes",
-                    "3 Agentes de IA",
-                    "3 Modelos de Entrenamiento",
-                    "Integración con Whatsapp",
-                    "Soporte Prioritario"
-                ]
-            },
-            "enterprise": {
-                "label": "Empresarial",
-                "priceDisplay": "USD $400/mes",
-                "description": "Grandes empresas o corporaciones con altos volúmenes de chat y operaciones complejas.",
-                "features": [
-                    "Hasta 1,000,000 de conversaciones al mes",
-                    "10 Agentes de IA",
-                    "10 Modelos de Entrenamiento",
-                    "Integración con Whatsapp",
-                    "Soporte Dedicado 24/7"
-                ]
-            }
-        },
-        "buttons": {
-            "selected": "Seleccionado",
-            "openingPortal": "Abriendo portal...",
-            "upgrade": "Actualizar Plan",
-            "downgrade": "Bajar de Plan",
-            "redirecting": "Redirigiendo...",
-            "selectPlan": "Seleccionar Plan",
-            "loadingPortal": "Cargando portal...",
-            "manageSubscription": "Gestionar Suscripción y Facturación"
-        },
-        "toast": {
-            "portalError": "No se pudo abrir el portal de facturación.",
-            "missingConfig": "Falta la configuración del plan. Por favor, contacta a soporte.",
-            "unexpectedError": "Ocurrió un error inesperado."
-        }
+    "searchPlaceholder": "Buscar tickets...",
+    "addTicketButton": "Añadir Ticket",
+    "editButton": "Editar",
+    "deleteButton": "Eliminar",
+    "viewClientDetails": "Ver detalles de {{name}}",
+    "notAvailable": "N/D",
+    "table": {
+      "no": "N.º",
+      "ticketId": "ID de Ticket",
+      "priority": "Prioridad",
+      "subject": "Asunto",
+      "type": "Tipo",
+      "client": "Cliente",
+      "assignedAgent": "Agente Asignado",
+      "created": "Creado",
+      "lastUpdated": "Última Actualización",
+      "status": "Estado",
+      "loading": "Cargando tickets...",
+      "error": "Error: {{error}}",
+      "noTicketsFound": "No se encontraron tickets."
     },
-    "settingsPage": {
-        "title": "Configuración",
-        "subtitle": "Administra las preferencias de tu cuenta y negocio.",
-        "tabs": {
-            "profile": "Tu Perfil",
-            "business": "Configuración del Negocio",
-            "security": "Contraseña y Seguridad"
-        }
+    "pagination": {
+      "showing": "Mostrando {{start}} - {{end}} de {{total}} tickets",
+      "noTickets": "Sin tickets",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "page": "Página {{currentPage}} de {{totalPages}}"
     },
-    "signinPage": {
-        "heading": "¡Bienvenido de Nuevo!",
-        "paragraph": "Potenciemos tu AI-Chatbot y hagamos crecer tu negocio sin esfuerzo.",
-        "form": {
-            "emailLabel": "Correo Electrónico",
-            "passwordLabel": "Contraseña",
-            "signInButton": "Iniciar Sesión",
-            "signingInButton": "Iniciando sesión...",
-            "noAccountPrompt": "¿No tienes una cuenta?",
-            "signUpLink": "Regístrate"
-        },
-        "validation": {
-            "invalidEmail": "Dirección de correo electrónico inválida",
-            "passwordLength": "La contraseña debe tener al menos 6 caracteres"
-        },
-        "toast": {
-            "loginSuccess": "¡Sesión iniciada con éxito!"
-        }
+    "modal": {
+      "createTitle": "Crear Nuevo Ticket",
+      "editTitle": "Editar Ticket (#{{id}})",
+      "deleteTitle": "Confirmar Eliminación",
+      "deleteDescription": "¿Estás seguro de que quieres eliminar el ticket \"{{subject}}\" (ID: ...{{id}})?"
     },
-    "signupPage": {
-        "heading": "Potencia Tus Conversaciones — ¡Comienza Gratis!",
-        "paragraph": "Optimiza el soporte, mejora la interacción y deja que la IA se encargue del resto, sin esfuerzo.",
-        "form": {
-            "nameLabel": "Nombre",
-            "emailLabel": "Correo Electrónico",
-            "passwordLabel": "Contraseña",
-            "termsPrefix": "Acepto los",
-            "termsLink": "Términos y Condiciones",
-            "termsAnd": "y la",
-            "privacyLink": "Política de Privacidad",
-            "getStartedButton": "Comenzar",
-            "creatingButton": "Creando...",
-            "alreadyHaveAccount": "¿Ya tienes una cuenta?",
-            "signInLink": "Iniciar Sesión"
-        },
-        "validation": {
-            "nameLength": "El nombre debe tener al menos 2 caracteres",
-            "invalidEmail": "Dirección de correo electrónico inválida",
-            "passwordLength": "La contraseña debe tener al menos 6 caracteres",
-            "termsRequired": "Debes aceptar los términos y condiciones"
-        },
-        "toast": {
-            "registerSuccess": "¡Registrado exitosamente!"
-        }
+    "form": {
+      "businessId": "ID de Negocio",
+      "customerId": "ID de Cliente",
+      "customerIdPlaceholder": "ID de Cliente (ej. 660f7b1...)",
+      "subject": "Asunto",
+      "subjectPlaceholder": "Asunto (mín. 5 caracteres)",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Descripción (mín. 10 caracteres)",
+      "priority": "Prioridad",
+      "selectPriority": "Seleccionar Prioridad",
+      "type": "Tipo",
+      "selectType": "Seleccionar Tipo",
+      "status": "Estado",
+      "selectStatus": "Seleccionar Estado",
+      "agentId": "ID de Agente",
+      "agentIdPlaceholder": "ID de Agente Asignado (opcional)",
+      "comment": "Comentario",
+      "commentPlaceholder": "Añadir un comentario (opcional)",
+      "cancelButton": "Cancelar",
+      "processingButton": "Procesando...",
+      "createButton": "Crear Ticket",
+      "saveButton": "Guardar Cambios",
+      "deleteButton": "Eliminar Ticket"
     },
-    "updateAiModelPage": {
-        "loading": {
-            "loadingData": "Cargando datos del modelo...",
-            "loadingError": "Error al cargar el modelo. Puede que no exista.",
-            "notFound": "Modelo no encontrado. Podría haber sido eliminado."
-        },
-        "form": {
-            "mainTitle": "Actualizar Información del Modelo",
-            "modelNameLabel": "Nombre del Modelo",
-            "selectLlmLabel": "Seleccionar LLM",
-            "manageFilesTitle": "Gestionar Archivos Existentes",
-            "undoDeleteTooltip": "Deshacer Eliminación",
-            "addFilesTitle": "Añadir Más Archivos",
-            "dragAndDrop": "Arrastra y suelta archivos aquí, o haz clic para seleccionar archivos",
-            "newFilesTitle": "Nuevos archivos para añadir"
-        },
-        "sidebar": {
-            "title": "Guardar Cambios",
-            "updateButton": "Actualizar Modelo de IA",
-            "updatingButton": "Actualizando...",
-            "cancelButton": "Cancelar"
-        },
-        "validation": {
-            "nameRequired": "El nombre del modelo es obligatorio"
-        },
-        "toast": {
-            "noChanges": "No se detectaron cambios. Edita el nombre, añade nuevos archivos o elimina los existentes.",
-            "updateSuccess": "¡Modelo actualizado exitosamente!",
-            "updateError": "La actualización falló: {{error}}"
-        }
+    "clientModal": {
+      "title": "Detalles del Cliente",
+      "description": "Información completa del cliente: {{name}}",
+      "clientId": "ID de Cliente",
+      "name": "Nombre",
+      "email": "Correo",
+      "phone": "Teléfono",
+      "noDetails": "No hay detalles del cliente para mostrar.",
+      "closeButton": "Cerrar"
     },
-    "profileForm": {
-        "title": "Información Personal",
-        "subtitle": "Esta información se mostrará públicamente, así que ten cuidado con lo que compartes.",
-        "fullNameLabel": "Nombre Completo",
-        "emailLabel": "Dirección de Correo Electrónico",
-        "phoneLabel": "Número de Teléfono",
-        "saveButton": "Guardar Cambios",
-        "savingButton": "Guardando..."
+    "validation": {
+      "subjectLength": "El asunto debe tener al menos 5 caracteres.",
+      "descriptionLength": "La descripción debe tener al menos 10 caracteres.",
+      "customerIdRequired": "Se requiere el ID del cliente para nuevos tickets."
     },
-    "agentInbox": {
-        "title": "Mi Bandeja de Entrada",
-        "status": {
-            "online": "En línea",
-            "offline": "Desconectado"
-        },
-        "filters": {
-            "open": "Abiertas",
-            "closed": "Cerradas"
-        },
-        "searchPlaceholder": "Buscar por nombre de cliente...",
-        "noConversations": "No tienes conversaciones {{filter}}.",
-        "pagination": {
-            "previous": "Anterior",
-            "next": "Siguiente",
-            "page": "Página {{currentPage}} de {{totalPages}}"
-        },
-        "empty": {
-            "title": "Selecciona una conversación",
-            "subtitle": "Elige una conversación de tu bandeja de entrada para comenzar."
-        },
-        "transfer": {
-            "title": "Transferir Conversación",
-            "toChannel": "Al canal {{channelName}}",
-            "toAgent": "A {{agentName}}",
-            "noOptions": "No hay opciones de transferencia disponibles",
-            "closeConversation": "Cerrar Conversación"
-        },
-        "loadMoreMessages": "Cargar más mensajes",
-        "messagePlaceholder": "Escribe tu mensaje...",
-        "aCustomer": "Un cliente",
-        "dates": {
-            "today": "Hoy",
-            "yesterday": "Ayer"
-        },
-        "toast": {
-            "newChatAssigned": "Nuevo chat asignado de {{customerName}}",
-            "messageFailed": "El mensaje no se pudo enviar.",
-            "transferNoId": "No se puede transferir: ID de conversación no encontrado.",
-            "transferring": "Transfiriendo conversación...",
-            "transferSuccess": "¡Conversación transferida!",
-            "transferFailed": "La transferencia falló.",
-            "closeSuccess": "¡Conversación cerrada!",
-            "closeFailed": "Error al cerrar la conversación."
-        }
+    "toast": {
+      "deleting": "Eliminando ticket...",
+      "deleteSuccess": "¡Ticket eliminado exitosamente!",
+      "deleteError": "Error al eliminar el ticket.",
+      "creating": "Creando ticket...",
+      "createSuccess": "¡Ticket creado exitosamente!",
+      "createError": "Error al crear el ticket.",
+      "updating": "Actualizando ticket...",
+      "updateSuccess": "¡Ticket actualizado exitosamente!",
+      "updateError": "Error al actualizar el ticket."
     },
-    "trainModelPage": {
-        "step1": {
-            "title": "Información del Modelo",
-            "modelNameLabel": "Nombre del Modelo",
-            "selectLlmLabel": "Seleccionar LLM",
-            "cancelButton": "Cancelar",
-            "nextButton": "Siguiente"
-        },
-        "step2": {
-            "title": "Fuentes de Datos",
-            "fileTab": "Archivo",
-            "dragAndDrop": "Arrastra y suelta archivos aquí, o haz clic para seleccionar archivos",
-            "supportedFiles": "Tipos de archivo admitidos: .pdf, .docx, .txt, .xlsx"
-        },
-        "sidebar": {
-            "title": "Fuentes",
-            "totalChars": "Total de Caracteres Detectados",
-            "createButton": "Crear Modelo de IA",
-            "trainingButton": "Entrenando..."
-        },
-        "validation": {
-            "nameRequired": "El nombre del modelo es obligatorio",
-            "modelTypeRequired": "El tipo de modelo es obligatorio"
-        },
-        "toast": {
-            "noFilesError": "Por favor, sube al menos un archivo.",
-            "trainSuccess": "¡Modelo entrenado exitosamente!",
-            "trainError": "❌ {{error}}"
-        }
+    "priorities": {
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja",
+      "urgent": "Urgente"
     },
-    "deleteConfirmModal": {
-        "title": "¿Estás completamente seguro?",
-        "description": "Esto eliminará permanentemente el modelo \"{{modelName}}\" y todos sus datos asociados. Esta acción no se puede deshacer.",
-        "cancelButton": "Cancelar",
-        "deleteButton": "Eliminar",
-        "deletingButton": "Eliminando..."
+    "statuses": {
+      "open": "Abierto",
+      "in_progress": "En Progreso",
+      "on_hold": "En Espera",
+      "closed": "Cerrado"
     },
-     "businessForm": {
+    "types": {
+      "billing": "Facturación",
+      "technical": "Técnico",
+      "general": "General",
+      "feedback": "Comentarios",
+      "account": "Cuenta"
+    }
+  },
+  "aiModelListPage": {
+    "title": "Modelos de IA",
+    "createNewButton": "+ Crear Nuevo",
+    "loading": "Cargando modelos...",
+    "loadingError": "Error: {{error}}",
+    "noModelsTitle": "No se encontraron Modelos de IA",
+    "noModelsSubtitle": "Haz clic en \"+ Crear Nuevo\" para comenzar.",
+    "modelTypeLabel": "Tipo",
+    "trainedFiles": "{{count}} Archivos Entrenados",
+    "statusLabel": "Estado",
+    "editButton": "Editar Modelo",
+    "toastDeleteSuccess": "Modelo \"{{modelName}}\" eliminado exitosamente.",
+    "toastDeleteError": "❌ {{error}}"
+  },
+  "aiAgentPage": {
+    "title": "Agentes de IA",
+    "modelLabel": "Modelo",
+    "unknown": "Desconocido",
+    "modal": {
+      "viewingTitle": "Viendo",
+      "editingTitle": "Editando",
+      "deleteTitle": "Confirmar Eliminación",
+      "agentName": "Nombre del Agente",
+      "personality": "Personalidad",
+      "aiModel": "Modelo de IA",
+      "embedScript": "Script de Integración",
+      "instructions": "Instrucciones",
+      "noInstructions": "No se proporcionaron instrucciones especiales.",
+      "deleteDescription": "¿Estás seguro de que quieres eliminar permanentemente el agente llamado \"{{agentName}}\"? Esta acción no se puede deshacer."
+    },
+    "form": {
+      "name": "Nombre",
+      "aiModel": "Modelo de IA",
+      "selectModel": "Selecciona un modelo",
+      "tone": "Tono",
+      "selectTone": "Selecciona un tono",
+      "instruction": "Instrucción",
+      "instructionPlaceholder": "p. ej., Sé conciso y servicial...",
+      "cancelButton": "Cancelar",
+      "saveButton": "Guardar Cambios",
+      "deleteButton": "Confirmar Eliminación"
+    },
+    "tones": {
+      "friendly": "Amigable",
+      "formal": "Formal",
+      "neutral": "Neutral"
+    },
+    "toast": {
+      "updating": "Guardando cambios...",
+      "updateSuccess": "¡Agente actualizado exitosamente!",
+      "updateError": "Error al actualizar el agente.",
+      "deleting": "Eliminando agente...",
+       "copyScriptSuccess": "¡Incrustar script copiado al portapapeles!",
+      "deleteSuccess": "¡Agente eliminado exitosamente!",
+      "deleteError": "Error al eliminar el agente."
+    }
+  },
+  "analysisPage": {
+    "loading": {
+      "title": "Generando Perspectivas de Rendimiento de IA...",
+      "subtitle": "Esto puede tardar un momento mientras nuestro agente analista revisa las conversaciones recientes."
+    },
+    "error": "Error: {{error}}",
+    "empty": {
+      "title": "No Hay Informes de Análisis Disponibles",
+      "subtitle": "Los informes se generan automáticamente cada día en función de las conversaciones de su chatbot. Una vez que haya suficientes datos, su primer informe aparecerá aquí."
+    },
+    "header": {
+      "title": "Panel de Rendimiento",
+      "subtitle": "Análisis de IA para"
+    },
+    "stats": {
+      "overallScore": "Puntuación General",
+      "overallScoreDesc": "Puntuación de rendimiento del agente",
+      "conversationsAnalyzed": "Conversaciones Analizadas",
+      "conversationsAnalyzedDesc": "Chats de clientes únicos de ayer",
+      "agentName": "Nombre del Agente",
+      "agentNameDesc": "El agente de IA que se está analizando",
+      "customersInvolved": "Clientes Involucrados",
+      "customersInvolvedDesc": "Clientes únicos en el análisis"
+    },
+    "summary": {
+      "workingWell": "Qué Funciona Bien",
+      "improvementAreas": "Áreas de Mejora",
+      "knowledgeSuggestions": "Sugerencias para la Base de Conocimiento"
+    },
+    "details": {
+      "title": "Análisis Detallado de Conversaciones",
+      "subtitle": "Puntuaciones y comentarios específicos para cada conversación.",
+      "scoresByConversation": "Puntuaciones por Conversación",
+      "feedbackBreakdown": "Desglose de Comentarios",
+      "conversationWith": "Conversación con {{name}}",
+      "score": "Puntuación: {{score}}/10",
+      "reasoning": "Razonamiento de la Puntuación",
+      "suggestions": "Sugerencias de Mejora"
+    }
+  },
+  "customersPage": {
+    "filters": {
+      "all": "Todos los Clientes"
+    },
+    "searchPlaceholder": "Buscar...",
+    "table": {
+      "loading": "Cargando clientes...",
+      "error": "Error: {{error}}",
+      "defaultError": "No se pudieron cargar los clientes.",
+      "noCustomersFound": "No se encontraron clientes.",
+      "customerId": "ID de Cliente",
+      "customerName": "Nombre del Cliente",
+      "email": "Correo Electrónico",
+      "phone": "Número de Teléfono",
+      "dateJoined": "Fecha de Ingreso"
+    },
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "page": "Página {{currentPage}} de {{totalPages}}"
+    }
+  },
+  "pricingPage": {
+    "nav": {
+      "planAndPayment": "Plan y Pago"
+    },
+    "trial": {
+      "onTrial": "Estás en la prueba del Plan {{planLabel}}.",
+      "endsIn": "La prueba termina en {{count}} día.||La prueba termina en {{count}} días.",
+      "ended": "Tu prueba ha finalizado. Por favor, selecciona un plan para continuar."
+    },
+    "usage": {
+      "noPlan": "Sin Plan",
+      "currentPlan": "Plan Actual",
+      "nextPaymentOn": "Próximo Pago el {{date}}",
+      "expiration": "Expiración del Plan",
+      "agentUsage": "Uso de Agentes de IA",
+      "modelTraining": "Entrenamiento de Modelos",
+      "conversation": "Conversación",
+      "notAvailable": "N/D"
+    },
+    "plans": {
+      "title": "Todos los Planes",
+      "subtitle": "Desbloquea todo el potencial de tu chatbot de IA con el plan adecuado.",
+      "recommended": "Recomendado",
+      "featuresTitle": "Características",
+      "basic": {
+        "label": "Básico",
+        "priceDisplay": "USD $19/mes",
+        "description": "Para individuos o pequeñas empresas que prueban el servicio con recursos reales (limitados).",
+        "features": [
+          "Hasta 1,000 conversaciones al mes",
+          "1 Agente de IA",
+          "1 Modelo de Entrenamiento",
+          "Integración con Whatsapp",
+          "Soporte Básico"
+        ]
+      },
+      "premium": {
+        "label": "Premium",
+        "priceDisplay": "USD $70/mes",
+        "description": "Para individuos y pequeñas a medianas empresas con crecientes necesidades de interacción con clientes.",
+        "features": [
+          "Hasta 100,000 conversaciones al mes",
+          "3 Agentes de IA",
+          "3 Modelos de Entrenamiento",
+          "Integración con Whatsapp",
+          "Soporte Prioritario"
+        ]
+      },
+      "enterprise": {
+        "label": "Empresarial",
+        "priceDisplay": "USD $400/mes",
+        "description": "Grandes empresas o corporaciones con altos volúmenes de chat y operaciones complejas.",
+        "features": [
+          "Hasta 1,000,000 de conversaciones al mes",
+          "10 Agentes de IA",
+          "10 Modelos de Entrenamiento",
+          "Integración con Whatsapp",
+          "Soporte Dedicado 24/7"
+        ]
+      }
+    },
+    "buttons": {
+      "selected": "Seleccionado",
+      "openingPortal": "Abriendo portal...",
+      "upgrade": "Actualizar Plan",
+      "downgrade": "Bajar de Plan",
+      "redirecting": "Redirigiendo...",
+      "selectPlan": "Seleccionar Plan",
+      "loadingPortal": "Cargando portal...",
+      "manageSubscription": "Gestionar Suscripción y Facturación"
+    },
+    "toast": {
+      "portalError": "No se pudo abrir el portal de facturación.",
+      "missingConfig": "Falta la configuración del plan. Por favor, contacta a soporte.",
+      "unexpectedError": "Ocurrió un error inesperado."
+    }
+  },
+  "settingsPage": {
+    "title": "Configuración",
+    "subtitle": "Administra las preferencias de tu cuenta y negocio.",
+    "tabs": {
+      "profile": "Tu Perfil",
+      "business": "Configuración del Negocio",
+      "security": "Contraseña y Seguridad"
+    },
+    "language": {
+      "title": "Idioma y Región",
+      "subtitle": "Elija el idioma que desea usar en la aplicación.",
+      "label": "Idioma",
+      "updateSuccess": "Idioma actualizado correctamente.",
+      "updateError": "Error al actualizar su preferencia de idioma."
+    }
+  },
+  "signinPage": {
+    "heading": "¡Bienvenido de Nuevo!",
+    "paragraph": "Potenciemos tu AI-Chatbot y hagamos crecer tu negocio sin esfuerzo.",
+    "form": {
+      "emailLabel": "Correo Electrónico",
+      "passwordLabel": "Contraseña",
+      "signInButton": "Iniciar Sesión",
+      "signingInButton": "Iniciando sesión...",
+      "noAccountPrompt": "¿No tienes una cuenta?",
+      "signUpLink": "Regístrate"
+    },
+    "validation": {
+      "invalidEmail": "Dirección de correo electrónico inválida",
+      "passwordLength": "La contraseña debe tener al menos 6 caracteres"
+    },
+    "toast": {
+      "loginSuccess": "¡Sesión iniciada con éxito!"
+    }
+  },
+  "signupPage": {
+    "heading": "Potencia Tus Conversaciones — ¡Comienza Gratis!",
+    "paragraph": "Optimiza el soporte, mejora la interacción y deja que la IA se encargue del resto, sin esfuerzo.",
+    "form": {
+      "nameLabel": "Nombre",
+      "emailLabel": "Correo Electrónico",
+      "passwordLabel": "Contraseña",
+      "termsPrefix": "Acepto los",
+      "termsLink": "Términos y Condiciones",
+      "termsAnd": "y la",
+      "privacyLink": "Política de Privacidad",
+      "getStartedButton": "Comenzar",
+      "creatingButton": "Creando...",
+      "alreadyHaveAccount": "¿Ya tienes una cuenta?",
+      "signInLink": "Iniciar Sesión"
+    },
+    "validation": {
+      "nameLength": "El nombre debe tener al menos 2 caracteres",
+      "invalidEmail": "Dirección de correo electrónico inválida",
+      "passwordLength": "La contraseña debe tener al menos 6 caracteres",
+      "termsRequired": "Debes aceptar los términos y condiciones"
+    },
+    "toast": {
+      "registerSuccess": "¡Registrado exitosamente!"
+    }
+  },
+  "updateAiModelPage": {
+    "loading": {
+      "loadingData": "Cargando datos del modelo...",
+      "loadingError": "Error al cargar el modelo. Puede que no exista.",
+      "notFound": "Modelo no encontrado. Podría haber sido eliminado."
+    },
+    "form": {
+      "mainTitle": "Actualizar Información del Modelo",
+      "modelNameLabel": "Nombre del Modelo",
+      "selectLlmLabel": "Seleccionar LLM",
+      "manageFilesTitle": "Gestionar Archivos Existentes",
+      "undoDeleteTooltip": "Deshacer Eliminación",
+      "addFilesTitle": "Añadir Más Archivos",
+      "dragAndDrop": "Arrastra y suelta archivos aquí, o haz clic para seleccionar archivos",
+      "newFilesTitle": "Nuevos archivos para añadir"
+    },
+    "validation": {
+      "nameRequired": "El nombre del modelo es obligatorio"
+    },
+    "toast": {
+      "noChanges": "No se detectaron cambios. Edita el nombre, añade nuevos archivos o elimina los existentes.",
+      "updateSuccess": "¡Modelo actualizado exitosamente!",
+      "updateError": "La actualización falló: {{error}}"
+    }
+  },
+  "profileForm": {
+    "title": "Información Personal",
+    "subtitle": "Esta información se mostrará públicamente, así que ten cuidado con lo que compartes.",
+    "fullNameLabel": "Nombre Completo",
+    "emailLabel": "Dirección de Correo Electrónico",
+    "phoneLabel": "Número de Teléfono",
+    "saveButton": "Guardar Cambios",
+    "savingButton": "Guardando..."
+  },
+  "agentInbox": {
+    "title": "Mi Bandeja de Entrada",
+    "status": {
+      "online": "En línea",
+      "offline": "Desconectado"
+    },
+    "filters": {
+      "open": "Abiertas",
+      "closed": "Cerradas"
+    },
+    "searchPlaceholder": "Buscar por nombre de cliente...",
+    "noConversations": "No tienes conversaciones {{filter}}.",
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "page": "Página {{currentPage}} de {{totalPages}}"
+    },
+    "empty": {
+      "title": "Selecciona una conversación",
+      "subtitle": "Elige una conversación de tu bandeja de entrada para comenzar."
+    },
+    "transfer": {
+      "title": "Transferir Conversación",
+      "toChannel": "Al canal {{channelName}}",
+      "toAgent": "A {{agentName}}",
+      "noOptions": "No hay opciones de transferencia disponibles",
+      "closeConversation": "Cerrar Conversación"
+    },
+    "loadMoreMessages": "Cargar más mensajes",
+    "messagePlaceholder": "Escribe tu mensaje...",
+    "aCustomer": "Un cliente",
+    "dates": {
+      "today": "Hoy",
+      "yesterday": "Ayer"
+    },
+    "toast": {
+      "newChatAssigned": "Nuevo chat asignado de {{customerName}}",
+      "messageFailed": "El mensaje no se pudo enviar.",
+      "transferNoId": "No se puede transferir: ID de conversación no encontrado.",
+      "transferring": "Transfiriendo conversación...",
+      "transferSuccess": "¡Conversación transferida!",
+      "transferFailed": "La transferencia falló.",
+      "closeSuccess": "¡Conversación cerrada!",
+      "closeFailed": "Error al cerrar la conversación."
+    }
+  },
+  "trainModelPage": {
+    "step1": {
+      "title": "Información del Modelo",
+      "modelNameLabel": "Nombre del Modelo",
+      "selectLlmLabel": "Seleccionar LLM",
+      "cancelButton": "Cancelar",
+      "nextButton": "Siguiente"
+    },
+    "step2": {
+      "title": "Fuentes de Datos",
+      "fileTab": "Archivo",
+      "dragAndDrop": "Arrastra y suelta archivos aquí, o haz clic para seleccionar archivos",
+      "supportedFiles": "Tipos de archivo admitidos: .pdf, .docx, .txt, .xlsx"
+    },
+    "sidebar": {
+      "title": "Fuentes",
+      "totalChars": "Total de Caracteres Detectados",
+      "createButton": "Crear Modelo de IA",
+      "trainingButton": "Entrenando..."
+    },
+    "validation": {
+      "nameRequired": "El nombre del modelo es obligatorio",
+      "modelTypeRequired": "El tipo de modelo es obligatorio"
+    },
+    "toast": {
+      "noFilesError": "Por favor, sube al menos un archivo.",
+      "trainSuccess": "¡Modelo entrenado exitosamente!",
+      "trainError": "❌ {{error}}"
+    }
+  },
+  "deleteConfirmModal": {
+    "title": "¿Estás completamente seguro?",
+    "description": "Esto eliminará permanentemente el modelo \"{{modelName}}\" y todos sus datos asociados. Esta acción no se puede deshacer.",
+    "cancelButton": "Cancelar",
+    "deleteButton": "Eliminar",
+    "deletingButton": "Eliminando..."
+  },
+  "businessForm": {
     "title": "Información del Negocio",
     "subtitle": "Actualiza el nombre y el logotipo de tu empresa.",
     "logoLabel": "Logotipo del Negocio",
@@ -639,7 +724,7 @@
     "saveButton": "Guardar Cambios",
     "savingButton": "Guardando..."
   },
-   "securityForm": {
+  "securityForm": {
     "title": "Cambiar Contraseña",
     "subtitle": "Actualiza la contraseña utilizada para iniciar sesión en tu cuenta.",
     "currentPasswordLabel": "Contraseña Actual",

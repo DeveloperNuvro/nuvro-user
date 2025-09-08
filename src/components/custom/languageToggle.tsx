@@ -9,11 +9,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Languages, Check } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '../../app/store';
-import { updateUserLanguage } from '../../features/auth/authSlice';
+import { useSelector } from 'react-redux';
+import {  RootState } from '../../app/store';
 import toast from 'react-hot-toast';
-import { useState } from "react";
 
 
 const supportedLanguages = [
@@ -24,21 +22,13 @@ const supportedLanguages = [
 
 export function LanguageToggle() {
   const { i18n, t } = useTranslation();
-  const dispatch = useDispatch<AppDispatch>();
-  const [isChanging, setIsChanging] = useState(false);
-
-
   const { user } = useSelector((state: RootState) => state.auth);
 
   const changeLanguage = async (lng: string) => {
 
     i18n.changeLanguage(lng);
-    setIsChanging(true);
-
     if (user) {
       try {
-        await dispatch(updateUserLanguage({ language: lng })).unwrap();
-        setIsChanging(false);
         i18n.changeLanguage(lng);
       } catch (error) {
 
@@ -63,7 +53,7 @@ export function LanguageToggle() {
               supportedLanguages?.map((lang) => (
                 <DropdownMenuItem
             key= { lang.code }
-  disabled = { isChanging }
+
   onClick = {() => changeLanguage(lang.code)
 }
 className = "cursor-pointer"

@@ -1,14 +1,19 @@
+// src/pages/AiAgentPage.tsx
+
 import { useEffect, useState } from "react";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, Copy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { useTranslation } from "react-i18next"; // --- IMPORT ---
+import { useTranslation } from "react-i18next";
 import { AppDispatch, RootState } from "@/app/store";
 import { 
     AIAgent,
     fetchAiAgentsByBusinessId,
     editAIAgent,
     deleteAIAgent,
+    fetchAIAgentById,
+    clearSelectedAgent,
+    EditAIAgentPayload 
 } from "../features/aiAgent/aiAgentSlice";
 import { fetchAiModelsByBusinessId } from "@/features/aiModel/trainModelSlice";
 import { Button } from "@/components/ui/button";
@@ -28,18 +33,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { Textarea } from "@/components/ui/textarea"; 
 import toast from "react-hot-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 export default function AiAgentPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { t } = useTranslation(); // --- INITIALIZE ---
+  const { t } = useTranslation();
   
-  const { aiAgents, status: agentStatus } = useSelector((state: RootState) => state.aiAgent);
+  const { 
+    aiAgents, 
+    status: agentStatus, 
+    selectedAgent,
+    apiKey
+  } = useSelector((state: RootState) => state.aiAgent);
+
   const { aiModels, status: modelStatus } = useSelector((state: RootState) => state.trainModel);
 
-  const [modalState, setModalState] = useState<any>({ isOpen: false, mode: null, agent: null });
+  const [modalState, setModalState] = useState<{ isOpen: boolean; mode: 'view' | 'edit' | 'delete' | null; agent: AIAgent | null }>({ isOpen: false, mode: null, agent: null });
   const [formData, setFormData] = useState<Partial<AIAgent>>({});
 
   useEffect(() => {
@@ -49,6 +61,11 @@ export default function AiAgentPage() {
 
   const openModal = (mode: 'view' | 'edit' | 'delete', agent: AIAgent) => {
     setModalState({ isOpen: true, mode, agent });
+    
+    if (mode === 'view') {
+        dispatch(fetchAIAgentById(agent._id));
+    }
+
     if (mode === 'edit') {
       setFormData({
         _id: agent._id, name: agent.name,
@@ -60,14 +77,24 @@ export default function AiAgentPage() {
     }
   };
 
-  const closeModal = () => { setModalState({ isOpen: false, mode: null, agent: null }); setFormData({}); };
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
-  const handleSelectChange = (field: 'tone' | 'aiModel', value: string) => { setFormData({ ...formData, [field]: value }); };
+  const closeModal = () => { 
+    setModalState({ isOpen: false, mode: null, agent: null }); 
+    setFormData({});
+    dispatch(clearSelectedAgent());
+  };
+
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => { 
+    setFormData({ ...formData, [e.target.name]: e.target.value }); 
+  };
+  
+  const handleSelectChange = (field: 'tone' | 'aiModel', value: string) => { 
+    setFormData({ ...formData, [field]: value }); 
+  };
 
   const handleEditSubmit = () => {
     if (!formData._id) return;
     toast.promise(
-        dispatch(editAIAgent(formData as AIAgent)).unwrap(),
+        dispatch(editAIAgent(formData as EditAIAgentPayload)).unwrap(),
         {
             loading: t('aiAgentPage.toast.updating'),
             success: () => { closeModal(); return t('aiAgentPage.toast.updateSuccess'); },
@@ -87,13 +114,21 @@ export default function AiAgentPage() {
         }
     );
   };
+  
+  const handleCopy = (text: string, message: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success(message);
+    }).catch(() => {
+      toast.error(t('aiAgentPage.toast.copyError'));
+    });
+  };
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-foreground">{t('aiAgentPage.title')}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-        {agentStatus === "loading" && <AiAgentSkeleton />}
-        {agentStatus !== "loading" && aiAgents?.map((agent) => {
+        {agentStatus === "loading" && aiAgents.length === 0 && <AiAgentSkeleton />}
+        {aiAgents?.map((agent) => {
           const firstWord = agent.name.split(" ")[0];
           const modelDetails = aiModels.find(m => m._id === (typeof agent.aiModel === 'object' ? agent?.aiModel._id : agent?.aiModel));
           
@@ -132,12 +167,46 @@ export default function AiAgentPage() {
             </DialogTitle>
           </DialogHeader>
 
-          {modalState?.mode === 'view' && modalState.agent && (
+          {modalState?.mode === 'view' && (
              <div className="py-4 space-y-4 text-sm">
-                <div className="flex"><strong className="w-28 shrink-0">{t('aiAgentPage.modal.agentName')}:</strong><span>{modalState.agent.name}</span></div>
-                <div className="flex"><strong className="w-28 shrink-0">{t('aiAgentPage.modal.personality')}:</strong><span className="capitalize">{modalState.agent.personality?.tone || modalState.agent.tone}</span></div>
-                <div className="flex"><strong className="w-28 shrink-0">{t('aiAgentPage.modal.aiModel')}:</strong><span>{aiModels.find(m => m._id === (typeof modalState?.agent.aiModel === 'object' ? modalState?.agent.aiModel._id : modalState?.agent.aiModel))?.name || t('aiAgentPage.unknown')}</span></div>
-                <div className="flex flex-col"><strong className="w-28 shrink-0 mb-1">{t('aiAgentPage.modal.instructions')}:</strong><p className="text-muted-foreground bg-secondary p-2 rounded-md">{modalState.agent.personality?.instruction || t('aiAgentPage.modal.noInstructions')}</p></div>
+                {agentStatus === 'loading' && !selectedAgent && <ViewModalSkeleton />}
+                {agentStatus === 'failed' && !selectedAgent && <p className="text-destructive">{t('aiAgentPage.toast.fetchDetailsError')}</p>}
+                {agentStatus !== 'loading' && selectedAgent && apiKey && (() => {
+                  
+                  // Construct the script string here
+                  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+                  const encodedAgentName = encodeURIComponent(selectedAgent.name);
+                  const scriptString = `<script src="${baseUrl}/public/widget.js?apiKey=${apiKey}&agentName=${encodedAgentName}" async></script>`;
+
+                  return (
+                    <>
+                      <div className="flex"><strong className="w-28 shrink-0">{t('aiAgentPage.modal.agentName')}:</strong><span>{selectedAgent.name}</span></div>
+                      <div className="flex"><strong className="w-28 shrink-0">{t('aiAgentPage.modal.personality')}:</strong><span className="capitalize">{selectedAgent.personality?.tone || selectedAgent.tone}</span></div>
+                      <div className="flex"><strong className="w-28 shrink-0">{t('aiAgentPage.modal.aiModel')}:</strong><span>{aiModels.find(m => m._id === (typeof selectedAgent.aiModel === 'object' ? selectedAgent.aiModel._id : selectedAgent.aiModel))?.name || t('aiAgentPage.unknown')}</span></div>
+                      <div className="flex flex-col"><strong className="w-28 shrink-0 mb-1">{t('aiAgentPage.modal.instructions')}:</strong><p className="text-muted-foreground bg-secondary p-2 rounded-md">{selectedAgent.personality?.instruction || t('aiAgentPage.modal.noInstructions')}</p></div>
+                      
+                      {/* Embed Script Section */}
+                      <div className="flex flex-col pt-2">
+                        <strong className="w-full shrink-0 mb-1">{t('aiAgentPage.modal.embedScript')}:</strong>
+                        <div className="flex items-center gap-2">
+                          <Textarea
+                            readOnly
+                            value={scriptString}
+                            className="bg-secondary border-none font-mono text-xs h-20 resize-none"
+                            rows={3}
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            onClick={() => handleCopy(scriptString, t('aiAgentPage.toast.copyScriptSuccess'))}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
             </div>
           )}
 
@@ -194,3 +263,17 @@ const AiAgentSkeleton = () => {
     </>
   );
 };
+
+const ViewModalSkeleton = () => (
+    <div className="space-y-4">
+        <div className="flex gap-4"><Skeleton className="h-5 w-28" /><Skeleton className="h-5 w-48" /></div>
+        <div className="flex gap-4"><Skeleton className="h-5 w-28" /><Skeleton className="h-5 w-32" /></div>
+        <div className="flex gap-4"><Skeleton className="h-5 w-28" /><Skeleton className="h-5 w-40" /></div>
+        <div className="flex flex-col gap-2"><Skeleton className="h-5 w-28" /><Skeleton className="h-16 w-full" /></div>
+        {/* Updated skeleton for the embed script */}
+        <div className="flex flex-col gap-2 pt-2">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-20 w-full" />
+        </div>
+    </div>
+);

@@ -29,7 +29,6 @@ export const updateUserLanguage = createAsyncThunk<
   try {
    
     const response = await api.post('/api/v1/users/change-language', payload);
-    
     return response.data.data;
   } catch (error: any) {
     return thunkAPI.rejectWithValue(error.response?.data?.message || 'Failed to update language');
@@ -131,7 +130,7 @@ const authSlice = createSlice({
         state.status = 'succeeded';
       })
 
-      // Login
+    
       .addCase(loginUser.pending, (state) => {
         state.status = 'loading';
         state.error = null;
@@ -150,7 +149,7 @@ const authSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.user = action.payload.user;
         state.status = 'succeeded';
-        state.bootstrapped = true; // Set bootstrapped to true after successful refresh
+        state.bootstrapped = true; 
       })
 
       .addCase(logoutUser.fulfilled, (state) => {
@@ -167,11 +166,8 @@ const authSlice = createSlice({
         state.error = null;
       }
       )
-      .addCase(updateUserLanguage.fulfilled, (state, action: any) => {
+      .addCase(updateUserLanguage.fulfilled, (state) => {
         state.status = 'succeeded';
-        if (state.user) {
-          state.user.language = action.payload.language;
-        }
       })
       .addCase(updateUserLanguage.rejected, (state, action: any) => {
         state.status = 'failed';
@@ -179,7 +175,7 @@ const authSlice = createSlice({
       }
       )
 
-      // Error handler
+
       .addMatcher(
         (action): action is { type: string; error: { message: string } } =>
           action.type.startsWith('auth/') && action.type.endsWith('/rejected'),

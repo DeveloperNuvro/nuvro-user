@@ -3,13 +3,21 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '@/app/store';
 import { fetchUserProfile } from '@/features/profile/profileSlice';
+// highlight-start
+import { updateUserLanguage } from '@/features/auth/authSlice'; // Import the thunk
+// highlight-end
 import { User, Building, Shield } from 'lucide-react';
 import { ProfileForm } from '../components/custom/settings/ProfileForm';
 import { BusinessForm } from '../components/custom/settings/BusinessForm';
 import { SecurityForm } from '../components/custom/settings/SecurityForm';
 import { Skeleton } from '@/components/ui/skeleton';
+// highlight-start
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
+// highlight-end
 
-// --- Loading Skeleton Component (No text, no changes needed) ---
+
 const SettingsPageSkeleton = () => (
     <div className="grid md:grid-cols-4 gap-10">
         <div className="md:col-span-1">
@@ -23,26 +31,42 @@ const SettingsPageSkeleton = () => (
     </div>
 );
 
-// --- Main Page Component ---
+
 const AccountSettingsPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    const { t } = useTranslation();
-    const { status } = useSelector((state: RootState) => state.profile);
+    const { t, i18n } = useTranslation();
+    const { status: profileStatus } = useSelector((state: RootState) => state.profile);
+    const { status: authStatus } = useSelector((state: RootState) => state.auth);
+
 
     const [activeTab, setActiveTab] = useState<'profile' | 'business' | 'security'>('profile');
 
     useEffect(() => {
-        if (status === 'idle') {
+        if (profileStatus === 'idle') {
             dispatch(fetchUserProfile());
         }
-    }, [dispatch, status]);
+    }, [dispatch, profileStatus]);
 
-    // Use useMemo to prevent re-creating the array on every render
     const TABS = useMemo(() => [
         { id: 'profile', label: t('settingsPage.tabs.profile'), icon: User },
         { id: 'business', label: t('settingsPage.tabs.business'), icon: Building },
         { id: 'security', label: t('settingsPage.tabs.security'), icon: Shield },
     ], [t]);
+
+
+    const handleLanguageChange = async (lang: string) => {
+        if (!lang || lang === i18n.language) return;
+
+        i18n.changeLanguage(lang);
+
+        try {
+            await dispatch(updateUserLanguage({ language: lang })).unwrap();
+            toast.success(t('settingsPage.language.updateSuccess'));
+        } catch (error) {
+            toast.error(t('settingsPage.language.updateError'));
+        }
+    };
+
 
     return (
         <div className="bg-gray-50 dark:bg-black min-h-screen">
@@ -77,11 +101,45 @@ const AccountSettingsPage: React.FC = () => {
                     
                     {/* Right Content Area */}
                     <div className="md:col-span-3">
-                        {status === 'loading' ? (
+                        {profileStatus === 'loading' ? (
                             <SettingsPageSkeleton />
                         ) : (
                             <div>
-                                {activeTab === 'profile' && <ProfileForm />}
+                                {activeTab === 'profile' && (
+                                    // highlight-start
+                                    <div className="space-y-8">
+                                        {/* Language Settings Card */}
+                                        <div className="p-6 bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 shadow-sm">
+                                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">
+                                                {t('settingsPage.language.title')}
+                                            </h3>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                {t('settingsPage.language.subtitle')}
+                                            </p>
+                                            <div className="mt-4 max-w-xs">
+                                                 <Label htmlFor="language-select">{t('settingsPage.language.label')}</Label>
+                                                 <Select
+                                                    value={i18n.language}
+                                                    onValueChange={handleLanguageChange}
+                                                    // The selector is disabled if any auth operation is loading
+                                                    disabled={authStatus === 'loading'}
+                                                 >
+                                                    <SelectTrigger id="language-select" className="mt-2">
+                                                        <SelectValue placeholder="Select language" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="en">English</SelectItem>
+                                                        <SelectItem value="es">Español (Spanish)</SelectItem>
+                                                        <SelectItem value="fr">Français (French)</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        {/* Original Profile Form */}
+                                        <ProfileForm />
+                                    </div>
+                                    // highlight-end
+                                )}
                                 {activeTab === 'business' && <BusinessForm />}
                                 {activeTab === 'security' && <SecurityForm />}
                             </div>

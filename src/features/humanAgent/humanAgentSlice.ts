@@ -7,6 +7,7 @@ export interface HumanAgent {
   email: string;
   role: 'agent';
   status: 'online' | 'offline';
+  lastSeen: string | null;
   businessId: string;
 }
 
@@ -21,6 +22,19 @@ const initialState: HumanAgentState = {
   status: "idle",
   error: null,
 };
+
+export const fetchAgentsWithStatus = createAsyncThunk<HumanAgent[], void, { rejectValue: string }>(
+  "humanAgent/fetchAgentsWithStatus", // Renamed for clarity
+  async (_, thunkAPI) => {
+    try {
+      // It should call the new endpoint you created
+      const response = await api.get("/api/v1/agents/status");
+      return response.data.data; // The endpoint returns the array of agents with status
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to fetch agents");
+    }
+  }
+);
 
 export const fetchHumanAgents = createAsyncThunk<HumanAgent[], void, { rejectValue: string }>(
   "humanAgent/fetchHumanAgents",
@@ -74,13 +88,16 @@ const humanAgentSlice = createSlice({
   name: "humanAgent",
   initialState,
   reducers: {
-    updateAgentStatus: (state, action: PayloadAction<{ userId: string; status: 'online' | 'offline' }>) => {
-      const { userId, status } = action.payload;
-       state.agents = state.agents.map(agent => 
-        agent._id === userId 
-          ? { ...agent, status: status } 
-          : agent 
-      );
+    setAgentStatus: (state, action: PayloadAction<{ userId: string; status: 'online' | 'offline'; lastSeen?: string | null }>) => {
+      const { userId, status, lastSeen } = action.payload;
+
+      const agentIndex = state.agents.findIndex(agent => agent._id === userId);
+
+      if (agentIndex !== -1) {
+
+        state.agents[agentIndex].status = status;
+        state.agents[agentIndex].lastSeen = status === 'offline' ? (lastSeen ?? null) : null;
+      }
     }
   },
   extraReducers: (builder) => {
@@ -88,30 +105,30 @@ const humanAgentSlice = createSlice({
       .addCase(fetchHumanAgents.pending, (state) => { state.status = "loading"; state.error = null; })
       .addCase(fetchHumanAgents.fulfilled, (state, action) => { state.status = "succeeded"; state.agents = action.payload; })
       .addCase(fetchHumanAgents.rejected, (state, action) => { state.status = "failed"; state.error = action.payload ?? "Failed to fetch agents"; })
-      
+
       .addCase(createHumanAgent.pending, (state) => { state.status = "loading"; })
       .addCase(createHumanAgent.fulfilled, (state) => {
-        // --- THE CORE SLICE FIX ---
-        // REMOVED: state.agents.push(action.payload);
-        // The component will refetch the list to ensure all data is consistent.
         state.status = "succeeded";
       })
       .addCase(createHumanAgent.rejected, (state, action) => { state.status = "failed"; state.error = action.payload ?? "Failed to create agent"; })
-      
+
       .addCase(updateHumanAgent.fulfilled, (state) => {
-        // No optimistic update needed; the component refetches.
         state.status = "succeeded";
       })
       .addCase(updateHumanAgent.rejected, (state, action) => { state.status = "failed"; state.error = action.payload ?? "Failed to update agent"; })
-      
+
       .addCase(deleteHumanAgent.fulfilled, (state, action) => {
         state.agents = state.agents.filter((agent) => agent._id !== action.payload);
         state.status = "succeeded";
       })
-      .addCase(deleteHumanAgent.rejected, (state, action) => { state.status = "failed"; state.error = action.payload ?? "Failed to delete agent"; });
+      .addCase(deleteHumanAgent.rejected, (state, action) => { state.status = "failed"; state.error = action.payload ?? "Failed to delete agent"; })
+
+      .addCase(fetchAgentsWithStatus.pending, (state) => { state.status = "loading"; state.error = null; })
+      .addCase(fetchAgentsWithStatus.fulfilled, (state, action) => { state.status = "succeeded"; state.agents = action.payload; })
+      .addCase(fetchAgentsWithStatus.rejected, (state, action) => { state.status = "failed"; state.error = action.payload ?? "Failed to fetch agents"; });
   },
 });
 
 
-export const { updateAgentStatus } = humanAgentSlice.actions;
+export const { setAgentStatus } = humanAgentSlice.actions;
 export default humanAgentSlice.reducer;

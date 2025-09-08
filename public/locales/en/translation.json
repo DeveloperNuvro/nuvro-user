@@ -1,13 +1,95 @@
 {
-  "mainmenu": "Main Menu",
-  "business": "Business",
-  "account": "Account",
+   "onboardingPage": {
+    "titles": {
+      "introduce": "Introduce Yourself & Your Business",
+      "interactions": "Understanding Your Customer Interactions",
+      "goals": "Your AI Chatbot Objectives"
+    },
+    "subtitles": {
+      "step1": "We’re excited to get started! Please tell us a bit about yourself.",
+      "step2": "Carefully write your business domain because it will be used to connect your AI chatbot to your website.",
+      "step3": "This helps us tailor our services to your needs.",
+      "step4_5_6": "This helps us understand your business better.",
+      "step7": "This helps us understand your current setup.",
+      "step8": "This helps us understand your audience.",
+      "step9": "This helps us understand your customer interactions.",
+      "step10": "This helps us tailor our services to your goals."
+    },
+    "steps": {
+      "step1": {
+        "label": "What’s the name of your business?",
+        "placeholder": "Your Business Name"
+      },
+      "step2": {
+        "label": "What’s the name of your business domain?",
+        "placeholder": "Your Business Domain (e.g., example.com)"
+      },
+      "step3": { "label": "Which industry best describes your business?" },
+      "step4": { "label": "How does your business operate?" },
+      "step5": { "label": "Which platform does your website run on?" },
+      "step6": { "label": "Your Customer Support Team Size?" },
+      "step7": {
+        "label": "Your current go-to tools or channels to support customer communication?",
+        "select_all": "(Select all that apply)"
+      },
+      "step8": { "label": "Your monthly website traffic?" },
+      "step9": { "label": "How many conversations do you have with clients each month?" },
+      "step10": {
+        "label": "Your main goals for using Nuvro?",
+        "select_all": "(Select all that apply)"
+      },
+      "step11": {
+        "title": "🎉 You’re All Set!",
+        "subtitle": "Your AI-powered support is ready to take your business to the next level."
+      }
+    },
+    "buttons": {
+      "loading": "Loading...",
+      "launch": "Launch Nuvro",
+      "back": "← Back",
+      "complete": "Complete",
+      "next": "Next →"
+    },
+    "footer": {
+      "progressText": "Your response will help us create the best onboarding experience for you!"
+    },
+    "toasts": {
+      "success": "Onboarding complete! Redirecting...",
+      "error": "Something went wrong"
+    },
+    "options": {
+      "businessType": { "b2b": "B2B", "b2c": "B2C", "ecommerce": "e-Commerce Store", "other": "Other" },
+      "industry": { "ecommerce": "E-commerce", "retail": "Retail", "education": "Education", "healthcare": "Healthcare", "finance": "Finance", "travel": "Travel & Hospitality", "realEstate": "Real Estate", "food": "Food & Beverage", "technology": "Technology", "entertainment": "Entertainment", "other": "Other" },
+      "platform": { "custom": "Custom Website", "webflow": "Webflow", "wordpress": "WordPress", "shopify": "Shopify", "wooCommerce": "WooCommerce", "bigCommerce": "BigCommerce", "other": "Other" },
+      "supportSize": { "justMe": "Just Me", "size2_5": "2-5", "size6_9": "6-9", "size10plus": "10 & Above" },
+      "supportChannels": { "gettingStarted": "Just getting started", "email": "Email", "messenger": "Messenger", "zoho": "Zoho Desk", "zendesk": "ZenDesk", "livechat": "LiveChat", "tawkto": "Tawk.to", "intercom": "Intercom", "other": "Other" },
+      "websiteTraffic": { "upTo1k": "Up to 1000", "size1k_5k": "1000-5000", "size5k_10k": "5000-10000", "over10k": "Over 10000", "dontKnow": "I don’t know" },
+      "monthlyConversations": { "upTo200": "Up to 200", "size200_1k": "200-1000", "size1k_5k": "1000-5000", "size5k_10k": "5000-10000", "over10k": "Over 10000", "dontKnow": "I don’t know" },
+      "goals": { "support247": "Offer 24/7 Support", "boostSales": "Boost Lead Generation and Sales", "automateTickets": "Automate Ticketing System", "reduceCosts": "Reduce Operational Costs", "streamlineProcesses": "Streamline Internal Processes" }
+    }
+  },
+  "sidebar": {
+    "labels": {
+      "overview": "Overview",
+      "inbox": "Inbox",
+      "channel": "Channel",
+      "humanagent": "Human Agent",
+      "ticket": "Ticket",
+      "aimodel": "AI Model",
+      "aiagent": "AI Agent",
+      "customers": "Customers",
+      "analytics": "Analytics",
+      "planpayment": "Plan & Payment",
+      "settings": "Settings",
+      "logout": "Log Out"
+    },
+    "sections": {
+      "mainmenu": "Main Menu",
+      "business": "Business",
+      "account": "Account"
+    }
+  },
   "home": "Home",
-  "inbox": "Inbox",
-  "ticket": "Ticket",
-  "customers": "Customers",
-  "settings": "Settings",
-  "logout": "Logout",
   "currentSubscription": "Current Subscription",
   "subscriptionDetails": "You're on {{plan}} Plan, End: {{endDate}}",
   "toastLogoutSuccess": "Logged out successfully",
@@ -283,6 +365,7 @@
       "agentName": "Agent Name",
       "personality": "Personality",
       "aiModel": "AI Model",
+      "embedScript": "Embed Script",
       "instructions": "Instructions",
       "noInstructions": "No special instructions provided.",
       "deleteDescription": "Are you sure you want to permanently delete the agent named \"{{agentName}}\"? This action cannot be undone."
@@ -308,6 +391,7 @@
       "updating": "Saving changes...",
       "updateSuccess": "Agent updated successfully!",
       "updateError": "Failed to update agent.",
+      "copyScriptSuccess": "Embed script copied to clipboard!",
       "deleting": "Deleting agent...",
       "deleteSuccess": "Agent deleted successfully!",
       "deleteError": "Failed to delete agent."
@@ -354,28 +438,28 @@
     }
   },
   "customersPage": {
-      "filters": {
-        "all": "All Customers"
-      },
-      "searchPlaceholder": "Search...",
-      "table": {
-        "loading": "Loading customers...",
-        "error": "Error: {{error}}",
-        "defaultError": "Could not load customers.",
-        "noCustomersFound": "No customers found.",
-        "customerId": "Customer ID",
-        "customerName": "Customer Name",
-        "email": "Email",
-        "phone": "Phone Number",
-        "dateJoined": "Date Joined"
-      },
-      "pagination": {
-        "previous": "Previous",
-        "next": "Next",
-        "page": "Page {{currentPage}} of {{totalPages}}"
-      }
+    "filters": {
+      "all": "All Customers"
     },
-     "pricingPage": {
+    "searchPlaceholder": "Search...",
+    "table": {
+      "loading": "Loading customers...",
+      "error": "Error: {{error}}",
+      "defaultError": "Could not load customers.",
+      "noCustomersFound": "No customers found.",
+      "customerId": "Customer ID",
+      "customerName": "Customer Name",
+      "email": "Email",
+      "phone": "Phone Number",
+      "dateJoined": "Date Joined"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{currentPage}} of {{totalPages}}"
+    }
+  },
+  "pricingPage": {
     "nav": {
       "planAndPayment": "Plan & Payment"
     },
@@ -404,7 +488,11 @@
         "priceDisplay": "USD $19/month",
         "description": "For individuals or small businesses testing the service with real resources (limited).",
         "features": [
-          "Up to 1000 conversations per month", "1 AI Agent", "1 Training Model", "Whatsapp Integration", "Basic Support"
+          "Up to 1000 conversations per month",
+          "1 AI Agent",
+          "1 Training Model",
+          "Whatsapp Integration",
+          "Basic Support"
         ]
       },
       "premium": {
@@ -412,7 +500,11 @@
         "priceDisplay": "USD $70/month",
         "description": "For individuals, and small to medium-sized businesses with growing customer interaction needs.",
         "features": [
-          "Up to 100,000 conversations per month", "3 AI Agents", "3 Training Models", "Whatsapp Integration", "Priority Support"
+          "Up to 100,000 conversations per month",
+          "3 AI Agents",
+          "3 Training Models",
+          "Whatsapp Integration",
+          "Priority Support"
         ]
       },
       "enterprise": {
@@ -420,7 +512,11 @@
         "priceDisplay": "USD $400/month",
         "description": "Large enterprises or corporations with high chat volumes and complex operations.",
         "features": [
-          "Up to 1,000,000 conversations per month", "10 AI Agents", "10 Training Models", "Whatsapp Integration", "24/7 Dedicated Support"
+          "Up to 1,000,000 conversations per month",
+          "10 AI Agents",
+          "10 Training Models",
+          "Whatsapp Integration",
+          "24/7 Dedicated Support"
         ]
       }
     },
@@ -440,13 +536,20 @@
       "unexpectedError": "An unexpected error occurred."
     }
   },
-   "settingsPage": {
+  "settingsPage": {
     "title": "Settings",
     "subtitle": "Manage your account and business preferences.",
     "tabs": {
       "profile": "Your Profile",
       "business": "Business Settings",
       "security": "Password & Security"
+    },
+    "language": {
+      "title": "Language & Region",
+      "subtitle": "Choose the language you want to use in the application.",
+      "label": "Language",
+      "updateSuccess": "Language updated successfully.",
+      "updateError": "Failed to update your language preference."
     }
   },
   "signinPage": {
@@ -468,7 +571,7 @@
       "loginSuccess": "Logged in successfully!"
     }
   },
-    "signupPage": {
+  "signupPage": {
     "heading": "Power Up Your Conversations — Start for Free!",
     "paragraph": "Streamline support, enhance engagement, and let AI handle the rest, effortlessly.",
     "form": {
@@ -494,7 +597,7 @@
       "registerSuccess": "Registered successfully!"
     }
   },
-    "updateAiModelPage": {
+  "updateAiModelPage": {
     "loading": {
       "loadingData": "Loading model data...",
       "loadingError": "Error loading model. It may not exist.",
@@ -510,12 +613,6 @@
       "dragAndDrop": "Drag & drop files here, or click to select files",
       "newFilesTitle": "New files to be added"
     },
-    "sidebar": {
-      "title": "Save Changes",
-      "updateButton": "Update AI Model",
-      "updatingButton": "Updating...",
-      "cancelButton": "Cancel"
-    },
     "validation": {
       "nameRequired": "Model name is required"
     },
@@ -525,7 +622,7 @@
       "updateError": "Update failed: {{error}}"
     }
   },
-    "profileForm": {
+  "profileForm": {
     "title": "Personal Information",
     "subtitle": "This information will be displayed publicly so be careful what you share.",
     "fullNameLabel": "Full Name",
@@ -534,7 +631,7 @@
     "saveButton": "Save Changes",
     "savingButton": "Saving..."
   },
-    "agentInbox": {
+  "agentInbox": {
     "title": "My Inbox",
     "status": {
       "online": "Online",
@@ -580,7 +677,7 @@
       "closeFailed": "Failed to close conversation."
     }
   },
-    "trainModelPage": {
+  "trainModelPage": {
     "step1": {
       "title": "Model Information",
       "modelNameLabel": "Model Name",
@@ -617,7 +714,7 @@
     "deleteButton": "Delete",
     "deletingButton": "Deleting..."
   },
-   "businessForm": {
+  "businessForm": {
     "title": "Business Information",
     "subtitle": "Update your company's name and logo.",
     "logoLabel": "Business Logo",
@@ -627,7 +724,7 @@
     "saveButton": "Save Changes",
     "savingButton": "Saving..."
   },
-    "securityForm": {
+  "securityForm": {
     "title": "Change Password",
     "subtitle": "Update the password used to log in to your account.",
     "currentPasswordLabel": "Current Password",
@@ -640,5 +737,4 @@
       "updateSuccess": "Password updated successfully!"
     }
   }
-
 }
