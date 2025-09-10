@@ -1,12 +1,11 @@
 // src/pages/ChatInbox.tsx
 
-import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { io, Socket } from 'socket.io-client';
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
@@ -22,48 +21,35 @@ import { api } from "@/api/axios";
 import {
   fetchCustomersByBusiness,
   fetchMessagesByCustomer,
-  addRealtimeMessage,
-  addNewCustomer,
   sendHumanMessage,
-  updateConversationStatus,
-  removeConversation,
   resetConversations,
-  ConversationInList,
   closeConversation,
-  Message // Import Message type
 } from "@/features/chatInbox/chatInboxSlice";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
-import NotificationToast from "@/components/custom/Notification/NotificationToast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getSocket } from "../lib/useSocket"; 
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 dayjs.extend(relativeTime);
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
 const SystemMessage = ({ text }: { text: string }) => ( <div className="flex items-center justify-center my-4"><div className="text-center text-xs text-muted-foreground px-4 py-1 bg-muted rounded-full">{text}</div></div> );
 const useDebounce = (value: string, delay: number) => { const [debouncedValue, setDebouncedValue] = useState(value); useEffect(() => { const handler = setTimeout(() => { setDebouncedValue(value); }, delay); return () => { clearTimeout(handler); }; }, [value, delay]); return debouncedValue; };
-const playNotificationSound = (notificationRef: React.RefObject<HTMLAudioElement | null>) => { if (notificationRef.current) { notificationRef.current.currentTime = 0; const playPromise = notificationRef.current.play(); if (playPromise !== undefined) { playPromise.catch(error => { console.warn("Audio playback was prevented by the browser.", error); }); } } };
 
 export default function ChatInbox() {
   const dispatch = useDispatch<AppDispatch>();
   const { t, i18n } = useTranslation();
   
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState<'open' | 'closed'>('open');
-  const [isTyping, setIsTyping] = useState<{ [key: string]: boolean }>({});
+  const [isTyping] = useState<{ [key: string]: boolean }>({});
 
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
-  const conversationsRef = useRef<ConversationInList[]>([]);
-  const notificationRef = useRef<HTMLAudioElement | null>(null);
-  const audioInitialized = useRef(false);
   const [isInitialMessageLoad, setIsInitialMessageLoad] = useState(true);
 
   const { user }: any = useSelector((state: RootState) => state.auth);
@@ -81,74 +67,42 @@ export default function ChatInbox() {
   const groupedMessages = useMemo(() => { const allMessages = messagesData?.list || []; return allMessages.reduce((acc: { [key: string]: any[] }, msg: any) => { const dateLabel = dayjs(msg.time).isToday() ? t('chatInbox.dateToday') : dayjs(msg.time).isYesterday() ? t('chatInbox.dateYesterday') : dayjs(msg.time).format("MMMM D, YYYY"); if (!acc[dateLabel]) acc[dateLabel] = []; acc[dateLabel].push(msg); return acc; }, {}); }, [messagesData?.list, t]);
 
   useEffect(() => { dayjs.locale(i18n.language); }, [i18n.language]);
-  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
-  useEffect(() => { notificationRef.current = new Audio("/sounds/notification.mp3"); const handleAppClick = () => { if (!audioInitialized.current && notificationRef.current) { notificationRef.current.load(); audioInitialized.current = true; } }; window.addEventListener('click', handleAppClick, { once: true }); return () => window.removeEventListener('click', handleAppClick); }, []);
-  useEffect(() => { if (businessId) { dispatch(fetchAgentsWithStatus()); dispatch(fetchChannels()); } }, [businessId, dispatch]);
+  
+  useEffect(() => { 
+    if (businessId) { 
+      dispatch(fetchChannels()); 
+    } 
+  }, [businessId, dispatch]);
+
+  useEffect(() => {
+    if (businessId) {
+      dispatch(fetchAgentsWithStatus());
+    }
+  }, [agents, businessId, dispatch]);
+
   useEffect(() => { if (businessId) { dispatch(resetConversations()); dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter })); } }, [businessId, dispatch, debouncedSearchQuery, activeFilter]);
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
 
-  useEffect(() => {
-    if (!user?._id || !user?.businessId) return;
-
-    const chatSocket = io(API_BASE_URL, {
-      query: { userId: user._id, businessId: user.businessId },
-      transports: ['websocket'],
-      withCredentials: true
-    });
-    setSocket(chatSocket);
-
-    // ----------- THE FIX IS HERE -----------
-    const handleNewMessage = (data: any) => {
-      const { customerId, sender, message, customerName, conversationId } = data;
-      if (!customerId) return;
-      setIsTyping(prev => ({ ...prev, [customerId]: false }));
-
-      // Create a correctly structured message object with a 'text' property
-      const formattedMessage: Message = {
-        _id: data._id,
-        text: message, // Map backend's 'message' to frontend's 'text'
-        sentBy: sender,
-        time: data.createdAt || new Date().toISOString(),
-      };
-      
-      if (!conversationsRef.current.some(c => c.id === conversationId) && (sender === 'customer' || sender === 'system')) {
-        dispatch(addNewCustomer({ id: conversationId, customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') }, preview: message, latestMessageTimestamp: new Date().toISOString(), status: 'ai_only' }));
-      }
-      
-      // Dispatch the correctly structured object
-      dispatch(addRealtimeMessage({ customerId, message: formattedMessage }));
-
-      if (sender === 'customer') {
-        toast.custom(t => <NotificationToast t={t} name={customerName} msg={message} />);
-        playNotificationSound(notificationRef);
-      }
-    };
-    // ----------- END OF FIX -----------
-
-    const handleNewAssignment = (data: ConversationInList) => {
-      if (!conversationsRef.current.some(c => c.id === data.id)) dispatch(addNewCustomer(data));
-      toast.success(t('chatInbox.toastNewChat', { customerName: data.customer.name }));
-    };
-    const handleConversationRemoved = (data: { conversationId: string }) => dispatch(removeConversation(data));
-    const handleConversationUpdate = (data: any) => dispatch(updateConversationStatus({ customerId: data.customerId, status: data.status, assignedAgentId: data.agentId || (data.to?.type === 'agent' ? data.to.id : undefined) }));
-
-    chatSocket.on("newMessage", handleNewMessage);
-    chatSocket.on("newChatAssigned", handleNewAssignment);
-    chatSocket.on("conversationRemoved", handleConversationRemoved);
-    chatSocket.on("conversationTransferred", handleConversationUpdate);
-    chatSocket.on("newTicketCreated", handleConversationUpdate);
-
-    return () => { chatSocket.disconnect(); };
-  }, [user?._id, user?.businessId, dispatch, t]);
-
-  useLayoutEffect(() => { if (!messageListRef.current) return; if (isInitialMessageLoad) { messageListRef.current.scrollTop = messageListRef.current.scrollHeight; setIsInitialMessageLoad(false); } else { const newScrollHeight = messageListRef.current.scrollHeight; const scrollDifference = newScrollHeight - (prevScrollHeightRef.current || 0); if (scrollDifference > 0) { messageListRef.current.scrollTop = scrollDifference; } prevScrollHeightRef.current = 0; } }, [messagesData?.list, isInitialMessageLoad]);
+  useLayoutEffect(() => { 
+    if (!messageListRef.current) return; 
+    if (isInitialMessageLoad) { 
+        messageListRef.current.scrollTop = messageListRef.current.scrollHeight; 
+        setIsInitialMessageLoad(false); 
+    } else if (messagesData?.list && messagesData.list.length > 0) {
+        const lastMessage = messagesData.list[messagesData.list.length - 1];
+        if (lastMessage.sentBy === 'human' || lastMessage.sentBy === 'agent' || lastMessage.status === 'sending') {
+            messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+        }
+    }
+  }, [messagesData?.list, isInitialMessageLoad]);
 
   const handleSendMessage = useCallback(() => {
+    const socket = getSocket();
     if (!newMessage.trim() || !selectedCustomer || !businessId || !socket) return;
     dispatch(sendHumanMessage({ businessId, customerId: selectedCustomer, message: newMessage.trim(), senderSocketId: socket.id ?? "" }))
       .unwrap().catch(error => toast.error(error.message || t('chatInbox.toastMessageFailed')));
     setNewMessage("");
-  }, [newMessage, selectedCustomer, businessId, dispatch, socket, t]);
+  }, [newMessage, selectedCustomer, businessId, dispatch, t]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
     if (!currentConversation?.id) { toast.error(t('chatInbox.toastTransferNoId')); return; }
@@ -157,7 +111,7 @@ export default function ChatInbox() {
     toast.promise(promise, { loading: t('chatInbox.toastTransferLoading'), success: t('chatInbox.toastTransferSuccess'), error: (err: any) => err.response?.data?.message || t('chatInbox.toastTransferFailed') });
   };
 
-  const handleCloseConversation = () => { if (currentConversation?.id && businessId) { dispatch(closeConversation({ conversationId: currentConversation.id, businessId })).unwrap().then(() => toast.success(t('chatInbox.toastCloseSuccess'))).catch(err => toast.error(err || t('chatInbox.toastCloseFailed'))); } };
+  const handleCloseConversation = () => { if (currentConversation?.id && businessId) { dispatch(closeConversation({ conversationId: currentConversation.id, businessId })).unwrap().then(() => { toast.success(t('chatInbox.toastCloseSuccess')); setSelectedCustomer(null); }).catch(err => toast.error(err || t('chatInbox.toastCloseFailed'))); } };
   const handleNextPage = () => { if (currentPage < totalPages && businessId) dispatch(fetchCustomersByBusiness({ businessId, page: currentPage + 1, searchQuery: debouncedSearchQuery, status: activeFilter })); };
   const handlePrevPage = () => { if (currentPage > 1 && businessId) dispatch(fetchCustomersByBusiness({ businessId, page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter })); };
   const handleLoadMoreMessages = () => { if (selectedCustomer && messagesData?.hasMore && messagesData.status !== 'loading' && messageListRef.current) { prevScrollHeightRef.current = messageListRef.current.scrollHeight; dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 })); } };
@@ -222,6 +176,7 @@ export default function ChatInbox() {
                       <DropdownMenuSeparator />
                       {Array.isArray(channels) && channels.length > 0 && channels.map((channel) => (<DropdownMenuItem key={channel._id} onSelect={() => handleTransfer({ type: 'channel', id: channel._id })}><ChevronsRight className="mr-2 h-4 w-4" /> {t('chatInbox.transferToChannel', { channelName: channel.name })}</DropdownMenuItem>))}
                       <DropdownMenuSeparator />
+                      
                       <DropdownMenuLabel className="text-xs text-muted-foreground px-2">{t('chatInbox.onlineAgents')}</DropdownMenuLabel>
                       {onlineAgents.length > 0 ? (
                         onlineAgents.map(agent => (
@@ -229,9 +184,12 @@ export default function ChatInbox() {
                             <div className="flex items-center"><span className="relative flex h-2 w-2 mr-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>{agent.name}</div>
                           </DropdownMenuItem>
                         ))
-                      ) : (<DropdownMenuItem disabled>{t('chatInbox.noAgentsOnline')}</DropdownMenuItem>)}
+                      ) : (
+                        <DropdownMenuItem disabled>{t('chatInbox.noAgentsOnline')}</DropdownMenuItem>
+                      )}
+
                       {offlineAgents.length > 0 && (
-                        <>
+                        <Fragment>
                           <DropdownMenuSeparator />
                           <DropdownMenuLabel className="text-xs text-muted-foreground px-2">{t('chatInbox.offlineAgents')}</DropdownMenuLabel>
                           {offlineAgents.map(agent => (
@@ -239,8 +197,9 @@ export default function ChatInbox() {
                               <div className="flex items-center text-muted-foreground"><User className="mr-2 h-4 w-4" /><div className="flex flex-col"><span>{agent.name}</span>{agent.lastSeen && (<span className="text-xs -mt-1">{dayjs(agent.lastSeen).fromNow()}</span>)}</div></div>
                             </DropdownMenuItem>
                           ))}
-                        </>
+                        </Fragment>
                       )}
+
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Tooltip><TooltipTrigger asChild><Button className="cursor-pointer" variant="ghost" size="icon" onClick={handleCloseConversation}><XCircle className="h-5 w-5 text-red-500" /></Button></TooltipTrigger><TooltipContent><p>{t('chatInbox.closeConversationTooltip')}</p></TooltipContent></Tooltip>
@@ -252,7 +211,7 @@ export default function ChatInbox() {
                   {messagesData?.hasMore && messagesData.status !== 'loading' && (<Button variant="link" onClick={handleLoadMoreMessages}>{t('chatInbox.loadMoreMessages')}</Button>)}
                 </div>
                 {Object.entries(groupedMessages).map(([date, group]) => (
-                  <div key={date}><div className="text-center text-xs text-muted-foreground my-4">{date}</div>{group?.map((msg, i) => { if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />; const isAgentSide = ["agent", "human"].includes(msg.sentBy); return (<div key={i} className={cn("flex flex-col my-4", isAgentSide ? "items-end" : "items-start")}><div className={cn("max-w-[65%] p-3 rounded-2xl text-sm leading-snug", isAgentSide ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted text-muted-foreground rounded-bl-none")}>{msg.text}</div><p className="text-xs text-muted-foreground mt-1.5 px-1">{dayjs(msg.time).format("h:mm A")}</p></div>); })}</div>
+                  <div key={date}><div className="text-center text-xs text-muted-foreground my-4">{date}</div>{group?.map((msg: any, i) => { if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />; const isAgentSide = ["agent", "human"].includes(msg.sentBy); return (<div key={i} className={cn("flex flex-col my-4", isAgentSide ? "items-end" : "items-start", msg.status === 'failed' && 'opacity-50')}><div className={cn("max-w-[65%] p-3 rounded-2xl text-sm leading-snug", isAgentSide ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted text-muted-foreground rounded-bl-none")}>{msg.text}</div><p className="text-xs text-muted-foreground mt-1.5 px-1">{dayjs(msg.time).format("h:mm A")}</p></div>); })}</div>
                 ))}
               </div>
               <div className="p-6 border-t">

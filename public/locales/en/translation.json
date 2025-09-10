@@ -126,6 +126,8 @@
   "status_in_progress": "In Progress",
   "chatInbox": {
     "title": "Inbox",
+    "offlineAgents": "No agents online",
+    "onlineAgents": "Online Agents",
     "filterOpen": "Open",
     "filterClosed": "Closed",
     "searchPlaceholder": "Search by customer name...",

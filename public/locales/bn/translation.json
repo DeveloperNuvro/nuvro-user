@@ -225,6 +225,8 @@
     "messagePlaceholder": "আপনার বার্তা টাইপ করুন...",
     "unknownCustomer": "অজানা",
     "aCustomer": "একজন গ্রাহক",
+    "offlineAgents": "অফলাইন এজেন্ট",
+    "onlineAgents": "অনলাইন এজেন্ট",
     "toastNewChat": "{{customerName}} থেকে নতুন চ্যাট নিযুক্ত হয়েছে",
     "toastMessageFailed": "বার্তা পাঠাতে ব্যর্থ হয়েছে।",
     "toastTransferNoId": "স্থানান্তর করা যাবে না: কথোপকথন আইডি পাওয়া যায়নি।",

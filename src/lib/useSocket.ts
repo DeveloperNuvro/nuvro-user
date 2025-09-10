@@ -1,17 +1,14 @@
 // src/lib/socket.ts
 import { io, Socket } from 'socket.io-client';
 
-
 let socket: Socket | null = null;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const initSocket = (user: any): Socket => {
-  // If a socket already exists, disconnect it before creating a new one
   if (socket) {
     socket.disconnect();
   }
   
-  // Connect only if we have a valid user
   if (user?._id && user?.businessId) {
     socket = io(API_BASE_URL, {
       query: {
@@ -22,7 +19,7 @@ export const initSocket = (user: any): Socket => {
       withCredentials: true,
     });
 
-    console.log('Socket initialized for user:', user._id);
+    console.log('[Socket] Initialized for user:', user._id);
     return socket;
   }
 
@@ -31,7 +28,7 @@ export const initSocket = (user: any): Socket => {
 
 export const disconnectSocket = () => {
   if (socket) {
-    console.log('Disconnecting socket.');
+    console.log('[Socket] Disconnecting.');
     socket.disconnect();
     socket = null;
   }

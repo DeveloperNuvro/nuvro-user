@@ -90,12 +90,11 @@ const humanAgentSlice = createSlice({
   reducers: {
     setAgentStatus: (state, action: PayloadAction<{ userId: string; status: 'online' | 'offline'; lastSeen?: string | null }>) => {
       const { userId, status, lastSeen } = action.payload;
-
       const agentIndex = state.agents.findIndex(agent => agent._id === userId);
 
       if (agentIndex !== -1) {
-
         state.agents[agentIndex].status = status;
+        // Set lastSeen to null if online, otherwise use the provided value or null
         state.agents[agentIndex].lastSeen = status === 'offline' ? (lastSeen ?? null) : null;
       }
     }

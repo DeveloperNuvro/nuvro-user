@@ -1,13 +1,12 @@
 // src/pages/AgentInbox.tsx
 
-import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, MoreVertical, ChevronsRight, Wifi, WifiOff, XCircle } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, MoreVertical, ChevronsRight, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { io, Socket } from 'socket.io-client';
 import { useDispatch, useSelector } from "react-redux";
 import dayjs from "dayjs";
 import isToday from "dayjs/plugin/isToday";
@@ -19,31 +18,24 @@ import toast from 'react-hot-toast';
 
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from '../api/axios';
-import { ConversationInList, Message } from "@/features/chatInbox/chatInboxSlice"; // Import Message type
-import { fetchAgentConversations, addAssignedConversation, removeConversation, resetAgentConversations, updateConversationPreview } from "../features/humanAgent/humanAgentInboxSlice";
-import { fetchMessagesByCustomer, addRealtimeMessage, sendHumanMessage, closeConversation } from "../features/chatInbox/chatInboxSlice";
+import { fetchAgentConversations, resetAgentConversations } from "../features/humanAgent/humanAgentInboxSlice";
+import { fetchMessagesByCustomer, sendHumanMessage, closeConversation } from "../features/chatInbox/chatInboxSlice";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import NotificationToast from "@/components/custom/Notification/NotificationToast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
+import { getSocket } from "../lib/useSocket"; 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 dayjs.extend(relativeTime);
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-
 const SystemMessage = ({ text }: { text: string }) => ( <div className="flex items-center justify-center my-4"><div className="text-center text-xs text-muted-foreground px-4 py-1 bg-muted rounded-full">{text}</div></div> );
 const useDebounce = (value: string, delay: number) => { const [debouncedValue, setDebouncedValue] = useState(value); useEffect(() => { const handler = setTimeout(() => { setDebouncedValue(value); }, delay); return () => { clearTimeout(handler); }; }, [value, delay]); return debouncedValue; };
-const playNotificationSound = (notificationRef: React.RefObject<HTMLAudioElement | null>) => { if (notificationRef.current) { notificationRef.current.currentTime = 0; const playPromise = notificationRef.current.play(); if (playPromise !== undefined) { playPromise.catch(error => { console.warn("Audio playback was prevented by the browser.", error); }); } } };
 
 export default function AgentInbox() {
   const dispatch = useDispatch<AppDispatch>();
   const { t, i18n } = useTranslation();
 
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [activeFilter, setActiveFilter] = useState<'open' | 'closed'>('open');
@@ -52,9 +44,6 @@ export default function AgentInbox() {
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
   const [isInitialMessageLoad, setIsInitialMessageLoad] = useState(true);
-  const conversationsRef = useRef<ConversationInList[]>([]);
-  const audioInitialized = useRef(false);
-  const notificationRef = useRef<HTMLAudioElement | null>(null);
 
   const { user }: any = useSelector((state: RootState) => state.auth);
   const { channels } = useSelector((state: RootState) => state.channel);
@@ -72,81 +61,42 @@ export default function AgentInbox() {
   const groupedMessages = useMemo(() => { const allMessages = messagesData?.list || []; return allMessages.reduce((acc: any, msg: any) => { const dateLabel = dayjs(msg.time).isToday() ? t('agentInbox.dates.today') : dayjs(msg.time).isYesterday() ? t('agentInbox.dates.yesterday') : dayjs(msg.time).format("MMMM D, YYYY"); if (!acc[dateLabel]) acc[dateLabel] = []; acc[dateLabel].push(msg); return acc; }, {}); }, [messagesData?.list, t]);
 
   useEffect(() => { dayjs.locale(i18n.language); }, [i18n.language]);
-  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
-  useEffect(() => { notificationRef.current = new Audio("/sounds/notification.mp3"); const handleAppClick = () => { if (!audioInitialized.current && notificationRef.current) { notificationRef.current.load(); audioInitialized.current = true; } }; window.addEventListener('click', handleAppClick, { once: true }); return () => window.removeEventListener('click', handleAppClick); }, []);
-  useEffect(() => { if (businessId) { dispatch(fetchAgentsWithStatus()); dispatch(fetchChannels()); } }, [dispatch, businessId]);
-  useEffect(() => { if (agentId) { dispatch(resetAgentConversations()); dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter })); } }, [dispatch, agentId, debouncedSearchQuery, activeFilter]);
-  useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
+  
+  useEffect(() => { 
+    if (businessId) { 
+        dispatch(fetchChannels()); 
+    } 
+  }, [dispatch, businessId]);
 
   useEffect(() => {
-    if (!agentId || !businessId) return;
-
-    const chatSocket = io(API_BASE_URL, { 
-      query: { userId: agentId, businessId: businessId }, 
-      transports: ['websocket'],
-      withCredentials: true
-    });
-    setSocket(chatSocket);
-    
-    chatSocket.on('connect', () => setIsConnected(true));
-    chatSocket.on('disconnect', () => setIsConnected(false));
-    
-    // ----------- THE FIX IS HERE -----------
-    const handleNewMessage = (data: any) => {
-      // Create a correctly structured message object with a 'text' property
-      const formattedMessage: Message = {
-        _id: data._id,
-        text: data.message, // Map backend's 'message' to frontend's 'text'
-        sentBy: data.sender,
-        time: data.createdAt || new Date().toISOString(),
-      };
-
-      // Dispatch the correctly structured object
-      dispatch(addRealtimeMessage({ customerId: data.customerId, message: formattedMessage }));
-      
-      if (data.conversationId) {
-        dispatch(updateConversationPreview({ 
-            conversationId: data.conversationId, 
-            preview: data.message, // The preview still uses the raw 'message' property
-            latestMessageTimestamp: data.createdAt || new Date().toISOString() 
-        }));
-      }
-
-      if (data.sender === 'customer') {
-        const myChannelIds = Array.isArray(channels) ? channels.map(c => c._id) : [];
-        const isForMe = (data.assignment?.type === 'agent' && data.assignment?.id === agentId) || (data.assignment?.type === 'channel' && data.assignment.id && myChannelIds.includes(data.assignment.id));
-        if (isForMe) {
-          toast.custom((t) => <NotificationToast t={t} name={data.customerName} msg={data.message} />);
-          playNotificationSound(notificationRef);
-        }
-      }
-    };
-    // ----------- END OF FIX -----------
-
-    const handleNewAssignment = (data: ConversationInList) => {
-      toast.success(t('agentInbox.toast.newChatAssigned', { customerName: data.customer.name }));
-      dispatch(addAssignedConversation(data));
-    };
-    const handleConversationRemoved = (data: { conversationId: string }) => {
-      dispatch(removeConversation(data));
-      if (currentConversation?.id === data.conversationId) { setSelectedCustomer(null); }
-    };
-    
-    chatSocket.on("newMessage", handleNewMessage);
-    chatSocket.on("newChatAssigned", handleNewAssignment);
-    chatSocket.on("conversationRemoved", handleConversationRemoved);
-    
-    return () => { chatSocket.disconnect(); };
-  }, [dispatch, agentId, businessId, currentConversation, channels, t]);
+    if (businessId) {
+      dispatch(fetchAgentsWithStatus());
+    }
+  }, [agents, businessId, dispatch]);
   
-  useLayoutEffect(() => { if (!messageListRef.current) return; if (isInitialMessageLoad) { messageListRef.current.scrollTop = messageListRef.current.scrollHeight; setIsInitialMessageLoad(false); } else { const newScrollHeight = messageListRef.current.scrollHeight; const scrollDifference = newScrollHeight - (prevScrollHeightRef.current || 0); if (scrollDifference > 0) { messageListRef.current.scrollTop = scrollDifference; } prevScrollHeightRef.current = 0; } }, [messagesData?.list, isInitialMessageLoad]);
+  useEffect(() => { if (agentId) { dispatch(resetAgentConversations()); dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter })); } }, [dispatch, agentId, debouncedSearchQuery, activeFilter]);
+  useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
+  
+  useLayoutEffect(() => { 
+    if (!messageListRef.current) return; 
+    if (isInitialMessageLoad) { 
+        messageListRef.current.scrollTop = messageListRef.current.scrollHeight; 
+        setIsInitialMessageLoad(false); 
+    } else if (messagesData?.list && messagesData.list.length > 0) {
+        const lastMessage = messagesData.list[messagesData.list.length - 1];
+        if (lastMessage.sentBy === 'human' || lastMessage.sentBy === 'agent' || lastMessage.status === 'sending') {
+            messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+        }
+    }
+  }, [messagesData?.list, isInitialMessageLoad]);
 
   const handleSendMessage = useCallback(() => {
+    const socket = getSocket();
     if (!newMessage.trim() || !selectedCustomer || !businessId || !socket) return;
     dispatch(sendHumanMessage({ businessId, customerId: selectedCustomer, message: newMessage.trim(), senderSocketId: socket.id ?? "" }))
       .unwrap().catch((error) => toast.error(error || t('agentInbox.toast.messageFailed')));
     setNewMessage("");
-  }, [newMessage, selectedCustomer, businessId, dispatch, socket, t]);
+  }, [newMessage, selectedCustomer, businessId, dispatch, t]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
     if (!currentConversation?.id) { toast.error(t('agentInbox.toast.transferNoId')); return; }
@@ -155,7 +105,7 @@ export default function AgentInbox() {
     toast.promise(promise, { loading: t('agentInbox.toast.transferring'), success: t('agentInbox.toast.transferSuccess'), error: (err: any) => err.response?.data?.message || t('agentInbox.toast.transferFailed') });
   };
   
-  const handleCloseConversation = () => { if (currentConversation?.id && businessId) { dispatch(closeConversation({ conversationId: currentConversation.id, businessId })).unwrap().then(() => toast.success(t('agentInbox.toast.closeSuccess'))).catch((err) => toast.error(err || t('agentInbox.toast.closeFailed'))); } };
+  const handleCloseConversation = () => { if (currentConversation?.id && businessId) { dispatch(closeConversation({ conversationId: currentConversation.id, businessId })).unwrap().then(() => { toast.success(t('agentInbox.toast.closeSuccess')); setSelectedCustomer(null); }).catch((err) => toast.error(err || t('agentInbox.toast.closeFailed'))); } };
   const handleNextPage = () => { if (currentPage < totalPages) dispatch(fetchAgentConversations({ page: currentPage + 1, searchQuery: debouncedSearchQuery, status: activeFilter })); };
   const handlePrevPage = () => { if (currentPage > 1) dispatch(fetchAgentConversations({ page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter })); };
   const handleLoadMoreMessages = () => { if (selectedCustomer && messagesData?.hasMore && messagesData.status !== 'loading' && messageListRef.current) { prevScrollHeightRef.current = messageListRef.current.scrollHeight; dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 })); } };
@@ -166,10 +116,6 @@ export default function AgentInbox() {
       <aside className="flex flex-col border bg-card p-4 rounded-xl max-h-screen">
         <div className="flex items-center justify-between px-2 mb-2">
           <h1 className="text-2xl font-bold">{t('agentInbox.title')}</h1>
-          <div className={cn("flex items-center gap-2 text-xs font-semibold px-2 py-1 rounded-full", isConnected ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300")}>
-            {isConnected ? <Wifi size={12} /> : <WifiOff size={12} />}
-            {isConnected ? t('agentInbox.status.online') : t('agentInbox.status.offline')}
-          </div>
         </div>
         <div className="flex items-center gap-2 p-2 border-y">
           <Button variant={activeFilter === 'open' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('open')}>{t('agentInbox.filters.open')}</Button>
@@ -219,6 +165,7 @@ export default function AgentInbox() {
                     <DropdownMenuSeparator />
                     {Array.isArray(channels) && channels.length > 0 && channels.map((channel) => (<DropdownMenuItem key={channel._id} onSelect={() => handleTransfer({ type: 'channel', id: channel._id })}><ChevronsRight className="mr-2 h-4 w-4" /> {t('agentInbox.transfer.toChannel', { channelName: channel.name })}</DropdownMenuItem>))}
                     <DropdownMenuSeparator />
+                    
                     <DropdownMenuLabel className="text-xs text-muted-foreground px-2">{t('chatInbox.onlineAgents')}</DropdownMenuLabel>
                     {onlineAgents.length > 0 ? (
                       onlineAgents.map(agent => (
@@ -226,9 +173,12 @@ export default function AgentInbox() {
                           <div className="flex items-center"><span className="relative flex h-2 w-2 mr-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span></span>{agent.name}</div>
                         </DropdownMenuItem>
                       ))
-                    ) : (<DropdownMenuItem disabled>{t('chatInbox.noAgentsOnline')}</DropdownMenuItem>)}
+                    ) : (
+                      <DropdownMenuItem disabled>{t('chatInbox.noAgentsOnline')}</DropdownMenuItem>
+                    )}
+
                     {offlineAgents.length > 0 && (
-                      <>
+                      <Fragment>
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel className="text-xs text-muted-foreground px-2">{t('chatInbox.offlineAgents')}</DropdownMenuLabel>
                         {offlineAgents.map(agent => (
@@ -236,7 +186,7 @@ export default function AgentInbox() {
                             <div className="flex items-center text-muted-foreground"><User className="mr-2 h-4 w-4" /><div className="flex flex-col"><span>{agent.name}</span>{agent.lastSeen && (<span className="text-xs -mt-1">{dayjs(agent.lastSeen).fromNow()}</span>)}</div></div>
                           </DropdownMenuItem>
                         ))}
-                      </>
+                      </Fragment>
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -249,7 +199,7 @@ export default function AgentInbox() {
                 {messagesData?.hasMore && messagesData.status !== 'loading' && (<Button variant="link" onClick={handleLoadMoreMessages}>{t('agentInbox.loadMoreMessages')}</Button>)}
               </div>
               {Object.entries(groupedMessages).map(([date, group]) => (
-                <div key={date}><div className="text-center text-xs text-muted-foreground my-4">{date}</div>{Array.isArray(group) && group.map((msg: any, i: any) => { if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />; const isAgentSide = ["agent", "human"].includes(msg.sentBy); return (<div key={i} className={cn("flex flex-col my-4", isAgentSide ? "items-end" : "items-start")}><div className={cn("max-w-[65%] p-3 rounded-2xl text-sm leading-snug", isAgentSide ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted text-muted-foreground rounded-bl-none")}>{msg.text}</div><p className="text-xs text-muted-foreground mt-1.5 px-1">{dayjs(msg.time).format("h:mm A")}</p></div>); })}</div>
+                <div key={date}><div className="text-center text-xs text-muted-foreground my-4">{date}</div>{Array.isArray(group) && group.map((msg: any, i: any) => { if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />; const isAgentSide = ["agent", "human"].includes(msg.sentBy); return (<div key={i} className={cn("flex flex-col my-4", isAgentSide ? "items-end" : "items-start", msg.status === 'failed' && 'opacity-50')}><div className={cn("max-w-[65%] p-3 rounded-2xl text-sm leading-snug", isAgentSide ? "bg-primary text-primary-foreground rounded-br-none" : "bg-muted text-muted-foreground rounded-bl-none")}>{msg.text}</div><p className="text-xs text-muted-foreground mt-1.5 px-1">{dayjs(msg.time).format("h:mm A")}</p></div>); })}</div>
               ))}
             </div>
             <div className="p-6 border-t">
