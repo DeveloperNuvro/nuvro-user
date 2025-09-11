@@ -1,10 +1,9 @@
-// src/components/auth/ProtectedRoute.tsx
 
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { Navigate, useLocation } from 'react-router-dom';
 import { RootState } from '@/app/store';
-import { ROLES } from '@/appRoutes'; // Import our defined roles
+import { ROLES } from '@/appRoutes'; 
 
 interface ProtectedRouteProps {
   children: React.ReactElement;
@@ -17,24 +16,22 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
 
     const isAuthenticated = user.role && accessToken && status === 'succeeded';
 
-  // Show a loading state while auth status is being determined
   if (status === 'loading' || status === 'idle') {
-    return <div>Loading...</div>; // Or a spinner component
+    return <div>Loading...</div>; 
   }
   
-  // If not authenticated, redirect to signin
   if (!isAuthenticated) {
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  // If authenticated, check for role authorization
+
   const isAuthorized = user && allowedRoles.includes(user.role);
 
   if (isAuthorized) {
-    return children; // Access granted
+    return children; 
   }
   
-  // If authenticated but not authorized, redirect to their default home page
+
   if (user) {
     const defaultHomePage = user.role === ROLES.AGENT 
       ? '/main-menu/agent/inbox' 

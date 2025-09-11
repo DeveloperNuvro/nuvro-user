@@ -82,7 +82,7 @@ export default function DashboardLayout() {
     socket.on('disconnect', onDisconnect);
     if (socket.connected) onConnect();
 
-    // ----------- THE FIX IS HERE -----------
+
     const handleNewMessage = (data: any) => {
       const { customerId, sender, message, customerName, conversationId, assignment, senderSocketId } = data;
       
@@ -91,7 +91,7 @@ export default function DashboardLayout() {
 
       const formattedMessage: Message = { _id: data._id, text: message, sentBy: sender, time: data.createdAt || new Date().toISOString() };
 
-      // Get the MOST RECENT state directly from the store inside the handler
+   
       const currentState = store.getState();
       const allCurrentConversations = [
           ...currentState.chatInbox.conversations,
@@ -100,23 +100,21 @@ export default function DashboardLayout() {
       const uniqueConversations = allCurrentConversations.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
       const isNewConversation = !uniqueConversations.some(c => c.id === conversationId);
 
-      // --- Universal Update ---
-      // This will now correctly add ANY new message (customer, AI, or human) to the chat window's state.
       dispatch(addRealtimeMessage({ customerId, message: formattedMessage }));
 
-      // --- Conditional Logic for Lists & Notifications ---
+
       if (isNewConversation && (sender === 'customer' || sender === 'system' || sender === 'ai')) {
         if (user.role === 'business') {
             dispatch(addNewCustomer({ id: conversationId, customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') }, preview: message, latestMessageTimestamp: new Date().toISOString(), status: 'ai_only' }));
         }
       }
 
-      // Update previews for existing conversations
+ 
       if (!isNewConversation) {
           dispatch(updateConversationPreview({ conversationId, preview: message, latestMessageTimestamp: data.createdAt || new Date().toISOString() }));
       }
       
-      // Handle pop-up notifications ONLY for customer messages
+    
       if (sender === 'customer') {
         const isUnassigned = assignment && (assignment.status === 'ai_only' || assignment.type === 'unassigned');
         const isAssignedToMe = user.role === 'agent' && assignment && assignment.type === 'agent' && assignment.id === user._id;
@@ -130,7 +128,7 @@ export default function DashboardLayout() {
         }
       }
     };
-    // ----------- END OF FIX -----------
+
     
     const handleNewAssignment = (data: ConversationInList) => {
       if (user.role === 'agent') {
@@ -142,7 +140,7 @@ export default function DashboardLayout() {
       }
     };
 
-    // Other listeners...
+
     const handleInitialAgentStatuses = (allAgentsWithStatus: HumanAgent[]) => allAgentsWithStatus.forEach(agent => dispatch(setAgentStatus({ userId: agent._id, status: agent.status, lastSeen: agent.lastSeen })));
     const handleAgentStatusUpdate = (data: { userId: string; status: 'online' | 'offline'; lastSeen?: string }) => dispatch(setAgentStatus(data));
     const handleConversationRemoved = (data: { conversationId: string }) => { dispatch(removeConversation(data)); dispatch(removeAgentConversation(data)); };
@@ -208,6 +206,7 @@ export default function DashboardLayout() {
         await dispatch(logoutUser()).unwrap();
         toast.success(t('toastLogoutSuccess'));
         navigate('/login');
+        window.location.reload();
       } catch (err) {
         toast.error(t('toastLogoutFailed'));
       }
