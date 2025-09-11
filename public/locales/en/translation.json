@@ -605,6 +605,11 @@
       "loadingError": "Error loading model. It may not exist.",
       "notFound": "Model not found. It might have been deleted."
     },
+    "sidebar": {
+      "title": "Update AI Model",
+      "updateButton": "Update",
+      "cancelButton": "Cancel"
+    },
     "form": {
       "mainTitle": "Update Model Information",
       "modelNameLabel": "Model Name",

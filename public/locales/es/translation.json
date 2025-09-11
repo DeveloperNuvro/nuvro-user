@@ -600,6 +600,11 @@
     }
   },
   "updateAiModelPage": {
+    "sidebar": {
+      "title": "Actualizar Información del Modelo",
+      "updateButton": "Actualizar",
+      "cancelButton": "Cancelar"
+    },
     "loading": {
       "loadingData": "Cargando datos del modelo...",
       "loadingError": "Error al cargar el modelo. Puede que no exista.",

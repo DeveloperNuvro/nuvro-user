@@ -1,47 +1,45 @@
-
+// src/routes/ProtectedRoute.tsx
 import React from 'react';
-import { useSelector } from 'react-redux';
 import { Navigate, useLocation } from 'react-router-dom';
-import { RootState } from '@/app/store';
-import { ROLES } from '@/appRoutes'; 
+import { useAppSelector } from '../app/hooks';
+import { ROLES } from '../appRoutes';
 
 interface ProtectedRouteProps {
   children: React.ReactElement;
   allowedRoles: string[];
 }
 
+/**
+ * A component to protect routes based on user roles (Authorization).
+ * It assumes authentication has already been checked by a parent route (e.g., AuthLayout).
+ * 
+ * - If the user's role is in `allowedRoles`, it renders the child component.
+ * - If the user is authenticated but not authorized, it redirects them to their default homepage.
+ * - If the user is not authenticated at all, it redirects to the sign-in page.
+ */
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
   const location = useLocation();
-  const { user,  status, accessToken }: any = useSelector((state: RootState) => state.auth);
+  const { user } = useAppSelector((state) => state.auth);
 
-    const isAuthenticated = user.role && accessToken && status === 'succeeded';
-
-  if (status === 'loading' || status === 'idle') {
-    return <div>Loading...</div>; 
-  }
-  
-  if (!isAuthenticated) {
+  // This component relies on AuthLayout to handle the primary "is logged in" check,
+  // but we include it here as a fallback for safety.
+  if (!user) {
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-
-  const isAuthorized = user && allowedRoles.includes(user.role);
+  const isAuthorized = allowedRoles.includes(user.role);
 
   if (isAuthorized) {
-    return children; 
+    return children; // User has the required role, render the component
   }
-  
 
-  if (user) {
-    const defaultHomePage = user.role === ROLES.AGENT 
-      ? '/main-menu/agent/inbox' 
-      : '/main-menu/overview';
+  // User is logged in but does not have the required role.
+  // Redirect them to their own dashboard to avoid a "Forbidden" page.
+  const defaultHomePage = user.role === ROLES.AGENT 
+    ? '/main-menu/agent/inbox' 
+    : '/main-menu/overview';
     
-    return <Navigate to={defaultHomePage} replace />;
-  }
-
-  // Fallback redirect
-  return <Navigate to="/signin" replace />;
+  return <Navigate to={defaultHomePage} replace />;
 };
 
 export default ProtectedRoute;

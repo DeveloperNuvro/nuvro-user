@@ -1,5 +1,5 @@
-
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+// src/App.tsx
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 
 // Your Pages and Components
@@ -8,35 +8,21 @@ import Signup from "./components/custom/signup/Signup";
 import OnboardingStep from "./components/custom/onboard/Onboarding";
 import DashboardLayout from "./components/custom/dashboard/layout/DashboardLayout";
 
-
 // Routing and State
-import ProtectedRoute from "../src/routes/ProtectedRoute"; // Your role-based guard
-import OnboardingGuard from "./routes/OnboardingGuard";
+import AuthLayout from "./routes/AuthLayout";
+import PublicLayout from "./routes/PublicLayout";
+import ProtectedRoute from "./routes/ProtectedRoute";
+import OnboardingGuard from "./routes/OnboardingGuard"; // Assuming this component exists
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
 import { useAppSelector } from "./app/hooks";
 import { menuRoutes, additionalProtectedRoutes, ROLES } from "./appRoutes";
 
-
-const PrivateRoutes = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
-  return isAuthenticated ? <Outlet /> : <Navigate to="/signin" replace />;
-};
-
-
-const PublicRoutes = ({ isAuthenticated, redirectPath }: { isAuthenticated: boolean; redirectPath: string; }) => {
-  return !isAuthenticated ? <Outlet /> : <Navigate to={redirectPath} replace />;
-};
-
-
-
 function App() {
-
+  // This hook handles the initial session check (e.g., from localStorage)
   useAuthBootstrap();
   const { user, bootstrapped } = useAppSelector((state) => state.auth);
 
-
-  const isAuthenticated = !!user && (user.role === ROLES.AGENT || user.role === ROLES.BUSINESS);
-
-
+  // Show a loading screen until the initial auth state is determined
   if (!bootstrapped) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -44,22 +30,25 @@ function App() {
       </div>
     );
   }
-
-
+  
   const defaultProtectedRoute = user?.role === ROLES.AGENT ? "/main-menu/agent/inbox" : "/main-menu/overview";
 
   return (
     <>
       <Toaster position="top-right" richColors />
       <Routes>
-  
-        <Route element={<PublicRoutes isAuthenticated={isAuthenticated} redirectPath={defaultProtectedRoute} />}>
+        {/* Group 1: Public Routes */}
+        {/* These are only accessible to unauthenticated users. */}
+        {/* Authenticated users will be redirected to their dashboard. */}
+        <Route element={<PublicLayout />}>
           <Route path="/signin" element={<Signin />} />
           <Route path="/signup" element={<Signup />} />
         </Route>
 
-
-        <Route element={<PrivateRoutes isAuthenticated={isAuthenticated} />}>
+        {/* Group 2: Authenticated Routes */}
+        {/* These are only accessible to authenticated users. */}
+        {/* Unauthenticated users will be redirected to /signin. */}
+        <Route element={<AuthLayout />}>
           <Route
             path="/onboarding"
             element={
@@ -69,8 +58,15 @@ function App() {
             }
           />
 
+          {/* All routes within the main dashboard layout */}
           <Route path="/main-menu" element={<DashboardLayout />}>
+            {/* Index route to redirect from /main-menu to the user's default page */}
+            <Route
+              index
+              element={<Navigate to={defaultProtectedRoute} replace />}
+            />
 
+            {/* Render sidebar menu routes with role protection */}
             {menuRoutes.map(
               ({ path, component, allowedRoles, action }) =>
                 !action && (
@@ -86,7 +82,7 @@ function App() {
                 )
             )}
 
-   
+            {/* Render other protected routes with role protection */}
             {additionalProtectedRoutes.map(
               ({ path, component, allowedRoles }) => (
                 <Route
@@ -100,16 +96,15 @@ function App() {
                 />
               )
             )}
-            
-
-            <Route
-              index
-              element={<Navigate to={defaultProtectedRoute} replace />}
-            />
           </Route>
         </Route>
 
-   
+        {/* Fallback Route */}
+        {/* If no other route matches, redirect to the root. */}
+        {/* The root will then be handled by the layout guards. */}
+        {/* e.g., an unauthenticated user at "/" will be sent to "/signin" */}
+        {/* an authenticated user at "/" will be sent to their dashboard */}
+        <Route path="/" element={<Navigate to={user ? defaultProtectedRoute : "/signin"} replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
