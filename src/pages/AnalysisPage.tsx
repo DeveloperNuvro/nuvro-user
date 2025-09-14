@@ -1,25 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useTranslation } from 'react-i18next'; // --- IMPORT ---
+import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '@/app/store';
-import { fetchAnalysisReports, AnalysisReport } from '@/features/analysisReport/analysisReportSlice';
+import { fetchAnalysisReports} from '@/features/analysisReport/analysisReportSlice';
 import ScoreBarChart from '../components/custom/analysis/ScoreBarChart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Loader2, TrendingUp, TrendingDown, MessageSquareQuote, FileText, Bot, Users, MessageCircle, Star } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, TrendingUp, TrendingDown, MessageSquareQuote, FileText, Bot, Users, MessageCircle, Star, Lightbulb, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils";
 
-// --- Reusable Stat Card Component ---
-const StatCard = ({ title, value, icon, description, colorClass }: { title: string, value: string, icon: React.ReactNode, description?: string, colorClass?: string }) => (
-    <Card className=" hover:shadow-sm border-1  cursor-pointer transition-shadow py-3 duration-300 dark:bg-[#1B1B20]">
+// --- Reusable Metric Card Component (Upgraded for enterprise look) ---
+const MetricCard = ({ title, value, icon, description }: {
+    title: string;
+    value: string;
+    icon: React.ReactNode;
+    description: string;
+}) => (
+    <Card className="hover:shadow-lg py-5 cursor-pointer  bg-[#ffd8f1] dark:bg-[#1B1B20]">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</CardTitle>
             {icon}
         </CardHeader>
         <CardContent>
-            <div className={cn("text-4xl font-bold", colorClass)}>{value}</div>
-            {description && <p className="text-xs text-gray-400 dark:text-gray-500">{description}</p>}
+            <div className="text-4xl font-bold">{value}</div>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{description}</p>
         </CardContent>
     </Card>
 );
@@ -27,10 +34,18 @@ const StatCard = ({ title, value, icon, description, colorClass }: { title: stri
 // --- Main Analysis Page Component ---
 const AnalysisPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    const { t, i18n } = useTranslation(); // --- INITIALIZE ---
+    const { t, i18n } = useTranslation();
     const { user } = useSelector((state: RootState) => state.auth);
     const { reports, status, error } = useSelector((state: RootState) => state.analysisReport);
-    const [selectedReport, setSelectedReport] = useState<AnalysisReport | null>(null);
+    
+    // State to manage the currently selected report ID
+    const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+    // Memoize the sorted reports to prevent re-sorting on every render
+    const sortedReports = useMemo(() => {
+        if (!reports) return [];
+        return [...reports].sort((a, b) => new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime());
+    }, [reports]);
 
     useEffect(() => {
         if (user?.businessId) {
@@ -38,13 +53,19 @@ const AnalysisPage: React.FC = () => {
         }
     }, [dispatch, user?.businessId]);
 
+    // Effect to set the selected report to the latest one by default
     useEffect(() => {
-        if (reports && reports.length > 0) {
-            const sortedReports = [...reports].sort((a, b) => new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime());
-            setSelectedReport(sortedReports[0]);
+        if (sortedReports.length > 0 && !selectedReportId) {
+            setSelectedReportId(sortedReports[0]._id);
         }
-    }, [reports]);
+    }, [sortedReports, selectedReportId]);
 
+    // Derive the selected report object from the ID
+    const selectedReport = useMemo(() => {
+        return reports.find(report => report._id === selectedReportId) || null;
+    }, [reports, selectedReportId]);
+
+    // --- RENDER STATES ---
     if (status === 'loading') {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] text-gray-500 dark:text-gray-400">
@@ -70,110 +91,145 @@ const AnalysisPage: React.FC = () => {
     }
     
     const scoreColor = selectedReport.overallAccuracyScore >= 8 ? 'text-green-500' : selectedReport.overallAccuracyScore >= 5 ? 'text-amber-500' : 'text-red-500';
-    const formattedDate = new Date(selectedReport.reportDate).toLocaleDateString(i18n.language, {
-        month: 'long', day: 'numeric', year: 'numeric'
-    });
 
     return (
-        <div className=" min-h-screen">
+        <div className="min-h-screen">
             <div className="container mx-auto py-8 px-4 md:px-8 space-y-8">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">{t('analysisPage.header.title')}</h1>
-                        <p className="mt-2 text-lg text-gray-500 dark:text-gray-400">
-                            {t('analysisPage.header.subtitle')} <span className="font-semibold text-primary">{formattedDate}</span>
+                        <p className="mt-1 text-lg text-gray-500 dark:text-gray-400">
+                            {t('analysisPage.header.showingReportFor', 'Showing report for')}
                         </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Select value={selectedReportId || ''} onValueChange={setSelectedReportId}>
+                            <SelectTrigger className="w-full md:w-[280px] bg-white dark:bg-gray-900 text-base py-6">
+                                <SelectValue placeholder={t('analysisPage.header.selectReport')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {sortedReports.map(report => (
+                                    <SelectItem key={report._id} value={report._id}>
+                                        {new Date(report.reportDate).toLocaleDateString(i18n.language, { month: 'long', day: 'numeric', year: 'numeric' })}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
-                <div className="grid gap-4 md:gap-8 md:grid-cols-2 lg:grid-cols-4">
-                    <StatCard 
+                {/* --- METRICS GRID --- */}
+                <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-4">
+                    <MetricCard 
                         title={t('analysisPage.stats.overallScore')}
                         value={selectedReport.overallAccuracyScore.toFixed(1)} 
                         icon={<Star className={`h-6 w-6 ${scoreColor}`} />}
-                        description={t('analysisPage.stats.overallScoreDesc')}
-                        colorClass={scoreColor}
+                        description={t('analysisPage.stats.overallScoreDesc', 'Based on AI analysis')}
                     />
-                    <StatCard 
+                    <MetricCard 
                         title={t('analysisPage.stats.conversationsAnalyzed')}
                         value={selectedReport.analyzedConversations.length.toString()} 
                         icon={<MessageCircle className="h-6 w-6 text-gray-400"/>}
-                        description={t('analysisPage.stats.conversationsAnalyzedDesc')}
+                        description={t('analysisPage.stats.totalThisPeriod', 'Total for this period')}
                     />
-                     <StatCard 
+                     <MetricCard 
                         title={t('analysisPage.stats.agentName')}
                         value="Pullman"
                         icon={<Bot className="h-6 w-6 text-gray-400"/>}
-                        description={t('analysisPage.stats.agentNameDesc')}
+                        description={t('analysisPage.stats.primaryAgent', 'Primary AI Agent')}
                     />
-                     <StatCard 
+                     <MetricCard 
                         title={t('analysisPage.stats.customersInvolved')}
                         value={new Set(selectedReport.analyzedConversations.map(c => c.customerName)).size.toString()} 
                         icon={<Users className="h-6 w-6 text-gray-400"/>}
-                        description={t('analysisPage.stats.customersInvolvedDesc')}
+                        description={t('analysisPage.stats.uniqueCustomers', 'Unique customers')}
                     />
                 </div>
 
+                {/* --- MAIN CONTENT GRID --- */}
                 <div className="grid gap-8 lg:grid-cols-3">
-                    <div className="lg:col-span-1 space-y-8">
-                        <Card className="py-4 cursor-pointer hover:shadow-md transition-shadow duration-300 dark:bg-[#1B1B20]">
-                            <CardHeader><CardTitle className="flex items-center gap-2"><TrendingUp className="text-green-500"/>{t('analysisPage.summary.workingWell')}</CardTitle></CardHeader>
-                            <CardContent className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{selectedReport.positiveFeedbackSummary}</CardContent>
-                        </Card>
-                         <Card className="py-4 cursor-pointer hover:shadow-md transition-shadow duration-300 dark:bg-[#1B1B20]">
-                            <CardHeader><CardTitle className="flex items-center gap-2"><TrendingDown className="text-red-500"/>{t('analysisPage.summary.improvementAreas')}</CardTitle></CardHeader>
-                            <CardContent className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{selectedReport.criticalFeedbackSummary}</CardContent>
-                        </Card>
-                         <Card className="py-4 cursor-pointer hover:shadow-md transition-shadow duration-300 dark:bg-[#1B1B20]">
-                            <CardHeader><CardTitle className="flex items-center gap-2"><MessageSquareQuote className="text-blue-500"/>{t('analysisPage.summary.knowledgeSuggestions')}</CardTitle></CardHeader>
-                            <CardContent className="text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{selectedReport.suggestedKnowledgeUpdates}</CardContent>
-                        </Card>
-                    </div>
-
                     <div className="lg:col-span-2">
-                        <Card className=" py-5 transition-shadow duration-300 dark:bg-[#1B1B20]">
+                        <Card className="dark:bg-[#1B1B20] py-5 h-full">
                             <CardHeader>
-                                <CardTitle>{t('analysisPage.details.title')}</CardTitle>
-                                <CardDescription>{t('analysisPage.details.subtitle')}</CardDescription>
+                                <CardTitle>{t('analysisPage.details.performanceBreakdown', 'Performance Breakdown')}</CardTitle>
+                                <CardDescription>{t('analysisPage.details.scoresByConversation')}</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-8">
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">{t('analysisPage.details.scoresByConversation')}</h3>
+                            <CardContent>
+                                <div className="h-[350px] w-full">
                                     <ScoreBarChart data={selectedReport.analyzedConversations} />
-                                </div>
-                                <div>
-                                     <h3 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-200">{t('analysisPage.details.feedbackBreakdown')}</h3>
-                                    <Accordion type="single" collapsible className="w-full">
-                                        {selectedReport.analyzedConversations?.map((conv, index) => (
-                                            <AccordionItem value={`item-${index}`} key={conv.conversationId} className="border-b dark:border-gray-700">
-                                                <AccordionTrigger className="hover:no-underline text-left py-4">
-                                                    <div className="flex cursor-pointer items-center justify-between w-full">
-                                                        <span className="font-semibold text-gray-700 dark:text-gray-200">{t('analysisPage.details.conversationWith', { name: conv.customerName })}</span>
-                                                        <Badge className={`px-3 py-1 text-xs ${conv.overallScore >= 8 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : conv.overallScore >= 5 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
-                                                            {t('analysisPage.details.score', { score: conv.overallScore })}
-                                                        </Badge>
-                                                    </div>
-                                                </AccordionTrigger>
-                                                <AccordionContent className="p-4 bg-gray-50 dark:bg-gray-900/50">
-                                                    <div className="space-y-4">
-                                                        <div>
-                                                            <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-200">{t('analysisPage.details.reasoning')}:</h4>
-                                                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{conv.scoreReasoning}</p>
-                                                        </div>
-                                                        <div>
-                                                            <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-200">{t('analysisPage.details.suggestions')}:</h4>
-                                                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{conv.improvementSuggestions}</p>
-                                                        </div>
-                                                    </div>
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        ))}
-                                    </Accordion>
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
+
+                    <div className="lg:col-span-1">
+                        <Card className="dark:bg-[#1B1B20] h-full py-5">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2"><Lightbulb className="text-amber-400" />{t('analysisPage.summary.aiInsights', 'AI-Generated Insights')}</CardTitle>
+                                <CardDescription>{t('analysisPage.summary.aiInsightsDesc', 'Key takeaways from the analysis')}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Tabs defaultValue="positive" className="flex-grow">
+                                    <TabsList className="grid w-full grid-cols-3">
+                                        <TabsTrigger value="positive"><TrendingUp className="h-4 w-4 mr-1.5" />{t('analysisPage.tabs.positive', 'Positive')}</TabsTrigger>
+                                        <TabsTrigger value="critical"><TrendingDown className="h-4 w-4 mr-1.5" />{t('analysisPage.tabs.critical', 'Critical')}</TabsTrigger>
+                                        <TabsTrigger value="suggestions"><MessageSquareQuote className="h-4 w-4 mr-1.5" />{t('analysisPage.tabs.suggestions', 'Ideas')}</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="positive" className="mt-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-h-[260px] overflow-y-auto pr-2">{selectedReport.positiveFeedbackSummary}</TabsContent>
+                                    <TabsContent value="critical" className="mt-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed max-h-[260px] overflow-y-auto pr-2">{selectedReport.criticalFeedbackSummary}</TabsContent>
+                                    <TabsContent value="suggestions" className="mt-4 text-sm text-gray-600 dark:text-gray-300 whitespace-pre-wrap max-h-[260px] overflow-y-auto pr-2">{selectedReport.suggestedKnowledgeUpdates}</TabsContent>
+                                </Tabs>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
+
+                {/* --- CONVERSATION BREAKDOWN LIST --- */}
+                <Card className="dark:bg-[#1B1B20] py-5">
+                    <CardHeader>
+                        <CardTitle>{t('analysisPage.details.conversationBreakdown', 'Conversation Breakdown')}</CardTitle>
+                        <CardDescription>{t('analysisPage.details.breakdownDesc', 'Select a conversation to see detailed feedback.')}</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Accordion type="single" collapsible className="w-full">
+                            {selectedReport.analyzedConversations?.map((conv, index) => (
+                                <AccordionItem value={`item-${index}`} key={conv.conversationId} className="border-b dark:border-gray-800 last:border-b-0">
+                                    <AccordionTrigger className="hover:no-underline text-left py-4 px-2 hover:bg-gray-100 dark:hover:bg-gray-800/50 rounded-lg">
+                                        <div className="flex items-center justify-between w-full">
+                                            <div className="flex flex-col text-left">
+                                                <span className="font-semibold text-gray-800 dark:text-gray-100">{t('analysisPage.details.conversationWith', { name: conv.customerName })}</span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">{t('analysisPage.details.conversationId', 'ID: {{id}}', { id: conv.conversationId.slice(-8) })}</span>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <Badge variant="outline" className={cn("px-3 py-1 text-sm font-bold",
+                                                    conv.overallScore >= 8 ? 'border-green-500 text-green-500' : 
+                                                    conv.overallScore >= 5 ? 'border-amber-500 text-amber-500' : 
+                                                    'border-red-500 text-red-500'
+                                                )}>
+                                                    {conv.overallScore.toFixed(1)}
+                                                </Badge>
+                                                <ChevronDown className="h-5 w-5 transition-transform duration-200 accordion-chevron" />
+                                            </div>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pt-4 pb-6 px-4 bg-gray-50 dark:bg-gray-900/50 rounded-b-lg">
+                                        <div className="grid md:grid-cols-2 gap-6">
+                                            <div>
+                                                <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-200 mb-2">{t('analysisPage.details.reasoning')}:</h4>
+                                                <blockquote className="border-l-4 pl-4 text-sm text-gray-600 dark:text-gray-400 dark:border-gray-600">{conv.scoreReasoning}</blockquote>
+                                            </div>
+                                            <div>
+                                                <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-200 mb-2">{t('analysisPage.details.suggestions')}:</h4>
+                                                <blockquote className="border-l-4 pl-4 text-sm text-gray-600 dark:text-gray-400 dark:border-blue-500">{conv.improvementSuggestions}</blockquote>
+                                            </div>
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

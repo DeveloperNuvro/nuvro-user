@@ -8,12 +8,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '@/app/store';
 import { submitOnboarding } from '@/features/onboarding/onboardingSlice';
 import toast from 'react-hot-toast';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
-// ===================================================================
-// FIX 1: Restore the original OPTIONS. This is what the backend expects.
-// ===================================================================
+
 const ORIGINAL_OPTIONS = {
     businessType: ["B2B", "B2C", "e-Commerce Store", "Other"],
     industry: ["E-commerce", "Retail", "Education", "Healthcare", "Finance", "Travel & Hospitality", "Real Estate", "Food & Beverage", "Technology", "Entertainment", "Other"],
@@ -104,20 +101,13 @@ export default function OnboardingStep() {
         if (step > 1) setStep(step - 1);
     };
 
-    const navigate = useNavigate();
-    const sendToMainMenu = () => {
-        setTimeout(() => { navigate('/main-menu/pricing'); }, 2000);
-    }
-
+   
     const dispatch = useDispatch<AppDispatch>();
     const { status } = useSelector((state: any) => state.onboarding);
     
     const hanleClick = async () => {
         try {
-            // ===================================================================
-            // FIX 2: This logic now correctly maps the translated UI selection
-            // back to the ORIGINAL English value that the backend expects.
-            // ===================================================================
+         
             const dataToSend = {
                 ...formData,
                 industry: ORIGINAL_OPTIONS.industry[translatedOptions.industry.indexOf(formData.industry)],
@@ -132,7 +122,9 @@ export default function OnboardingStep() {
             
             const res = await dispatch(submitOnboarding(dataToSend)).unwrap();
             toast.success(res.message || t('onboardingPage.toasts.success'));
-            sendToMainMenu();
+              setTimeout(() => {
+                window.location.reload();
+            }, 1500);;
         } catch (err: any) {
             toast.error(err || t('onboardingPage.toasts.error'));
         }

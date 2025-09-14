@@ -6,7 +6,7 @@ import { Button } from '../button/Button';
 import InputBox from '../inputbox/InputBox';
 import { useTranslation } from 'react-i18next';
 
-import { Link} from 'react-router-dom'
+import { Link,useNavigate} from 'react-router-dom'
 import { loginUser } from '@/features/auth/authSlice';
 import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux';
@@ -15,6 +15,7 @@ import { AppDispatch, RootState } from '@/app/store';
 
 const Signin = () => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
 
     // Zod schema with translated error messages
     const signinSchema = z.object({
@@ -43,9 +44,21 @@ const Signin = () => {
             };
 
             const result: any = await dispatch(loginUser(payload)).unwrap();
-
             toast.success(result?.message || t('signinPage.toast.loginSuccess'));
-            window.location.reload();
+
+            if (result?.data?.user?.onboardingCompleted === true) {
+                console.log("CONDITION MET: Onboarding is complete. Preparing to reload...");
+                setTimeout(() => {
+                    console.log("EXECUTING RELOAD NOW.");
+                    window.location.reload();
+                }, 500); 
+
+            } else {
+                console.log("CONDITION NOT MET: Onboarding is incomplete. Navigating to /onboarding...");
+                navigate('/onboarding');
+            }
+
+            
 
         } catch (err: any) {
             if (err) {
