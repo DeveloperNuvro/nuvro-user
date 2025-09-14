@@ -166,8 +166,11 @@ const authSlice = createSlice({
         state.error = null;
       }
       )
-      .addCase(updateUserLanguage.fulfilled, (state) => {
+      .addCase(updateUserLanguage.fulfilled, (state, action) => {
         state.status = 'succeeded';
+         if (state.user) {
+          state.user.language = action.payload.language; 
+        }
       })
       .addCase(updateUserLanguage.rejected, (state, action: any) => {
         state.status = 'failed';

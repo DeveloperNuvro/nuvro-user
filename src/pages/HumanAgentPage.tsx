@@ -150,6 +150,7 @@ const AgentCard = ({ agent, onEdit, onDelete }: { agent: HumanAgent, onEdit: (ag
             <div className="p-4">
                 <h3 className="text-base font-medium text-foreground truncate">{agent.name}</h3>
                 <p className="text-sm text-muted-foreground truncate">{agent.email}</p>
+                <p className="text-sm text-muted-foreground truncate">{agent._id}</p>
             </div>
         </div>
     );
