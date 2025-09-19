@@ -9,7 +9,7 @@ import { ButtonSmall, IconDeleteButton } from '../button/Button';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { formatFileSize, getFileTypeLabel } from '@/lib/utils';
-import { FiPaperclip, FiRotateCcw } from "react-icons/fi";
+import { FiPaperclip, FiRotateCcw, FiDownload } from "react-icons/fi"; // Import FiDownload
 import { CiFileOn } from "react-icons/ci";
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
@@ -52,6 +52,25 @@ export default function UpdateAIModelForm() {
 
   const handleMarkForDeletion = (fileUrl: string) => { setFilesToDelete(prev => [...prev, fileUrl]); };
   const handleUndoDeletion = (fileUrl: string) => { setFilesToDelete(prev => prev.filter(url => url !== fileUrl)); };
+
+  const handleDownload = async (fileUrl: string, fileName: string) => {
+    try {
+      const response = await fetch(fileUrl);
+      if (!response.ok) throw new Error('Network response was not ok.');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error(t('updateAiModelPage.toast.downloadError'));
+      console.error('Download error:', error);
+    }
+  };
 
   const onSubmit = async (data: UpdateModelFormData) => {
     if (!modelId || !modelToUpdate) return;
@@ -117,7 +136,10 @@ export default function UpdateAIModelForm() {
                   >
                     <CiFileOn className='text-[30px]' />
                     <span className={`truncate ${isMarkedForDeletion ? 'line-through' : ''}`}>{file.name}</span>
-                    <div className='ml-auto'>
+                    <div className='ml-auto flex items-center gap-2'>
+                      <button type="button" onClick={() => handleDownload(file.url, file.name)} className="p-2 cursor-pointer rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <FiDownload className="text-blue-600 h-5 w-5" title={t('updateAiModelPage.form.downloadTooltip')} />
+                      </button>
                       {isMarkedForDeletion ? (
                         <button type="button" onClick={() => handleUndoDeletion(file.url)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                            <FiRotateCcw className="text-green-600 h-5 w-5" title={t('updateAiModelPage.form.undoDeleteTooltip')} />
