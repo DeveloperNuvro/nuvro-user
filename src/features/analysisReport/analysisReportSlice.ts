@@ -17,7 +17,9 @@ export interface ConversationFeedback {
 export interface AnalysisReport {
     _id: string;
     businessId: string;
-    reportDate: string; // Dates are typically strings in JSON
+    reportDate: string; 
+    agentInfo: string; 
+    modelInfo: string; 
     overallAccuracyScore: number;
     positiveFeedbackSummary: string;
     criticalFeedbackSummary: string;

@@ -135,7 +135,7 @@ const AnalysisPage: React.FC = () => {
                     />
                      <MetricCard 
                         title={t('analysisPage.stats.agentName')}
-                        value="Pullman"
+                        value={selectedReport.agentInfo || t('analysisPage.stats.unknown', 'Unknown')}
                         icon={<Bot className="h-6 w-6 text-gray-400"/>}
                         description={t('analysisPage.stats.primaryAgent', 'Primary AI Agent')}
                     />
