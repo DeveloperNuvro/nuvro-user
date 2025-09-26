@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Checkbox from "@/components/custom/checkbox/Checkbox";
+import ComponentSkeleton from "@/components/skeleton/ComponentSkeleton";
 
 // =========================================================================
 // MAIN PAGE COMPONENT
@@ -284,6 +285,3 @@ const DeleteConfirmDialog = ({ isOpen, onOpenChange, onConfirm, itemName }: any)
     );
 };
 
-const ComponentSkeleton = () => {
-  return (<div className="col-span-full flex items-center justify-center min-h-[400px]"><div className="animate-spin rounded-full h-10 w-10 border-b-2 dark:border-white border-[#4CAF50]"></div></div>);
-};

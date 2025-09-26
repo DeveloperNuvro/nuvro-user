@@ -44,6 +44,7 @@ import isToday from 'dayjs/plugin/isToday';
 import 'dayjs/locale/en';
 import 'dayjs/locale/es';
 import toast from 'react-hot-toast';
+import TicketListSkeleton from '@/components/skeleton/TicketlistSkeleton'; // 1. Import the skeleton component
 
 dayjs.extend(localizedFormat);
 dayjs.extend(isToday);
@@ -257,6 +258,11 @@ const TicketList: React.FC = () => {
   const getStatusText = (status: TicketStatus) => t(`ticketPage.statuses.${status.toLowerCase().replace('-', '_')}`);
   const getTypeText = (type: TicketType) => t(`ticketPage.types.${type.toLowerCase()}`);
 
+  // 2. Add the skeleton loading state for the initial fetch
+  if (status === 'loading' && tickets.length === 0) {
+    return <TicketListSkeleton />;
+  }
+
   return (
     <div className="p-4 sm:p-6 md:p-8">
       <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
@@ -304,9 +310,7 @@ const TicketList: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {status === 'loading' && !modalState.isOpen && (
-                  <tr><td colSpan={12} className="p-4 text-center">{t('ticketPage.table.loading')}</td></tr>
-                )}
+                {/* 3. The old loading text is now implicitly removed by the skeleton component */}
                 {status === 'failed' && (
                   <tr><td colSpan={12} className="p-4 text-center text-red-500">{t('ticketPage.table.error', { error })}</td></tr>
                 )}
@@ -367,9 +371,9 @@ const TicketList: React.FC = () => {
             {total > 0 ? t('ticketPage.pagination.showing', { start: (currentPage - 1) * pageSize + 1, end: Math.min(currentPage * pageSize, total), total }) : t('ticketPage.pagination.noTickets')}
         </span>
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => handlePageChange(currentPage - 1)}>{t('ticketPage.pagination.previous')}</Button>
+            <Button variant="outline" size="sm" disabled={currentPage === 1 || status === 'loading'} onClick={() => handlePageChange(currentPage - 1)}>{t('ticketPage.pagination.previous')}</Button>
             <span>{t('ticketPage.pagination.page', { currentPage, totalPages: totalPages || 1 })}</span>
-            <Button variant="outline" size="sm" disabled={currentPage === totalPages || totalPages === 0} onClick={() => handlePageChange(currentPage + 1)}>{t('ticketPage.pagination.next')}</Button>
+            <Button variant="outline" size="sm" disabled={currentPage === totalPages || totalPages === 0 || status === 'loading'} onClick={() => handlePageChange(currentPage + 1)}>{t('ticketPage.pagination.next')}</Button>
         </div>
       </div>
 

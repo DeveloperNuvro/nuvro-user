@@ -2,15 +2,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '@/app/store';
-import { fetchAnalysisReports} from '@/features/analysisReport/analysisReportSlice';
+import { fetchAnalysisReports } from '@/features/analysisReport/analysisReportSlice';
 import ScoreBarChart from '../components/custom/analysis/ScoreBarChart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, TrendingUp, TrendingDown, MessageSquareQuote, FileText, Bot, Users, MessageCircle, Star, Lightbulb, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, MessageSquareQuote, FileText, Bot, Users, MessageCircle, Star, Lightbulb, ChevronDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils";
+import AnalysisPageSkeleton from '@/components/skeleton/AnalysisSkeleton'; // Import the skeleton component
 
 // --- Reusable Metric Card Component (Upgraded for enterprise look) ---
 const MetricCard = ({ title, value, icon, description }: {
@@ -37,7 +38,7 @@ const AnalysisPage: React.FC = () => {
     const { t, i18n } = useTranslation();
     const { user } = useSelector((state: RootState) => state.auth);
     const { reports, status, error } = useSelector((state: RootState) => state.analysisReport);
-    
+
     // State to manage the currently selected report ID
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 
@@ -67,13 +68,7 @@ const AnalysisPage: React.FC = () => {
 
     // --- RENDER STATES ---
     if (status === 'loading') {
-        return (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-gray-500 dark:text-gray-400">
-                <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
-                <h2 className="text-2xl font-semibold">{t('analysisPage.loading.title')}</h2>
-                <p className="mt-2">{t('analysisPage.loading.subtitle')}</p>
-            </div>
-        );
+        return <AnalysisPageSkeleton />;
     }
 
     if (status === 'failed') {
@@ -89,13 +84,13 @@ const AnalysisPage: React.FC = () => {
             </div>
         );
     }
-    
+
     const scoreColor = selectedReport.overallAccuracyScore >= 8 ? 'text-green-500' : selectedReport.overallAccuracyScore >= 5 ? 'text-amber-500' : 'text-red-500';
 
     return (
         <div className="min-h-screen">
             <div className="container mx-auto py-8 px-4 md:px-8 space-y-8">
-                
+
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">{t('analysisPage.header.title')}</h1>
@@ -121,28 +116,28 @@ const AnalysisPage: React.FC = () => {
 
                 {/* --- METRICS GRID --- */}
                 <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-4">
-                    <MetricCard 
+                    <MetricCard
                         title={t('analysisPage.stats.overallScore')}
-                        value={selectedReport.overallAccuracyScore.toFixed(1)} 
+                        value={selectedReport.overallAccuracyScore.toFixed(1)}
                         icon={<Star className={`h-6 w-6 ${scoreColor}`} />}
                         description={t('analysisPage.stats.overallScoreDesc', 'Based on AI analysis')}
                     />
-                    <MetricCard 
+                    <MetricCard
                         title={t('analysisPage.stats.conversationsAnalyzed')}
-                        value={selectedReport.analyzedConversations.length.toString()} 
-                        icon={<MessageCircle className="h-6 w-6 text-gray-400"/>}
+                        value={selectedReport.analyzedConversations.length.toString()}
+                        icon={<MessageCircle className="h-6 w-6 text-gray-400" />}
                         description={t('analysisPage.stats.totalThisPeriod', 'Total for this period')}
                     />
-                     <MetricCard 
+                    <MetricCard
                         title={t('analysisPage.stats.agentName')}
                         value={selectedReport.agentInfo || t('analysisPage.stats.unknown', 'Unknown')}
-                        icon={<Bot className="h-6 w-6 text-gray-400"/>}
+                        icon={<Bot className="h-6 w-6 text-gray-400" />}
                         description={t('analysisPage.stats.primaryAgent', 'Primary AI Agent')}
                     />
-                     <MetricCard 
+                    <MetricCard
                         title={t('analysisPage.stats.customersInvolved')}
-                        value={new Set(selectedReport.analyzedConversations.map(c => c.customerName)).size.toString()} 
-                        icon={<Users className="h-6 w-6 text-gray-400"/>}
+                        value={new Set(selectedReport.analyzedConversations.map(c => c.customerName)).size.toString()}
+                        icon={<Users className="h-6 w-6 text-gray-400" />}
                         description={t('analysisPage.stats.uniqueCustomers', 'Unique customers')}
                     />
                 </div>
@@ -203,9 +198,9 @@ const AnalysisPage: React.FC = () => {
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <Badge variant="outline" className={cn("px-3 py-1 text-sm font-bold",
-                                                    conv.overallScore >= 8 ? 'border-green-500 text-green-500' : 
-                                                    conv.overallScore >= 5 ? 'border-amber-500 text-amber-500' : 
-                                                    'border-red-500 text-red-500'
+                                                    conv.overallScore >= 8 ? 'border-green-500 text-green-500' :
+                                                        conv.overallScore >= 5 ? 'border-amber-500 text-amber-500' :
+                                                            'border-red-500 text-red-500'
                                                 )}>
                                                     {conv.overallScore.toFixed(1)}
                                                 </Badge>

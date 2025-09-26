@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { enUS, es } from 'date-fns/locale';
 import { fetchBusinessById, fetchAiIntregationByBusinessId } from "@/features/business/businessSlice";
+import PricingPageSkeleton from '@/components/skeleton/PaymentPageSkeleton'; // --- 1. IMPORT SKELETON ---
 
 
 const CheckCircleIcon = ({ className }: { className?: string }) => (
@@ -34,7 +35,8 @@ const UsageProgressBar = ({ label, value, max, display }: { label: string; value
 export const PricingPage = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { t, i18n } = useTranslation();
-    const { selectedBusiness, aiIntegrations } = useSelector((state: RootState) => state.business);
+    // --- 2. GET STATUS FROM REDUX STATE ---
+    const { selectedBusiness, aiIntegrations, status: businessStatus } = useSelector((state: RootState) => state.business);
     const { status: subscriptionLoadingStatus } = useSelector((state: RootState) => state.subscription);
     const { user } = useSelector((state: RootState) => state.auth);
 
@@ -107,6 +109,12 @@ export const PricingPage = () => {
 
     const limits = aiIntegrations?.integrationDetails?.limits;
     const usage = aiIntegrations?.integrationDetails?.usageStats;
+
+    // --- 3. DEFINE LOADING STATE AND RENDER SKELETON ---
+    const isLoading = businessStatus === 'loading' || (businessStatus === 'idle' && !selectedBusiness);
+    if (isLoading) {
+        return <PricingPageSkeleton />;
+    }
 
     const TrialBanner = () => {
         if (!trialEndDate) return null;

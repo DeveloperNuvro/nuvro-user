@@ -14,16 +14,16 @@ import {
     TrendingUp,
     BarChart,
     Calendar,
-    Loader2,
     ServerCrash,
     UserPlus,
 } from 'lucide-react';
-import { useTranslation } from 'react-i18next'; // Import useTranslation
+import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale'; // Import Spanish locale for dates
+import { es } from 'date-fns/locale';
 import PerformanceChart from '../components/custom/analysis/PerformanceChart';
+import DashboardOverviewPageSkeleton from '@/components/skeleton/DashboardOverviewPageSkeleton'; // 1. Import the skeleton component
 
-// Reusable Stat Card Component (No changes needed)
+// Reusable Stat Card Component (No changes)
 const StatCard = ({ title, value, icon, description }: { title: string, value: string | number, icon: React.ReactNode, description: string }) => (
     <Card className="shadow-sm py-3 hover:shadow-lg transition-shadow duration-300 dark:bg-[#1B1B20]">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -39,13 +39,13 @@ const StatCard = ({ title, value, icon, description }: { title: string, value: s
 
 const DashboardOverviewPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    const { t, i18n } = useTranslation(); // Initialize t function and get i18n instance
+    const { t, i18n } = useTranslation();
     
     const { user } = useSelector((state: RootState) => state.auth);
     const { data: overviewData, status, error } = useSelector((state: RootState) => state.overview);
     
     const businessId = user?.businessId;
-    const dateLocale = i18n.language === 'es' ? es : undefined; // Set date locale based on current language
+    const dateLocale = i18n.language === 'es' ? es : undefined;
 
     useEffect(() => {
         if (businessId) {
@@ -53,9 +53,11 @@ const DashboardOverviewPage: React.FC = () => {
         }
     }, [dispatch, businessId]);
 
+    // 2. Replace the old loader with the new skeleton component
     if (status === 'loading') {
-        return <div className="flex items-center justify-center h-[70vh]"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+        return <DashboardOverviewPageSkeleton />;
     }
+
     if (status === 'failed') {
         return (
             <div className="flex flex-col items-center justify-center h-[70vh] text-center text-red-500">
@@ -69,7 +71,6 @@ const DashboardOverviewPage: React.FC = () => {
 
     const { performanceAnalytics, ...coreStats } = overviewData;
 
-    // Helper to translate ticket statuses
     const getTranslatedStatus = (status: string) => {
         const key = `status_${status.toLowerCase().replace('-', '_')}`;
         return t(key, status); 

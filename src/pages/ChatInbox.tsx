@@ -30,6 +30,7 @@ import { fetchChannels } from "@/features/channel/channelSlice";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getSocket } from "../lib/useSocket"; 
+import ChatInboxSkeleton from "@/components/skeleton/ChatInboxSkeleton"; // 1. Import the skeleton
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
@@ -116,6 +117,11 @@ export default function ChatInbox() {
   const handlePrevPage = () => { if (currentPage > 1 && businessId) dispatch(fetchCustomersByBusiness({ businessId, page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter })); };
   const handleLoadMoreMessages = () => { if (selectedCustomer && messagesData?.hasMore && messagesData.status !== 'loading' && messageListRef.current) { prevScrollHeightRef.current = messageListRef.current.scrollHeight; dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 })); } };
 
+  // 2. Render the skeleton on initial load
+  if (chatListStatus === 'loading' && conversations.length === 0) {
+    return <ChatInboxSkeleton />;
+  }
+  
   return (
     <TooltipProvider delayDuration={0}>
       <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] h-screen w-full gap-6 p-6">
@@ -129,8 +135,8 @@ export default function ChatInbox() {
             <Input placeholder={t('chatInbox.searchPlaceholder')} className="bg-muted border-none" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
           </div>
           <div className="flex-1 overflow-y-auto space-y-2 scrollbar-hide pr-2">
-            {chatListStatus === 'loading' && conversations.length === 0 ? (
-              <div className="flex justify-center items-center h-full"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+            {chatListStatus === 'loading' && conversations.length > 0 ? ( // This handles subsequent loads
+              <div className="flex justify-center items-center py-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : conversations.length > 0 ? (
               conversations.map((convo) => (
                 <div key={convo.id} onClick={() => setSelectedCustomer(convo.customer.id)} className={cn("flex items-center gap-4 p-3 rounded-lg cursor-pointer", selectedCustomer === convo.customer.id ? "bg-primary/10" : "hover:bg-muted/50")}>

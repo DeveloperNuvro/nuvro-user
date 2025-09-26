@@ -5,13 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
-
 import { AppDispatch, RootState } from "@/app/store";
 import { fetchCustomersForTable } from "@/features/chatInbox/chatInboxSlice";
 import dayjs from "dayjs";
 import 'dayjs/locale/en';
 import 'dayjs/locale/es';
+import CustomersPageSkeleton from "@/components/skeleton/CustomersPageSkeleton"; // --- IMPORT SKELETON ---
 
 const pageSize = 10;
 
@@ -92,30 +91,30 @@ export default function CustomersPage() {
                                     <th className="p-3 sm:p-4 whitespace-nowrap hidden md:table-cell">{t('customersPage.table.dateJoined')}</th>
                                 </tr>
                             </thead>
+                            {/* --- UPDATE RENDERING LOGIC HERE --- */}
                             <tbody>
-                                {status === "loading" && customers.length === 0 && (
-                                    <tr><td colSpan={6} className="text-center p-8"><div className="flex justify-center items-center gap-2"><Loader2 className="w-5 h-5 animate-spin" /><span>{t('customersPage.table.loading')}</span></div></td></tr>
-                                )}
-                                {status === "failed" && (
+                                {status === "loading" ? (
+                                    <CustomersPageSkeleton />
+                                ) : status === "failed" ? (
                                     <tr><td colSpan={6} className="text-center p-8 text-red-500">{t('customersPage.table.error', { error: error || t('customersPage.table.defaultError') })}</td></tr>
-                                )}
-                                {status !== 'loading' && customers.length === 0 && (
+                                ) : customers.length === 0 ? (
                                     <tr><td colSpan={6} className="p-8 text-center">{t('customersPage.table.noCustomersFound')}</td></tr>
+                                ) : (
+                                    customers.map((customer: ICustomer, idx) => (
+                                        <tr key={customer.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                            <td className="p-3 sm:p-4">{(currentPage - 1) * pageSize + idx + 1}</td>
+                                            <td className="p-3 sm:p-4 whitespace-nowrap font-mono text-xs text-gray-500 dark:text-gray-400 truncate max-w-[100px]" title={customer.id}>
+                                                {customer.id}
+                                            </td>
+                                            <td className="p-3 sm:p-4 whitespace-nowrap truncate max-w-[150px]" title={customer.name}>{customer.name}</td>
+                                            <td className="p-3 sm:p-4 whitespace-nowrap truncate max-w-[200px]" title={customer.email}>{customer.email}</td>
+                                            <td className="p-3 sm:p-4 whitespace-nowrap hidden sm:table-cell">{customer.phone || '-'}</td>
+                                            <td className="p-3 sm:p-4 whitespace-nowrap hidden md:table-cell">
+                                                {dayjs(customer.createdAt).format("MMM D, YYYY")}
+                                            </td>
+                                        </tr>
+                                    ))
                                 )}
-                                {customers.map((customer: ICustomer, idx) => (
-                                    <tr key={customer.id} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                        <td className="p-3 sm:p-4">{(currentPage - 1) * pageSize + idx + 1}</td>
-                                        <td className="p-3 sm:p-4 whitespace-nowrap font-mono text-xs text-gray-500 dark:text-gray-400 truncate max-w-[100px]" title={customer.id}>
-                                            {customer.id}
-                                        </td>
-                                        <td className="p-3 sm:p-4 whitespace-nowrap truncate max-w-[150px]" title={customer.name}>{customer.name}</td>
-                                        <td className="p-3 sm:p-4 whitespace-nowrap truncate max-w-[200px]" title={customer.email}>{customer.email}</td>
-                                        <td className="p-3 sm:p-4 whitespace-nowrap hidden sm:table-cell">{customer.phone || '-'}</td>
-                                        <td className="p-3 sm:p-4 whitespace-nowrap hidden md:table-cell">
-                                            {dayjs(customer.createdAt).format("MMM D, YYYY")}
-                                        </td>
-                                    </tr>
-                                ))}
                             </tbody>
                         </table>
                     </div>
