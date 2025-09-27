@@ -4,18 +4,28 @@ import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '@/app/store';
 import { fetchUserProfile } from '@/features/profile/profileSlice';
 // highlight-start
-import { updateUserLanguage } from '@/features/auth/authSlice'; // Import the thunk
+import { updateUserLanguage, deleteUserAccount } from '@/features/auth/authSlice'; // Import the delete thunk
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Button } from '@/components/ui/button';
 // highlight-end
 import { User, Building, Shield } from 'lucide-react';
 import { ProfileForm } from '../components/custom/settings/ProfileForm';
 import { BusinessForm } from '../components/custom/settings/BusinessForm';
 import { SecurityForm } from '../components/custom/settings/SecurityForm';
 import { Skeleton } from '@/components/ui/skeleton';
-// highlight-start
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-// highlight-end
 
 
 const SettingsPageSkeleton = () => (
@@ -36,7 +46,9 @@ const AccountSettingsPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { t, i18n } = useTranslation();
     const { status: profileStatus } = useSelector((state: RootState) => state.profile);
-    const { status: authStatus } = useSelector((state: RootState) => state.auth);
+    // highlight-start
+    const { user, status: authStatus } = useSelector((state: RootState) => state.auth);
+    // highlight-end
 
 
     const [activeTab, setActiveTab] = useState<'profile' | 'business' | 'security'>('profile');
@@ -66,6 +78,22 @@ const AccountSettingsPage: React.FC = () => {
             toast.error(t('settingsPage.language.updateError'));
         }
     };
+
+    // highlight-start
+    const handleDeleteAccount = async () => {
+        if (!user) {
+            toast.error(t('settingsPage.delete.noUserError'));
+            return;
+        }
+
+        try {
+            await dispatch(deleteUserAccount(user._id!)).unwrap();
+            toast.success(t('settingsPage.delete.success'));
+        } catch (error: any) {
+            toast.error(error || t('settingsPage.delete.error'));
+        }
+    };
+    // highlight-end
 
 
     return (
@@ -106,7 +134,6 @@ const AccountSettingsPage: React.FC = () => {
                         ) : (
                             <div>
                                 {activeTab === 'profile' && (
-                                    // highlight-start
                                     <div className="space-y-8">
                                         {/* Language Settings Card */}
                                         <div className="p-6 bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 shadow-sm">
@@ -121,7 +148,6 @@ const AccountSettingsPage: React.FC = () => {
                                                  <Select
                                                     value={i18n.language}
                                                     onValueChange={handleLanguageChange}
-                                                    // The selector is disabled if any auth operation is loading
                                                     disabled={authStatus === 'loading'}
                                                  >
                                                     <SelectTrigger id="language-select" className="mt-2">
@@ -137,11 +163,54 @@ const AccountSettingsPage: React.FC = () => {
                                         </div>
                                         {/* Original Profile Form */}
                                         <ProfileForm />
+
+                                           <div className="p-6 bg-white dark:bg-gray-900 rounded-lg border border-red-500 dark:border-red-700/50 shadow-sm">
+                                            <h3 className="text-lg font-medium text-red-600 dark:text-red-500">
+                                                {t('settingsPage.dangerZone.title')}
+                                            </h3>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                {t('settingsPage.dangerZone.subtitle')}
+                                            </p>
+                                            <div className="mt-4">
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="destructive" disabled={authStatus === 'loading'}>
+                                                            {t('settingsPage.delete.buttonText')}
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                            <AlertDialogTitle>{t('settingsPage.delete.confirmTitle')}</AlertDialogTitle>
+                                                            <AlertDialogDescription>
+                                                                {t('settingsPage.delete.confirmDescription')}
+                                                            </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                            <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
+                                                            <AlertDialogAction
+                                                                onClick={handleDeleteAccount}
+                                                                className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+                                                            >
+                                                                {t('settingsPage.delete.confirmButton')}
+                                                            </AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </div>
+                                        </div>
                                     </div>
-                                    // highlight-end
                                 )}
                                 {activeTab === 'business' && <BusinessForm />}
-                                {activeTab === 'security' && <SecurityForm />}
+                                {/* highlight-start */}
+                                {activeTab === 'security' && (
+                                    <div className="space-y-8">
+                                        <SecurityForm />
+
+                                
+                                     
+                                    </div>
+                                )}
+                                {/* highlight-end */}
                             </div>
                         )}
                     </div>

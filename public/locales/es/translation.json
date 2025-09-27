@@ -552,6 +552,19 @@
       "label": "Idioma",
       "updateSuccess": "Idioma actualizado correctamente.",
       "updateError": "Error al actualizar su preferencia de idioma."
+    },
+    "dangerZone": {
+      "title": "Zona de Peligro",
+      "subtitle": "Acciones que pueden afectar significativamente tu cuenta o datos."
+    },
+    "delete": {
+      "buttonText": "Eliminar Cuenta",
+      "confirmTitle": "¿Estás absolutamente seguro?",
+      "confirmDescription": "Esta acción eliminará permanentemente tu cuenta y todos los datos asociados. Esta acción no se puede deshacer.",
+      "confirmButton": "Sí, eliminar mi cuenta",
+      "success": "Tu cuenta ha sido eliminada exitosamente.",
+      "error": "No se pudo eliminar tu cuenta. Por favor, inténtalo de nuevo.",
+      "noUserError": "No se pudo identificar la cuenta a eliminar."
     }
   },
   "signinPage": {

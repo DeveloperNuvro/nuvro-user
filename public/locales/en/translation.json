@@ -552,6 +552,19 @@
       "label": "Language",
       "updateSuccess": "Language updated successfully.",
       "updateError": "Failed to update your language preference."
+    }, 
+     "dangerZone": {
+      "title": "Danger Zone",
+      "subtitle": "You can Contact Support to activate your account after deletion witihin 30 days."
+    },
+    "delete": {
+      "buttonText": "Delete Account",
+      "confirmTitle": "Are you absolutely sure?",
+      "confirmDescription": "You can contact support to reactivate your account within 30 days of deletion.",
+      "confirmButton": "Yes, delete my account",
+      "success": "Your account has been successfully deleted.",
+      "error": "Failed to delete your account. Please try again.",
+      "noUserError": "Could not identify the user to delete."
     }
   },
   "signinPage": {

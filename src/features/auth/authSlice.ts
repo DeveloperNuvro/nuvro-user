@@ -9,6 +9,7 @@ export interface User {
   role: string;
   businessId?: string;
   language?: string;
+  _id?: string; // MongoDB ObjectId
 }
 
 
@@ -23,11 +24,11 @@ export interface AuthState {
 
 
 export const updateUserLanguage = createAsyncThunk<
-  User, 
-  { language: string } 
+  User,
+  { language: string }
 >('auth/updateUserLanguage', async (payload, thunkAPI) => {
   try {
-   
+
     const response = await api.post('/api/v1/users/change-language', payload);
     return response.data.data;
   } catch (error: any) {
@@ -80,10 +81,26 @@ export const logoutUser = createAsyncThunk(
   'auth/logoutUser',
   async (_, thunkAPI) => {
     try {
-      const res = await api.post('/api/v1/users/logout'); 
+      const res = await api.post('/api/v1/users/logout');
       return res.data.message;
     } catch (error: any) {
       return thunkAPI.rejectWithValue('Logout failed');
+    }
+  }
+);
+
+// --- NEW ASYNC THUNK FOR DELETING USER ACCOUNT ---
+export const deleteUserAccount = createAsyncThunk(
+  'auth/deleteUserAccount',
+  async (userId: string, { dispatch, rejectWithValue }) => {
+    try {
+      const response = await api.delete(`/api/v1/users/${userId}`);
+      console.log('Account deletion response:', response.data);
+      // Dispatch logoutUser to clear out tokens and user state
+      await dispatch(logoutUser());
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete account.');
     }
   }
 );
@@ -130,7 +147,7 @@ const authSlice = createSlice({
         state.status = 'succeeded';
       })
 
-    
+
       .addCase(loginUser.pending, (state) => {
         state.status = 'loading';
         state.error = null;
@@ -149,7 +166,7 @@ const authSlice = createSlice({
         state.accessToken = action.payload.accessToken;
         state.user = action.payload.user;
         state.status = 'succeeded';
-        state.bootstrapped = true; 
+        state.bootstrapped = true;
       })
 
       .addCase(logoutUser.fulfilled, (state) => {
@@ -159,8 +176,8 @@ const authSlice = createSlice({
         state.error = null;
         state.bootstrapped = true;
       })
-      
-     
+
+
       .addCase(updateUserLanguage.pending, (state) => {
         state.status = 'loading';
         state.error = null;
@@ -169,7 +186,7 @@ const authSlice = createSlice({
       .addCase(updateUserLanguage.fulfilled, (state, action) => {
         state.status = 'succeeded';
          if (state.user) {
-          state.user.language = action.payload.language; 
+          state.user.language = action.payload.language;
         }
       })
       .addCase(updateUserLanguage.rejected, (state, action: any) => {
@@ -177,6 +194,20 @@ const authSlice = createSlice({
         state.error = action.payload || 'Failed to update language';
       }
       )
+      // --- EXTRA REDUCERS FOR DELETING USER ACCOUNT ---
+      .addCase(deleteUserAccount.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(deleteUserAccount.fulfilled, (state) => {
+        state.status = 'succeeded';
+        // The user state is cleared by the logoutUser action that is dispatched
+        // in the thunk, so we don't need to clear it here again.
+      })
+      .addCase(deleteUserAccount.rejected, (state, action: any) => {
+        state.status = 'failed';
+        state.error = action.payload || 'Failed to delete account';
+      })
 
 
       .addMatcher(
