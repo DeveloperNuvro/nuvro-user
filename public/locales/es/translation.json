@@ -616,7 +616,8 @@
     "sidebar": {
       "title": "Actualizar Información del Modelo",
       "updateButton": "Actualizar",
-      "cancelButton": "Cancelar"
+      "cancelButton": "Cancelar",
+      "updatingButton": "Actualizando..."
     },
     "loading": {
       "loadingData": "Cargando datos del modelo...",

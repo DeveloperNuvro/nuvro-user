@@ -621,7 +621,8 @@
     "sidebar": {
       "title": "Update AI Model",
       "updateButton": "Update",
-      "cancelButton": "Cancel"
+      "cancelButton": "Cancel",
+      "updatingButton": "Updating..."
     },
     "form": {
       "mainTitle": "Update Model Information",
