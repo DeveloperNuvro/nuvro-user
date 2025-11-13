@@ -97,6 +97,7 @@
   "loadingFailed": "Failed to Load Dashboard",
   "noData": "No overview data available.",
   "dashboardTitle": "Dashboard",
+  "dashboardSubtitle": "Welcome back! Here's what's happening with your business today.",
   "totalCustomers": "Total Customers",
   "totalCustomersDesc": "All unique customer interactions",
   "totalConversations": "Total Conversations",
@@ -167,7 +168,11 @@
   },
   "channelPage": {
     "title": "Channels",
+    "subtitle": "Organize and manage your support channels for efficient team collaboration",
     "addChannelButton": "Add Channel",
+    "stats": {
+      "totalChannels": "Total Channels"
+    },
     "loadingError": "Error: {{error}}",
     "noChannelsTitle": "No Channels Found",
     "noChannelsSubtitle": "Get started by creating your first channel (e.g., Sales, Support).",
@@ -201,6 +206,7 @@
   },
   "humanAgentPage": {
     "title": "Human Agents",
+    "subtitle": "Manage your human support agents and assign them to channels for efficient customer service",
     "addAgentButton": "Add Agent",
     "loadingError": "Error: {{error}}",
     "noAgentsTitle": "No Agents Found",
@@ -210,6 +216,17 @@
     "createModalButton": "Create Agent",
     "editModalTitle": "Edit Agent",
     "editModalButton": "Save Changes",
+    "stats": {
+      "totalAgents": "Total Agents",
+      "activeAgents": "Active Agents",
+      "totalChannels": "Total Channels"
+    },
+    "status": {
+      "online": "Online"
+    },
+    "card": {
+      "id": "ID:"
+    },
     "cardEdit": "Edit",
     "cardDelete": "Delete",
     "formName": "Name",
@@ -232,6 +249,8 @@
     "toastDeleteError": "Failed to delete agent."
   },
   "ticketPage": {
+    "title": "Support Tickets",
+    "subtitle": "Manage and track customer support tickets efficiently",
     "filters": {
       "all": "All Tickets",
       "open": "Open",
@@ -239,6 +258,13 @@
       "solved": "Solved"
     },
     "searchPlaceholder": "Search tickets...",
+    "searchTitle": "Search by subject, description, customer name, agent name, full ticket ID, or partial ticket ID (last 6+ characters)",
+    "stats": {
+      "totalTickets": "Total Tickets",
+      "openTickets": "Open Tickets",
+      "closedTickets": "Closed Tickets",
+      "highPriority": "High Priority"
+    },
     "addTicketButton": "Add Ticket",
     "editButton": "Edit",
     "deleteButton": "Delete",
@@ -344,6 +370,7 @@
   },
   "aiModelListPage": {
     "title": "AI Models",
+    "subtitle": "Train and manage your AI models. Upload documents, configure settings, and deploy intelligent models for your business.",
     "createNewButton": "+ Create New",
     "loading": "Loading models...",
     "loadingError": "Error: {{error}}",
@@ -356,10 +383,25 @@
     "toastDeleteSuccess": "Model \"{{modelName}}\" deleted successfully.",
     "toastDeleteError": "❌ {{error}}"
   },
+  "aiModelPage": {
+    "title": "AI Models",
+    "stats": {
+      "totalModels": "Total Models",
+      "deployed": "Deployed",
+      "training": "Training"
+    }
+  },
   "aiAgentPage": {
     "title": "AI Agents",
+    "subtitle": "Manage and configure your AI agents. Create, edit, and deploy intelligent assistants for your business.",
     "modelLabel": "Model",
     "unknown": "Unknown",
+    "stats": {
+      "totalAgents": "Total Agents",
+      "activeAgents": "Active Agents",
+      "inactiveAgents": "Inactive Agents"
+    },
+    "searchPlaceholder": "Enter agent name",
     "modal": {
       "viewingTitle": "Viewing",
       "editingTitle": "Editing",
@@ -411,7 +453,9 @@
     },
     "header": {
       "title": "Performance Dashboard",
-      "subtitle": "AI Analysis for"
+      "subtitle": "AI Analysis for",
+      "showingReportFor": "Showing report for",
+      "selectReport": "Select Report"
     },
     "stats": {
       "overallScore": "Overall Score",
@@ -440,10 +484,17 @@
     }
   },
   "customersPage": {
+    "title": "Customers",
+    "description": "Manage and view all your customers. Search, filter, and access customer information easily.",
     "filters": {
       "all": "All Customers"
     },
     "searchPlaceholder": "Search...",
+    "stats": {
+      "totalCustomers": "Total Customers",
+      "withEmail": "With Email",
+      "withPhone": "With Phone"
+    },
     "table": {
       "loading": "Loading customers...",
       "error": "Error: {{error}}",
@@ -458,7 +509,11 @@
     "pagination": {
       "previous": "Previous",
       "next": "Next",
-      "page": "Page {{currentPage}} of {{totalPages}}"
+      "page": "Page {{currentPage}} of {{totalPages}}",
+      "showing": "Showing {{start}} - {{end}} of {{total}} customers"
+    },
+    "empty": {
+      "description": "No customers found. Customers will appear here once they start conversations with your business."
     }
   },
   "pricingPage": {
@@ -550,6 +605,10 @@
       "title": "Language & Region",
       "subtitle": "Choose the language you want to use in the application.",
       "label": "Language",
+      "selectPlaceholder": "Select language",
+      "english": "English",
+      "spanish": "Español (Spanish)",
+      "french": "Français (French)",
       "updateSuccess": "Language updated successfully.",
       "updateError": "Failed to update your language preference."
     }, 
@@ -756,6 +815,25 @@
     "toast": {
       "passwordMismatch": "New passwords do not match.",
       "updateSuccess": "Password updated successfully!"
+    }
+  },
+  "createAiAgentPage": {
+    "title": "Create AI Agent",
+    "subtitle": "Build a custom AI agent tailored to your business needs. Configure its personality, responses, and behavior.",
+    "form": {
+      "agentConfiguration": "Agent Configuration",
+      "defaultQaResponses": "Default Q&A Responses",
+      "templatesCount": "{{count}} / {{max}}",
+      "templatesDescription": "Add common questions and answers to help your agent respond quickly to frequent inquiries.",
+      "templateLabel": "Template #{{index}}",
+      "questionLabel": "Question",
+      "questionPlaceholder": "e.g., What is your return policy?",
+      "answerLabel": "Answer",
+      "answerPlaceholder": "Enter the answer for this question...",
+      "addAnotherTemplate": "Add Another Q&A Template",
+      "createButton": "Create Agent",
+      "creatingButton": "Creating...",
+      "cancelButton": "Cancel"
     }
   }
 }

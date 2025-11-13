@@ -25,15 +25,18 @@ const initialState: AgentInboxState = {
 // --- ASYNC THUNKS ---
 export const fetchAgentConversations = createAsyncThunk<
     { page: number; conversations: ConversationInList[]; totalPages: number },
-    { page: number; searchQuery?: string; status: 'open' | 'closed' },
+    { page: number; searchQuery?: string; status: 'open' | 'closed'; platform?: 'all' | 'whatsapp' | 'instagram' | 'telegram' | 'website' },
     { rejectValue: string }
 >(
     "agentInbox/fetchAgentConversations",
-    async ({ page, searchQuery, status }, thunkAPI) => {
+    async ({ page, searchQuery, status, platform }, thunkAPI) => {
         try {
-            const response = await api.get("/api/v1/agents/my-conversations", {
-                params: { page, limit: 15, search: searchQuery || "", status }
-            });
+            const params: any = { page, limit: 15, search: searchQuery || "", status };
+            if (platform && platform !== 'all') {
+                params.platform = platform;
+            }
+            
+            const response = await api.get("/api/v1/agents/my-conversations", { params });
 
             const responsePayload = response.data.data;
             const conversations: ConversationInList[] = responsePayload.data;

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,14 +11,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { formatFileSize, getFileTypeLabel, countTextCharacters } from '@/lib/utils';
-import { FiPaperclip} from "react-icons/fi";
+import { FiPaperclip } from "react-icons/fi";
 import { CiFileOn } from "react-icons/ci";
-
-
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
-import { trainModel} from '../../../features/aiModel/trainModelSlice';
+import { trainModel } from '../../../features/aiModel/trainModelSlice';
 import toast from 'react-hot-toast';
+import moment from 'moment-timezone';
+
 
 export default function TrainModelForm() {
   const { t } = useTranslation();
@@ -25,6 +26,7 @@ export default function TrainModelForm() {
   const trainModelSchema = z.object({
     name: z.string().min(2, t('trainModelPage.validation.nameRequired')),
     modelType: z.string().min(1, t('trainModelPage.validation.modelTypeRequired')),
+    sourceDataTimezone: z.string().min(1, t('trainModelPage.validation.timezoneRequired')),
   });
 
   type TrainModelFormData = z.infer<typeof trainModelSchema>;
@@ -32,6 +34,9 @@ export default function TrainModelForm() {
   const [step, setStep] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [totalChars, setTotalChars] = useState(0);
+
+ 
+  const timezones = useMemo(() => moment.tz.names(), []);const userTimezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
 
   const {
     register,
@@ -41,7 +46,8 @@ export default function TrainModelForm() {
     resolver: zodResolver(trainModelSchema),
     mode: 'onChange',
     defaultValues: {
-      modelType: 'gpt-4o'
+      modelType: 'gpt-4o',
+      sourceDataTimezone: userTimezone,
     }
   });
 
@@ -62,6 +68,7 @@ export default function TrainModelForm() {
           trainModel({
             name: data.name,
             modelType: data.modelType,
+            sourceDataTimezone: data.sourceDataTimezone,
             files: uploadedFiles,
           })
         ).unwrap();
@@ -111,8 +118,10 @@ export default function TrainModelForm() {
         {step === 1 && (
           <div className="max-w-xl mx-auto space-y-6">
             <h2 className="text-2xl font-semibold text-foreground">{t('trainModelPage.step1.title')}</h2>
+            
             <Input label={t('trainModelPage.step1.modelNameLabel')} {...register('name')} />
             {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+            
             <CustomSelect
               text={t('trainModelPage.step1.selectLlmLabel')}
               {...register('modelType')}
@@ -120,6 +129,15 @@ export default function TrainModelForm() {
               error={errors.modelType?.message}
               defaultValue="gpt-4o"
             />
+
+            <CustomSelect
+              text={t('trainModelPage.step1.timezoneLabel', 'Source Data Timezone')}
+              {...register('sourceDataTimezone')}
+              options={timezones.map(tz => ({ label: tz, value: tz }))}
+              error={errors.sourceDataTimezone?.message}
+              defaultValue={userTimezone}
+            />
+            
             <div className='flex justify-end gap-5 p-5'>
               <Link to="/main-menu/ai-model">
                 <ButtonExtraSmall value={t('trainModelPage.step1.cancelButton')} isOutline />
@@ -193,3 +211,4 @@ export default function TrainModelForm() {
     </div>
   );
 }
+

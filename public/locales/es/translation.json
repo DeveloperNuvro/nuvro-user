@@ -97,6 +97,7 @@
   "loadingFailed": "Error al Cargar el Panel",
   "noData": "No hay datos de resumen disponibles.",
   "dashboardTitle": "Panel",
+  "dashboardSubtitle": "¡Bienvenido de nuevo! Esto es lo que está pasando con tu negocio hoy.",
   "totalCustomers": "Clientes Totales",
   "totalCustomersDesc": "Todas las interacciones únicas de clientes",
   "totalConversations": "Conversaciones Totales",
@@ -167,7 +168,11 @@
   },
   "channelPage": {
     "title": "Canales",
+    "subtitle": "Organiza y gestiona tus canales de soporte para una colaboración eficiente del equipo",
     "addChannelButton": "Añadir Canal",
+    "stats": {
+      "totalChannels": "Total de Canales"
+    },
     "loadingError": "Error: {{error}}",
     "noChannelsTitle": "No se encontraron Canales",
     "noChannelsSubtitle": "Comienza creando tu primer canal (p. ej., Ventas, Soporte).",
@@ -201,6 +206,7 @@
   },
   "humanAgentPage": {
     "title": "Agentes Humanos",
+    "subtitle": "Administra tus agentes de soporte humano y asígnalos a canales para un servicio al cliente eficiente",
     "addAgentButton": "Añadir Agente",
     "loadingError": "Error: {{error}}",
     "noAgentsTitle": "No se encontraron Agentes",
@@ -210,6 +216,17 @@
     "createModalButton": "Crear Agente",
     "editModalTitle": "Editar Agente",
     "editModalButton": "Guardar Cambios",
+    "stats": {
+      "totalAgents": "Total de Agentes",
+      "activeAgents": "Agentes Activos",
+      "totalChannels": "Total de Canales"
+    },
+    "status": {
+      "online": "En línea"
+    },
+    "card": {
+      "id": "ID:"
+    },
     "cardEdit": "Editar",
     "cardDelete": "Eliminar",
     "formName": "Nombre",
@@ -232,6 +249,8 @@
     "toastDeleteError": "Error al eliminar el agente."
   },
   "ticketPage": {
+    "title": "Tickets de Soporte",
+    "subtitle": "Administra y rastrea los tickets de soporte al cliente de manera eficiente",
     "filters": {
       "all": "Todos los Tickets",
       "open": "Abiertos",
@@ -239,6 +258,13 @@
       "solved": "Resueltos"
     },
     "searchPlaceholder": "Buscar tickets...",
+    "searchTitle": "Buscar por asunto, descripción, nombre del cliente, nombre del agente, ID completo del ticket o ID parcial del ticket (últimos 6+ caracteres)",
+    "stats": {
+      "totalTickets": "Total de Tickets",
+      "openTickets": "Tickets Abiertos",
+      "closedTickets": "Tickets Cerrados",
+      "highPriority": "Alta Prioridad"
+    },
     "addTicketButton": "Añadir Ticket",
     "editButton": "Editar",
     "deleteButton": "Eliminar",
@@ -344,6 +370,7 @@
   },
   "aiModelListPage": {
     "title": "Modelos de IA",
+    "subtitle": "Entrena y gestiona tus modelos de IA. Sube documentos, configura ajustes y despliega modelos inteligentes para tu negocio.",
     "createNewButton": "+ Crear Nuevo",
     "loading": "Cargando modelos...",
     "loadingError": "Error: {{error}}",
@@ -356,10 +383,25 @@
     "toastDeleteSuccess": "Modelo \"{{modelName}}\" eliminado exitosamente.",
     "toastDeleteError": "❌ {{error}}"
   },
+  "aiModelPage": {
+    "title": "Modelos de IA",
+    "stats": {
+      "totalModels": "Total de Modelos",
+      "deployed": "Desplegados",
+      "training": "Entrenando"
+    }
+  },
   "aiAgentPage": {
     "title": "Agentes de IA",
+    "subtitle": "Administra y configura tus agentes de IA. Crea, edita y despliega asistentes inteligentes para tu negocio.",
     "modelLabel": "Modelo",
     "unknown": "Desconocido",
+    "stats": {
+      "totalAgents": "Total de Agentes",
+      "activeAgents": "Agentes Activos",
+      "inactiveAgents": "Agentes Inactivos"
+    },
+    "searchPlaceholder": "Ingresar nombre del agente",
     "modal": {
       "viewingTitle": "Viendo",
       "editingTitle": "Editando",
@@ -411,7 +453,9 @@
     },
     "header": {
       "title": "Panel de Rendimiento",
-      "subtitle": "Análisis de IA para"
+      "subtitle": "Análisis de IA para",
+      "showingReportFor": "Mostrando informe para",
+      "selectReport": "Seleccionar Informe"
     },
     "stats": {
       "overallScore": "Puntuación General",
@@ -440,10 +484,17 @@
     }
   },
   "customersPage": {
+    "title": "Clientes",
+    "description": "Administra y visualiza todos tus clientes. Busca, filtra y accede a la información de los clientes fácilmente.",
     "filters": {
       "all": "Todos los Clientes"
     },
     "searchPlaceholder": "Buscar...",
+    "stats": {
+      "totalCustomers": "Total de Clientes",
+      "withEmail": "Con Correo",
+      "withPhone": "Con Teléfono"
+    },
     "table": {
       "loading": "Cargando clientes...",
       "error": "Error: {{error}}",
@@ -458,7 +509,11 @@
     "pagination": {
       "previous": "Anterior",
       "next": "Siguiente",
-      "page": "Página {{currentPage}} de {{totalPages}}"
+      "page": "Página {{currentPage}} de {{totalPages}}",
+      "showing": "Mostrando {{start}} - {{end}} de {{total}} clientes"
+    },
+    "empty": {
+      "description": "No se encontraron clientes. Los clientes aparecerán aquí una vez que comiencen conversaciones con tu negocio."
     }
   },
   "pricingPage": {
@@ -550,6 +605,10 @@
       "title": "Idioma y Región",
       "subtitle": "Elija el idioma que desea usar en la aplicación.",
       "label": "Idioma",
+      "selectPlaceholder": "Seleccionar idioma",
+      "english": "English",
+      "spanish": "Español (Spanish)",
+      "french": "Français (French)",
       "updateSuccess": "Idioma actualizado correctamente.",
       "updateError": "Error al actualizar su preferencia de idioma."
     },
@@ -756,6 +815,25 @@
     "toast": {
       "passwordMismatch": "Las nuevas contraseñas no coinciden.",
       "updateSuccess": "¡Contraseña actualizada exitosamente!"
+    }
+  },
+  "createAiAgentPage": {
+    "title": "Crear Agente de IA",
+    "subtitle": "Construye un agente de IA personalizado adaptado a las necesidades de tu negocio. Configura su personalidad, respuestas y comportamiento.",
+    "form": {
+      "agentConfiguration": "Configuración del Agente",
+      "defaultQaResponses": "Respuestas Q&A Predeterminadas",
+      "templatesCount": "{{count}} / {{max}}",
+      "templatesDescription": "Añade preguntas y respuestas comunes para ayudar a tu agente a responder rápidamente a consultas frecuentes.",
+      "templateLabel": "Plantilla #{{index}}",
+      "questionLabel": "Pregunta",
+      "questionPlaceholder": "p. ej., ¿Cuál es su política de devolución?",
+      "answerLabel": "Respuesta",
+      "answerPlaceholder": "Ingresa la respuesta para esta pregunta...",
+      "addAnotherTemplate": "Añadir Otra Plantilla Q&A",
+      "createButton": "Crear Agente",
+      "creatingButton": "Creando...",
+      "cancelButton": "Cancelar"
     }
   }
 }

@@ -89,7 +89,20 @@ export default function DashboardLayout() {
       if (!customerId || !sender) return;
       if (senderSocketId && senderSocketId === socket.id) return;
 
-      const formattedMessage: Message = { _id: data._id, text: message, sentBy: sender, time: data.createdAt || new Date().toISOString() };
+      const formattedMessage: Message = { 
+        _id: data._id, 
+        text: message, 
+        sentBy: sender, 
+        time: data.createdAt || new Date().toISOString(),
+        // 🔧 NEW: Include media metadata from socket payload
+        messageType: data.messageType || data.metadata?.messageType || 'text',
+        mediaUrl: data.mediaUrl || data.metadata?.mediaUrl || data.metadata?.cloudinaryUrl || null,
+        cloudinaryUrl: data.cloudinaryUrl || data.metadata?.cloudinaryUrl || null,
+        originalMediaUrl: data.originalMediaUrl || data.metadata?.originalMediaUrl || null,
+        proxyUrl: data.proxyUrl || data.metadata?.proxyUrl || null,
+        attachmentId: data.attachmentId || data.metadata?.attachmentId || null,
+        metadata: data.metadata || {}
+      };
 
    
       const currentState = store.getState();
@@ -230,29 +243,62 @@ export default function DashboardLayout() {
   const endDate = endDateRaw ? format(new Date(endDateRaw), 'MMMM d, yyyy, h:mm a') : 'N/A';
 
   const SidebarContent = menuItems.length > 0 ? (
-    <div className= "w-[300px] bg-[#FAFAFA] dark:bg-[#1B1B20] scrollbar-hide overflow-y-auto h-full fixed inset-y-0 left-0 border-r-[0.5px] border-[#D4D8DE] dark:border-[#2C3139] z-40" >
-      <div className="px-6 my-6 max-h-[100px]" >
-        <img className="object-fill" src = { imageSrc } alt = "Nuvro logo" />
+    <div className="w-[300px] bg-gradient-to-b from-white to-gray-50 dark:from-[#1B1B20] dark:to-[#151519] scrollbar-hide overflow-y-auto h-full fixed inset-y-0 left-0 border-r border-gray-200 dark:border-[#2C3139] z-40 shadow-sm dark:shadow-[#0F0F12]" >
+      {/* Logo Section with Enhanced Styling */}
+      <div className="px-6 py-6 border-b border-gray-200 dark:border-[#2C3139] bg-white dark:bg-[#1B1B20]">
+        <div className="flex items-center justify-center h-16">
+          <img 
+            className="h-14 w-auto object-contain max-w-full dark:h-14" 
+            src={imageSrc} 
+            alt="Nuvro logo" 
+          />
+        </div>
       </div>
-      <ScrollArea className = "h-[calc(100vh-64px)] px-4" >
-        <nav className="flex flex-col gap-6" >
-          { menuItems.map((section) => (
-            <div key= { section.title } >
-            <p className="text-[12px] font-400 text-[#A3ABB8] uppercase mb-2" > { section.title } </p>
-              <ul className = "space-y-1" >
-                { section.links.map((link) => (
-                  <li key= { link.to } >
-                  {
-                    link.action === 'logout' ? (
-                      <button onClick= {() => handleMenuClick(link)} className = "w-full cursor-pointer text-left block rounded-md px-3 py-2 text-sm font-400 transition-colors text-[#A3ABB8] hover:text-[#ff21b0] hover:bg-muted/40" >
-                        <div className="flex items-center" > { link.icon }{ link.label } </div>
+      
+      <ScrollArea className="h-[calc(100vh-112px)] px-4 py-4">
+        <nav className="flex flex-col gap-6">
+          {menuItems.map((section) => (
+            <div key={section.title}>
+              <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase mb-3 tracking-wider px-2">
+                {section.title}
+              </p>
+              <ul className="space-y-1">
+                {section.links.map((link) => (
+                  <li key={link.to}>
+                    {link.action === 'logout' ? (
+                      <button 
+                        onClick={() => handleMenuClick(link)} 
+                        className="w-full cursor-pointer text-left block rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-[#A3ABB8] hover:text-[#ff21b0] hover:bg-muted/40 group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="group-hover:scale-110 transition-transform duration-200">
+                            {link.icon}
+                          </span>
+                          <span>{link.label}</span>
+                        </div>
                       </button>
                     ) : (
-                      <NavLink to= { link.to } onClick = {() => setSidebarOpen(false)} className = {({ isActive }) => cn("block rounded-md px-3 py-2 text-sm font-400 transition-colors", isActive ? "bg-[#f7deee] dark:bg-[#ff21b0] text-[#ff21b0] dark:text-[#FFFFFF]" : "hover:text-[#ff21b0] text-[#A3ABB8] hover:bg-muted/40")}>
-                        <div className="flex items-center" > { link.icon }{ link.label } </div>
+                      <NavLink 
+                        to={link.to} 
+                        onClick={() => setSidebarOpen(false)} 
+                        className={({ isActive }) => cn(
+                          "block rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 group",
+                          isActive 
+                            ? "bg-[#f7deee] dark:bg-[#ff21b0] text-[#ff21b0] dark:text-[#FFFFFF]" 
+                            : "hover:text-[#ff21b0] text-[#A3ABB8] hover:bg-muted/40"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={cn(
+                            "group-hover:scale-110 transition-transform duration-200",
+                            location.pathname === link.to && "scale-110"
+                          )}>
+                            {link.icon}
+                          </span>
+                          <span>{link.label}</span>
+                        </div>
                       </NavLink>
-                    )
-                  }
+                    )}
                   </li>
                 ))}
               </ul>
@@ -280,34 +326,56 @@ export default function DashboardLayout() {
     <div className= "flex min-h-screen" >
       <div className="hidden md:block" > { SidebarContent } </div>
       <div className = "flex-1 flex flex-col md:ml-[300px]" >
-        <header className="h-[64px] flex items-center sticky top-0 z-[50] bg-[#FAFAFA] dark:bg-[#1B1B20] border-b-[0.5px] border-[#D4D8DE] dark:border-[#2C3139] px-[20px] py-[40px] justify-between" >
-          <div className="flex items-center gap-4" >
-            <Sheet open={ sidebarOpen } onOpenChange = { setSidebarOpen } >
-              <SheetTrigger asChild > 
-                <button className="md:hidden" > 
+        <header className="h-[72px] flex items-center sticky top-0 z-[50] bg-gradient-to-r from-white via-gray-50 to-white dark:from-[#1B1B20] dark:via-[#18181D] dark:to-[#1B1B20] border-b border-gray-200 dark:border-[#2C3139] px-6 shadow-sm dark:shadow-[#0F0F12] backdrop-blur-sm bg-white/95 dark:bg-[#1B1B20]/95" >
+          <div className="flex items-center gap-6 flex-1">
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetTrigger asChild> 
+                <button className="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" > 
                   <Menu className="h-6 w-6" /> 
                 </button>
-              </SheetTrigger >
-              <SheetContent side="left" className = "p-0 w-[300px]" > 
-                { SidebarContent } 
+              </SheetTrigger>
+              <SheetContent side="left" className="p-0 w-[300px]"> 
+                {SidebarContent} 
               </SheetContent>
             </Sheet>
-            <div className = "text-sm hidden md:flex items-center" > { getBreadcrumb() } </div>
+            <div className="hidden md:flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-[#252530]">
+                {getBreadcrumb()}
+              </div>
+            </div>
           </div>
-          <div className = "flex items-center gap-4" >
-            { user?.role === 'business' && (
-              <div className="hidden md:flex flex-col items-center text-[16px] font-400 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] border-[1px] px-[16px] py-[8px] rounded-md cursor-pointer" >
-                <div className="flex items-center" > <MdOutlinePayment className="mr-2" /> { t('currentSubscription') } < ChevronDown size = { 16} className = "ml-1" /> </div>
-                <div className = "text-[10px] text-[#A3ABB8] dark:text-[#ABA8B4]" > { t('subscriptionDetails', { plan: selectedBusiness?.subscriptionPlan, endDate: endDate }) } </div>
+          <div className="flex items-center gap-3">
+            {user?.role === 'business' && (
+              <div className="hidden md:flex flex-col items-start bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/30 dark:to-rose-900/30 border border-pink-200 dark:border-pink-800/50 px-4 py-2 rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 group">
+                <div className="flex items-center text-sm font-semibold text-[#ff21b0] dark:text-pink-300">
+                  <MdOutlinePayment className="mr-2 h-4 w-4 group-hover:scale-110 transition-transform" /> 
+                  {t('currentSubscription')} 
+                  <ChevronDown size={14} className="ml-1 group-hover:rotate-180 transition-transform" /> 
+                </div>
+                <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
+                  {t('subscriptionDetails', { plan: selectedBusiness?.subscriptionPlan, endDate: endDate })}
+                </div>
               </div>
             )}
-            <div className={ cn("flex items-center gap-2 text-xs font-semibold px-2.5 py-1 rounded-full", isConnected ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300") }>
-              <Circle className={ cn("h-2 w-2", isConnected ? "fill-green-500" : "fill-red-500") } />
-              { isConnected ? t('agentInbox.status.online') : t('agentInbox.status.offline') }
+            <div className={cn(
+              "flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all duration-200",
+              isConnected 
+                ? "bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800/50 shadow-sm" 
+                : "bg-gradient-to-r from-red-50 to-rose-50 dark:from-red-900/30 dark:to-rose-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800/50 shadow-sm"
+            )}>
+              <Circle className={cn(
+                "h-2 w-2 animate-pulse",
+                isConnected ? "fill-green-500" : "fill-red-500"
+              )} />
+              {isConnected ? t('agentInbox.status.online') : t('agentInbox.status.offline')}
             </div>
-            <LanguageToggle />
-            <ModeToggle />
-            <CircleUser className = "w-6 h-6 cursor-pointer" />
+            <div className="flex items-center gap-2 p-1.5 rounded-lg bg-gray-100 dark:bg-[#252530] border border-gray-200 dark:border-[#2C3139]">
+              <LanguageToggle />
+              <ModeToggle />
+            </div>
+            <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group">
+              <CircleUser className="w-6 h-6 cursor-pointer text-gray-600 dark:text-gray-400 group-hover:text-[#ff21b0] dark:group-hover:text-pink-400 transition-colors" />
+            </button>
           </div>
         </header>
         <main className = "flex-1 p-6 overflow-y-auto bg-gray-50 dark:bg-[#121212]" >

@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+
+
+import React, { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,12 +11,13 @@ import { ButtonSmall, IconDeleteButton } from '../button/Button';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { formatFileSize, getFileTypeLabel } from '@/lib/utils';
-import { FiPaperclip, FiRotateCcw, FiDownload } from "react-icons/fi"; // Import FiDownload
+import { FiPaperclip, FiRotateCcw, FiDownload } from "react-icons/fi";
 import { CiFileOn } from "react-icons/ci";
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
 import { fetchAiModelsByBusinessId, updateAIModel } from '../../../features/aiModel/trainModelSlice';
 import toast from 'react-hot-toast';
+import moment from 'moment-timezone';
 
 export default function UpdateAIModelForm() {
   const { id: modelId } = useParams<{ id: string }>();
@@ -24,6 +27,7 @@ export default function UpdateAIModelForm() {
 
   const updateModelSchema = z.object({
     name: z.string().min(2, t('updateAiModelPage.validation.nameRequired')),
+    sourceDataTimezone: z.string().min(1, t('updateAiModelPage.validation.timezoneRequired')),
   });
   type UpdateModelFormData = z.infer<typeof updateModelSchema>;
 
@@ -32,6 +36,8 @@ export default function UpdateAIModelForm() {
 
   const { status, aiModels } = useSelector((state: RootState) => state.trainModel);
   const modelToUpdate = aiModels.find(model => model._id === modelId);
+
+  const timezones = useMemo(() => moment.tz.names(), []);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<UpdateModelFormData>({
     resolver: zodResolver(updateModelSchema),
@@ -46,7 +52,10 @@ export default function UpdateAIModelForm() {
 
   useEffect(() => {
     if (modelToUpdate) {
-      reset({ name: modelToUpdate.name });
+      reset({
+        name: modelToUpdate.name,
+        sourceDataTimezone: modelToUpdate.sourceDataTimezone || 'UTC',
+      });
     }
   }, [modelToUpdate, reset]);
 
@@ -76,10 +85,11 @@ export default function UpdateAIModelForm() {
     if (!modelId || !modelToUpdate) return;
     
     const hasNameChanged = data.name !== modelToUpdate.name;
+    const hasTimezoneChanged = data.sourceDataTimezone !== modelToUpdate.sourceDataTimezone;
     const haveFilesBeenAdded = newlyUploadedFiles.length > 0;
     const haveFilesBeenMarkedForDeletion = filesToDelete.length > 0;
 
-    if (!hasNameChanged && !haveFilesBeenAdded && !haveFilesBeenMarkedForDeletion) {
+    if (!hasNameChanged && !haveFilesBeenAdded && !haveFilesBeenMarkedForDeletion && !hasTimezoneChanged) {
       return toast.error(t('updateAiModelPage.toast.noChanges'));
     }
 
@@ -87,6 +97,7 @@ export default function UpdateAIModelForm() {
       await dispatch(updateAIModel({
         id: modelId,
         name: hasNameChanged ? data.name : undefined,
+        sourceDataTimezone: hasTimezoneChanged ? data.sourceDataTimezone : undefined,
         files: newlyUploadedFiles,
         filesToDelete: filesToDelete,
       })).unwrap();
@@ -117,40 +128,55 @@ export default function UpdateAIModelForm() {
             <div className="space-y-6 mb-8">
               <Input label={t('updateAiModelPage.form.modelNameLabel')} {...register('name')} />
               {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+              
               <CustomSelect
                 text={t('updateAiModelPage.form.selectLlmLabel')}
                 value={modelToUpdate.modelType}
                 disabled={true}
                 options={[{ label: modelToUpdate.modelType, value: modelToUpdate.modelType }]}
               />
+
+              <CustomSelect
+                text={t('updateAiModelPage.form.timezoneLabel', 'Source Data Timezone')}
+                {...register('sourceDataTimezone')}
+                options={timezones.map(tz => ({ label: tz, value: tz }))}
+                error={errors.sourceDataTimezone?.message}
+                defaultValue={modelToUpdate.sourceDataTimezone}
+              />
             </div>
 
             <h2 className="text-[22px] font-semibold text-foreground mb-4">{t('updateAiModelPage.form.manageFilesTitle')}</h2>
             <div className='space-y-2 mb-8 max-h-60 overflow-y-auto pr-2'>
-              {modelToUpdate.trainedFiles.map((file) => {
-                const isMarkedForDeletion = filesToDelete.includes(file.url);
-                return (
-                  <div
-                    className={`border-[1px] flex items-center gap-2 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] w-full px-4 py-3 transition-all ${isMarkedForDeletion ? 'bg-red-50 dark:bg-red-900/20 opacity-60' : ''}`}
-                    key={file.url}
-                  >
-                    <CiFileOn className='text-[30px]' />
-                    <span className={`truncate ${isMarkedForDeletion ? 'line-through' : ''}`}>{file.name}</span>
-                    <div className='ml-auto flex items-center gap-2'>
-                      <button type="button" onClick={() => handleDownload(file.url, file.name)} className="p-2 cursor-pointer rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                        <FiDownload className="text-blue-600 h-5 w-5" title={t('updateAiModelPage.form.downloadTooltip')} />
-                      </button>
-                      {isMarkedForDeletion ? (
-                        <button type="button" onClick={() => handleUndoDeletion(file.url)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                           <FiRotateCcw className="text-green-600 h-5 w-5" title={t('updateAiModelPage.form.undoDeleteTooltip')} />
+              {modelToUpdate.trainedFiles && modelToUpdate.trainedFiles.length > 0 ? (
+                modelToUpdate.trainedFiles.map((file) => {
+                  const isMarkedForDeletion = filesToDelete.includes(file.url);
+                  return (
+                    <div
+                      className={`border-[1px] flex items-center gap-2 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] w-full px-4 py-3 transition-all ${isMarkedForDeletion ? 'bg-red-50 dark:bg-red-900/20 opacity-60' : ''}`}
+                      key={file.url}
+                    >
+                      <CiFileOn className='text-[30px]' />
+                      <span className={`truncate ${isMarkedForDeletion ? 'line-through' : ''}`}>{file.name}</span>
+                      <div className='ml-auto flex items-center gap-2'>
+                        <button type="button" onClick={() => handleDownload(file.url, file.name)} className="p-2 cursor-pointer rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                          <FiDownload className="text-blue-600 h-5 w-5" title={t('updateAiModelPage.form.downloadTooltip')} />
                         </button>
-                      ) : (
-                        <IconDeleteButton onClick={() => handleMarkForDeletion(file.url)} />
-                      )}
+                        {isMarkedForDeletion ? (
+                          <button type="button" onClick={() => handleUndoDeletion(file.url)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                             <FiRotateCcw className="text-green-600 h-5 w-5" title={t('updateAiModelPage.form.undoDeleteTooltip')} />
+                          </button>
+                        ) : (
+                          <IconDeleteButton onClick={() => handleMarkForDeletion(file.url)} />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  {t('updateAiModelPage.form.noFilesMessage', 'No trained files available for this model.')}
+                </div>
+              )}
             </div>
             
             <h2 className="text-[22px] font-semibold text-foreground mb-4">{t('updateAiModelPage.form.addFilesTitle')}</h2>
@@ -201,3 +227,4 @@ export default function UpdateAIModelForm() {
     </div>
   );
 }
+

@@ -9,7 +9,7 @@ import { ThemeProvider } from "./components/theme-provider";
 import { store } from './app/store';
 import { setDispatch } from './utils/setStore';
 import './index.css';
-import './i18n'; 
+import './i18n';
 
 setDispatch(store.dispatch, store.getState);
 
@@ -25,8 +25,8 @@ root.render(
     <Provider store={store}>
       <ThemeProvider>
         <BrowserRouter>
-         <Suspense fallback="...loading">
-          <App />
+          <Suspense fallback="...loading">
+            <App />
           </Suspense>
           <Toaster position="top-right" reverseOrder={false} />
         </BrowserRouter>

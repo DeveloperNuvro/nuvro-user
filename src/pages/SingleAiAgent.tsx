@@ -1,15 +1,14 @@
 import { useEffect, useState } from "react";
-import { Copy, Loader2, CheckCircle, XCircle, Globe, } from "lucide-react";
+import { Copy, Loader2, CheckCircle, XCircle, Globe, MessageSquare, Code, Zap, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card,  CardDescription,  CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
 import { fetchAIAgentById } from "@/features/aiAgent/aiAgentSlice";
-import { fetchIntegrationStatus, } from "@/features/whatsappIntregation/integrationsSlice";
 import { useParams } from "react-router-dom";
-import { FaWhatsapp } from "react-icons/fa";
+import UnipileIntegrationTab from "@/components/custom/unipile/UnipileIntegrationTab";
 
 // --- SUB-COMPONENT: Website Embed Tab ---
 const WebsiteEmbedTab = ({ script }: { script: string }) => {
@@ -27,123 +26,184 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
-            <div className="md:col-span-3">
-                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Embed on Your Website</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Add the AI agent to any website by pasting this script tag into your HTML.
-                </p>
-                <div className="mt-6">
-                    <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase">Embed Script</label>
-                    <div className="relative mt-2">
-                        <pre className="block w-full rounded-md border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-4 text-sm text-gray-600 dark:text-gray-300 overflow-x-auto">
-                            <code>{script}</code>
-                        </pre>
-                        <Button
-                            size="icon"
-                            variant="ghost"
-                            className="absolute top-2 cursor-pointer bg-[#ff21b0] right-2 h-8 w-8 text-gray-500 hover:text-gray-800 dark:hover:text-gray-200"
-                            onClick={handleCopy}
-                            aria-label="Copy script"
-                        >
-                            {copied ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Copy className="h-5 text-white w-5" />}
-                        </Button>
-                    </div>
-                </div>
-            </div>
-            <div className="md:col-span-2">
-                <div className="p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg h-full">
-                    <h4 className="font-semibold text-blue-900 dark:text-blue-200">Quick Instructions</h4>
-                    <ol className="mt-3 list-decimal list-inside space-y-2 text-sm text-blue-800 dark:text-blue-300">
-                        <li>Click the copy icon to copy the script.</li>
-                        <li>Paste the script just before the closing <code>&lt;/body&gt;</code> tag in your website's HTML file.</li>
-                        <li>Save and publish your website. The widget will now be live!</li>
-                    </ol>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- SUB-COMPONENT: WhatsApp Integration Tab ---
-const WhatsAppIntegrationTab = () => {
-    // const dispatch = useDispatch<AppDispatch>();
-    const { integrations, status: integrationStatus } = useSelector((state: RootState) => state.integrations);
-    // const { user } = useSelector((state: RootState) => state.auth);
-
-    const isActivating = integrationStatus === 'loading';
-
-    // const handleActivate = () => {
-    //     if (user?.businessId) {
-    //         dispatch(activateWhatsApp({ businessId: user.businessId }));
-    //     } else {
-    //         toast.error("Business information not found. Please relogin.");
-    //     }
-    // };
-
-    if (integrations?.whatsapp.isActive) {
-        return (
-            <div className="w-full max-w-3xl mx-auto text-center">
-                 <div className="p-4 bg-green-50 dark:bg-green-900/20 border-t-4 border-green-500 rounded-b-lg shadow-sm">
-                    <div className="flex items-center">
-                        <CheckCircle className="h-6 w-6 text-green-500 mr-3 flex-shrink-0"/>
-                        <div className="text-left">
-                            <h3 className="font-semibold text-green-800 dark:text-green-200">WhatsApp Integration is Active</h3>
-                            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-                                Your dedicated business number is:
-                                <span className="ml-2 font-mono bg-green-200 dark:bg-green-800 px-2 py-0.5 rounded">{integrations.whatsapp.phoneNumber}</span>
+        <div className="space-y-6">
+            {/* Header Section */}
+            <div className="flex items-start justify-between">
+                <div>
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="p-3 rounded-lg bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
+                            <Code className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Website Integration</h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                Add your AI agent to your website in seconds
                             </p>
                         </div>
                     </div>
                 </div>
             </div>
-        );
-    }
-    
-    return (
-        <Card className="w-full max-w-3xl mx-auto shadow-lg border-gray-200 dark:border-gray-700">
-            <div className="grid md:grid-cols-5 md:gap-6">
-                <div className="md:col-span-3 p-8">
-                    <CardTitle className="text-2xl font-bold">One-Click WhatsApp Activation</CardTitle>
-                    <CardDescription className="mt-2 text-base text-gray-500 dark:text-gray-400">
-                        Instantly provision a dedicated phone number to enable AI-powered notifications for your business.
-                    </CardDescription>
-                    <div className="mt-8">
-                        <Button size="lg"  disabled className="w-full text-base py-6 bg-green-600 hover:bg-green-700 text-white font-bold cursor-pointer shadow-md">
-                            {isActivating ? (
-                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            ) : (
-                                <FaWhatsapp className="mr-3 h-5 w-5" />
-                            )}
-                            {isActivating ? "Provisioning..." : "We are working on that!"}
-                        </Button>
-                        <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-3">
-                            A US/Canada-based number will be assigned. This is a one-time action.
-                        </p>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Script Section */}
+                <div className="lg:col-span-2 space-y-4">
+                    <Card className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#111111] py-6">
+                        <CardHeader className="pb-4">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-white">
+                                    <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                    Embed Script
+                                </CardTitle>
+                                <Button
+                                    onClick={handleCopy}
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                >
+                                    {copied ? (
+                                        <>
+                                            <CheckCircle className="w-4 h-4 text-green-600" />
+                                            Copied!
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="w-4 h-4" />
+                                            Copy
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
+                            <CardDescription className="text-sm mt-2">
+                                Copy and paste this script into your website to enable the AI chat widget
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="relative">
+                                <pre className="block w-full rounded-lg border border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-[#0a0a0a] p-5 text-sm text-gray-700 dark:text-gray-300 font-mono overflow-x-auto">
+                                    <code className="whitespace-pre-wrap break-all">{script}</code>
+                                </pre>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Quick Stats */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <Card className="border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/30 py-6">
+                            <CardContent className="px-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg border border-blue-200 dark:border-blue-800">
+                                        <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">Easy Setup</p>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">1 Script</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="border border-green-200 dark:border-green-900/50 bg-green-50 dark:bg-green-950/30 py-6">
+                            <CardContent className="px-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg border border-green-200 dark:border-green-800">
+                                        <Zap className="w-4 h-4 text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">Instant</p>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Activation</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card className="border border-purple-200 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-950/30 py-6">
+                            <CardContent className="px-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg border border-purple-200 dark:border-purple-800">
+                                        <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">Universal</p>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Compatible</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
                 </div>
-                <div className="hidden md:block md:col-span-2 bg-gray-50 dark:bg-gray-800/50 p-8 rounded-r-lg">
-                    <h4 className="font-semibold text-gray-800 dark:text-gray-200">How It Works</h4>
-                    <ul className="mt-4 list-none space-y-3 text-sm text-gray-600 dark:text-gray-300">
-                        <li className="flex items-start">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-3 mt-1 flex-shrink-0" />
-                            <span>Your agent automatically sends alerts for new tickets and escalations.</span>
-                        </li>
-                        <li className="flex items-start">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-3 mt-1 flex-shrink-0" />
-                            <span>All customer replies appear in your dashboard, not your personal phone.</span>
-                        </li>
-                         <li className="flex items-start">
-                            <XCircle className="h-4 w-4 text-red-500 mr-3 mt-1 flex-shrink-0" />
-                            <span>This number cannot be used with the standard WhatsApp mobile app.</span>
-                        </li>
-                    </ul>
+
+                {/* Instructions Sidebar */}
+                <div className="lg:col-span-1 space-y-4">
+                    <Card className="border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/30 py-6">
+                        <CardHeader>
+                            <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
+                                <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                Quick Setup Guide
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ol className="space-y-4">
+                                <li className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-semibold text-sm text-blue-700 dark:text-blue-300">
+                                        1
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold mb-1 text-gray-900 dark:text-white">Copy the Script</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Click the copy button above to copy the embed code</p>
+                                    </div>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-semibold text-sm text-blue-700 dark:text-blue-300">
+                                        2
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold mb-1 text-gray-900 dark:text-white">Paste in HTML</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Insert it just before the <code className="bg-gray-100 dark:bg-[#1a1a1a] px-1 rounded text-xs border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200">&lt;/body&gt;</code> tag</p>
+                                    </div>
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-semibold text-sm text-blue-700 dark:text-blue-300">
+                                        3
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold mb-1 text-gray-900 dark:text-white">Publish & Enjoy</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Save your changes and your AI agent is live!</p>
+                                    </div>
+                                </li>
+                            </ol>
+                        </CardContent>
+                    </Card>
+
+                    {/* Features Card */}
+                    <Card className="border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50 dark:bg-indigo-950/30 py-6">
+                        <CardHeader>
+                            <CardTitle className="text-base flex items-center gap-2 text-gray-900 dark:text-white">
+                                <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                Key Features
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-gray-700 dark:text-gray-300">Works on any website</p>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-gray-700 dark:text-gray-300">No server configuration needed</p>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-gray-700 dark:text-gray-300">Automatically responsive</p>
+                            </div>
+                            <div className="flex items-start gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                                <p className="text-sm text-gray-700 dark:text-gray-300">Real-time AI responses</p>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
-        </Card>
+        </div>
     );
 };
-
 
 // --- The Main Page Component ---
 export default function SingleAiAgent() {
@@ -151,12 +211,10 @@ export default function SingleAiAgent() {
     const dispatch = useDispatch<AppDispatch>();
 
     const { selectedAgent, status: agentStatus, apiKey } = useSelector((state: RootState) => state.aiAgent);
-    const { status: integrationStatus } = useSelector((state: RootState) => state.integrations);
 
     useEffect(() => {
         if (id) {
             dispatch(fetchAIAgentById(id));
-            dispatch(fetchIntegrationStatus());
         }
     }, [dispatch, id]);
 
@@ -164,58 +222,80 @@ export default function SingleAiAgent() {
 
     if (agentStatus === 'loading' || agentStatus === 'idle') {
         return (
-            <div className="flex items-center justify-center h-96">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <div className="flex flex-col items-center justify-center h-96 space-y-4">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+                <p className="text-gray-600 dark:text-gray-400">Loading AI agent...</p>
             </div>
         );
     }
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8">
-            <div className="border-b border-gray-200 dark:border-gray-700 pb-5 mb-6">
-                <div className="flex flex-wrap items-center justify-between sm:flex-nowrap">
-                    <div className="mb-4 sm:mb-0">
-                        <h1 className="text-3xl font-bold leading-tight text-gray-900 dark:text-white">{selectedAgent?.name}</h1>
-                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Manage integrations and settings for this agent.</p>
-                    </div>
-                    <div>
-                        {selectedAgent?.active ? (
-                            <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                <CheckCircle className="w-4 h-4 mr-1.5" /> Active
+        <div className="min-h-screen bg-background dark:bg-[#0a0a0a] p-4 sm:p-6 lg:p-8 space-y-6">
+            {/* Hero Header */}
+            <div className="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-gradient-to-br from-gray-50 to-white dark:from-[#1a1a1a] dark:to-[#0f0f0f] py-8 shadow-sm dark:shadow-none">
+                <div className="relative z-10 px-6">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+                                        {selectedAgent?.name || 'AI Agent'}
+                                    </h1>
+                                </div>
+                                {selectedAgent?.active ? (
+                                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        Active
+                                    </div>
+                                ) : (
+                                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+                                        <XCircle className="w-4 h-4" />
+                                        Inactive
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            <div className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                <XCircle className="w-4 h-4 mr-1.5" /> Inactive
-                            </div>
-                        )}
+                            <p className="text-gray-700 dark:text-gray-300 text-base max-w-2xl">
+                                Manage your AI agent integrations and settings. Connect to multiple platforms and embed on your website.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <Tabs defaultValue="integration-website" className="w-full">
-                <TabsList className="border-b border-gray-200 dark:border-gray-700">
-                    <TabsTrigger value="integration-website" className="text-base px-4 py-2">
-                        <Globe className="mr-2 h-5 w-5" /> Website Embed
-                    </TabsTrigger>
-                    <TabsTrigger value="integration-whatsapp" className="text-base px-4 py-2">
-                        <FaWhatsapp className="mr-2 h-5 w-5" /> WhatsApp
-                    </TabsTrigger>
-                </TabsList>
+            {/* Tabs Section */}
+            <div className="bg-white dark:bg-[#111111] rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm dark:shadow-none">
+                <Tabs defaultValue="integration-website" className="w-full">
+                    <TabsList className="w-full justify-start rounded-none border-b border-gray-200 dark:border-gray-700 bg-transparent p-0 h-auto">
+                        <TabsTrigger 
+                            value="integration-website" 
+                            className="data-[state=active]:bg-blue-50 data-[state=active]:dark:bg-blue-900/20 data-[state=active]:text-blue-700 data-[state=active]:dark:text-blue-300 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400 px-6 py-4 text-base font-semibold transition-all text-gray-600 dark:text-gray-400"
+                        >
+                            <Globe className="mr-2 h-5 w-5" />
+                            Website Embed
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="integration-unipile" 
+                            className="data-[state=active]:bg-blue-50 data-[state=active]:dark:bg-blue-900/20 data-[state=active]:text-blue-700 data-[state=active]:dark:text-blue-300 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400 px-6 py-4 text-base font-semibold transition-all text-gray-600 dark:text-gray-400"
+                        >
+                            <MessageSquare className="mr-2 h-5 w-5" />
+                            Multi-Platform
+                        </TabsTrigger>
+                    </TabsList>
 
-                <TabsContent value="integration-website" className="pt-8">
-                    <WebsiteEmbedTab script={script} />
-                </TabsContent>
+                    <div className="p-6 lg:p-8">
+                        <TabsContent value="integration-website" className="mt-0">
+                            <WebsiteEmbedTab script={script} />
+                        </TabsContent>
 
-                <TabsContent value="integration-whatsapp" className="pt-8">
-                    {(integrationStatus === 'idle' || integrationStatus === 'loading') ? (
-                        <div className="flex justify-center p-10">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                    ) : (
-                        <WhatsAppIntegrationTab />
-                    )}
-                </TabsContent>
-            </Tabs>
+                        <TabsContent value="integration-unipile" className="mt-0">
+                            <UnipileIntegrationTab />
+                        </TabsContent>
+                    </div>
+                </Tabs>
+            </div>
         </div>
     );
 }

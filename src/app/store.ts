@@ -15,6 +15,7 @@ import humanAgent from '../features/humanAgent/humanAgentSlice';
 import channel from '../features/channel/channelSlice';
 import humanAgentInbox from '../features/humanAgent/humanAgentInboxSlice';
 import agentTicket from '../features/SupportTicket/agentTicketSlice';
+import unipileReducer from '../features/unipile/unipileSlice';
 
 export const store = configureStore({
   reducer: {
@@ -34,6 +35,7 @@ export const store = configureStore({
     channel: channel,
     agentInbox: humanAgentInbox,
     agentTickets: agentTicket,
+    unipile: unipileReducer,
   },
 });
 

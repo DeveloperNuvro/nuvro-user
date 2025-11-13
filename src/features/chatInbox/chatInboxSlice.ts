@@ -15,6 +15,14 @@ export interface ConversationInList {
     latestMessageTimestamp?: string;
     status: 'live' | 'ticket' | 'ai_only' | 'closed';
     assignedAgentId?: string;
+    aiReplyDisabled?: boolean;
+    platformInfo?: {
+        platform: 'whatsapp' | 'instagram' | 'telegram' | 'email' | 'website';
+        connectionId?: string;
+        platformUserId?: string;
+        platformUserName?: string;
+        platformUserAvatar?: string;
+    };
 }
 
 export interface CustomerTableRow {
@@ -31,6 +39,21 @@ export interface Message {
     time: string;
     sentBy: "customer" | "agent" | "human" | "system";
     status?: 'sending' | 'failed';
+    // 🔧 NEW: Media message support
+    messageType?: 'text' | 'image' | 'video' | 'audio' | 'document';
+    mediaUrl?: string | null;
+    cloudinaryUrl?: string | null;
+    originalMediaUrl?: string | null;
+    proxyUrl?: string | null;
+    attachmentId?: string | null;
+    metadata?: {
+        messageType?: 'text' | 'image' | 'video' | 'audio' | 'document';
+        mediaUrl?: string | null;
+        cloudinaryUrl?: string | null;
+        proxyUrl?: string | null;
+        attachmentId?: string | null;
+        [key: string]: any;
+    };
 }
 
 // --- STATE INTERFACE ---
@@ -76,18 +99,22 @@ const initialState: ChatInboxState = {
 
 export const fetchCustomersByBusiness = createAsyncThunk<
     { page: number; conversations: ConversationInList[]; totalPages: number },
-    { businessId: string; page: number; searchQuery?: string; status: 'open' | 'closed' },
+    { businessId: string; page: number; searchQuery?: string; status: 'open' | 'closed'; platform?: 'whatsapp' | 'instagram' | 'telegram' | 'email' | 'website' | 'all' },
     { rejectValue: string }
 >(
     "chatInbox/fetchCustomersByBusiness",
-    async ({ businessId, page, searchQuery, status }, thunkAPI) => {
+    async ({ businessId, page, searchQuery, status, platform }, thunkAPI) => {
         try {
-            const res = await api.get("/api/v1/customer/by-business", {
-                params: { businessId, page, limit: 15, search: searchQuery || "", status },
-            });
+            // Fetch conversations from the existing endpoint (now includes Unipile conversations)
+            const params: any = { businessId, page, limit: 15, search: searchQuery || "", status };
+            if (platform && platform !== 'all') {
+                params.platform = platform;
+            }
+            const res = await api.get("/api/v1/customer/by-business", { params });
             const responsePayload = res.data.data;
-            const conversations: ConversationInList[] = responsePayload.data;
+            const conversations: ConversationInList[] = responsePayload.data || [];
             const totalPages = responsePayload.pagination?.totalPages || 1;
+
             return { page, conversations, totalPages };
         } catch (error: any) {
             return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch conversations");
@@ -138,7 +165,18 @@ export const fetchMessagesByCustomer = createAsyncThunk<
             return thunkAPI.rejectWithValue("Message data from API was not an array");
         }
         const formatted = messagesArray.map((msg: any) => ({
-           _id:msg._id, text: msg.message, time: msg.timestamp, sentBy: msg.sender,
+           _id: msg._id, 
+           text: msg.message, 
+           time: msg.timestamp, 
+           sentBy: msg.sender,
+           // 🔧 NEW: Include media metadata
+           messageType: msg.messageType || msg.metadata?.messageType || 'text',
+           mediaUrl: msg.mediaUrl || msg.metadata?.mediaUrl || msg.metadata?.cloudinaryUrl || null,
+           cloudinaryUrl: msg.cloudinaryUrl || msg.metadata?.cloudinaryUrl || null,
+           originalMediaUrl: msg.originalMediaUrl || msg.metadata?.originalMediaUrl || null,
+           proxyUrl: msg.proxyUrl || msg.metadata?.proxyUrl || null,
+           attachmentId: msg.attachmentId || msg.metadata?.attachmentId || null,
+           metadata: msg.metadata || {}
         })).reverse();
         return {
             customerId,
@@ -214,13 +252,16 @@ const chatInboxSlice = createSlice({
                 state.conversations.unshift(conversation);
             }
         },
-        updateConversationStatus: (state, action: PayloadAction<{ customerId: string; status: ConversationInList['status']; assignedAgentId?: string }>) => {
-            const { customerId, status, assignedAgentId } = action.payload;
+        updateConversationStatus: (state, action: PayloadAction<{ customerId: string; status: ConversationInList['status']; assignedAgentId?: string; aiReplyDisabled?: boolean }>) => {
+            const { customerId, status, assignedAgentId, aiReplyDisabled } = action.payload;
             const convoIndex = state.conversations.findIndex(c => c.customer.id === customerId);
             if (convoIndex !== -1) {
                 state.conversations[convoIndex].status = status;
                 if (assignedAgentId !== undefined) {
                     state.conversations[convoIndex].assignedAgentId = assignedAgentId;
+                }
+                if (aiReplyDisabled !== undefined) {
+                    state.conversations[convoIndex].aiReplyDisabled = aiReplyDisabled;
                 }
             }
         }

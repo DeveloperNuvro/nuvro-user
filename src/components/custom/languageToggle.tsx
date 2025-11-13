@@ -25,49 +25,51 @@ export function LanguageToggle() {
   const { user } = useSelector((state: RootState) => state.auth);
 
   const changeLanguage = async (lng: string) => {
-
-    i18n.changeLanguage(lng);
-    if (user) {
-      try {
-        i18n.changeLanguage(lng);
-      } catch (error) {
-
-        toast.error(t('languageUpdatedFailed'));
-        console.error("Failed to save language preference:", error);
+    try {
+      // Change language immediately for UI update
+      await i18n.changeLanguage(lng);
+      
+      // Save to backend if user is logged in
+      if (user) {
+        try {
+          // TODO: Add API call to save language preference to backend
+          // await api.put('/api/v1/user/preferences', { language: lng });
+          console.log('Language changed to:', lng);
+        } catch (error) {
+          console.error("Failed to save language preference:", error);
+          // Don't show error toast - language change still works locally
+        }
       }
-    } else {
-      i18n.changeLanguage(lng);
+      
+      toast.success(t('languageUpdatedSuccess', { language: supportedLanguages.find(l => l.code === lng)?.name || lng }));
+    } catch (error) {
+      console.error("Failed to change language:", error);
+      toast.error(t('languageUpdatedFailed', 'Failed to change language'));
     }
   }
 
   return (
     <DropdownMenu>
-    <DropdownMenuTrigger asChild >
-    <Button variant= "ghost" size = "icon" >
-      <Languages className="h-[1.2rem] w-[1.2rem]" />
-        <span className="sr-only" > Toggle language </span>
-          </Button>
-          </DropdownMenuTrigger>
-          < DropdownMenuContent align = "end" >
-            {
-              supportedLanguages?.map((lang) => (
-                <DropdownMenuItem
-            key= { lang.code }
-
-  onClick = {() => changeLanguage(lang.code)
-}
-className = "cursor-pointer"
-  >
-  { lang.name }
-{
-  i18n.language === lang.code && (
-    <Check className="ml-auto h-4 w-4" />
-            )
-}
-</DropdownMenuItem>
-        ))
-}
-</DropdownMenuContent>
-  </DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="hover:bg-gray-100 dark:hover:bg-gray-800 relative">
+          <Languages className="h-[1.2rem] w-[1.2rem]" />
+          <span className="sr-only">Toggle language</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="z-50">
+        {supportedLanguages.map((lang) => (
+          <DropdownMenuItem
+            key={lang.code}
+            onClick={() => changeLanguage(lang.code)}
+            className="cursor-pointer flex items-center justify-between"
+          >
+            <span>{lang.name}</span>
+            {i18n.language === lang.code && (
+              <Check className="ml-auto h-4 w-4" />
+            )}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

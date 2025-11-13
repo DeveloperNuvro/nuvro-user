@@ -3,8 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '@/app/store';
 import { fetchUserProfile } from '@/features/profile/profileSlice';
-// highlight-start
-import { updateUserLanguage, deleteUserAccount } from '@/features/auth/authSlice'; // Import the delete thunk
+import { updateUserLanguage, deleteUserAccount } from '@/features/auth/authSlice';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,8 +16,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from '@/components/ui/button';
-// highlight-end
-import { User, Building, Shield } from 'lucide-react';
+import { User, Building, Shield, Settings, Globe, Trash2 } from 'lucide-react';
 import { ProfileForm } from '../components/custom/settings/ProfileForm';
 import { BusinessForm } from '../components/custom/settings/BusinessForm';
 import { SecurityForm } from '../components/custom/settings/SecurityForm';
@@ -26,6 +24,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useTheme } from "@/components/theme-provider";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 const SettingsPageSkeleton = () => (
@@ -45,13 +45,31 @@ const SettingsPageSkeleton = () => (
 const AccountSettingsPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { t, i18n } = useTranslation();
+    const { theme } = useTheme();
     const { status: profileStatus } = useSelector((state: RootState) => state.profile);
-    // highlight-start
     const { user, status: authStatus } = useSelector((state: RootState) => state.auth);
-    // highlight-end
-
 
     const [activeTab, setActiveTab] = useState<'profile' | 'business' | 'security'>('profile');
+    
+    // Detect if dark mode is active
+    const [isDarkMode, setIsDarkMode] = useState(() => {
+        if (theme === 'system') {
+            return window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        return theme === 'dark';
+    });
+    
+    useEffect(() => {
+        if (theme === 'system') {
+            const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+            const handleChange = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
+            setIsDarkMode(mediaQuery.matches);
+            mediaQuery.addEventListener('change', handleChange);
+            return () => mediaQuery.removeEventListener('change', handleChange);
+        } else {
+            setIsDarkMode(theme === 'dark');
+        }
+    }, [theme]);
 
     useEffect(() => {
         if (profileStatus === 'idle') {
@@ -97,120 +115,181 @@ const AccountSettingsPage: React.FC = () => {
 
 
     return (
-        <div className="bg-gray-50 dark:bg-black min-h-screen">
-            <div className="container mx-auto max-w-6xl py-12 px-4 md:px-8">
-                <div className="space-y-1 mb-10">
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
+        <div className="min-h-screen pb-8">
+            <div className="container mx-auto max-w-6xl py-8 px-4 md:px-8 space-y-8">
+                {/* Enhanced Header Section */}
+                <div className="space-y-2">
+                    <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text flex items-center gap-3">
+                        <div className={`
+                            p-2 rounded-xl
+                            ${isDarkMode 
+                                ? 'bg-gradient-to-br from-primary/30 to-primary/20 border border-primary/30' 
+                                : 'bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/20'
+                            }
+                        `}>
+                            <Settings className="h-6 w-6 text-primary" />
+                        </div>
                         {t('settingsPage.title')}
                     </h1>
-                    <p className="text-muted-foreground">
+                    <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
                         {t('settingsPage.subtitle')}
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-4 gap-x-12">
-                    {/* Left Navigation Sidebar */}
+                <div className="grid md:grid-cols-4 gap-6 lg:gap-12">
+                    {/* Enhanced Left Navigation Sidebar */}
                     <nav className="flex flex-col space-y-2 mb-8 md:mb-0">
                         {TABS.map((tab) => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                                    activeTab === tab.id
-                                        ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50'
-                                        : 'text-gray-500 hover:bg-gray-100/50 dark:text-gray-400 dark:hover:bg-gray-800/50'
-                                }`}
+                                className={`
+                                    flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
+                                    ${activeTab === tab.id
+                                        ? isDarkMode
+                                            ? 'bg-gradient-to-r from-primary/20 to-primary/10 text-primary border border-primary/30 shadow-md shadow-primary/10'
+                                            : 'bg-gradient-to-r from-primary/10 to-primary/5 text-primary border border-primary/20 shadow-sm shadow-primary/5'
+                                        : isDarkMode
+                                            ? 'text-muted-foreground hover:bg-muted/30 hover:text-foreground'
+                                            : 'text-muted-foreground hover:bg-muted/20 hover:text-foreground'
+                                    }
+                                `}
                             >
-                                <tab.icon className="mr-3 h-5 w-5" />
+                                <tab.icon className={`mr-3 h-5 w-5 ${activeTab === tab.id ? 'text-primary' : ''}`} />
                                 <span>{tab.label}</span>
                             </button>
                         ))}
                     </nav>
                     
                     {/* Right Content Area */}
-                    <div className="md:col-span-3">
+                    <div className="md:col-span-3 space-y-6">
                         {profileStatus === 'loading' ? (
                             <SettingsPageSkeleton />
                         ) : (
-                            <div>
+                            <div className="space-y-6">
                                 {activeTab === 'profile' && (
-                                    <div className="space-y-8">
+                                    <div className="space-y-6">
                                         {/* Language Settings Card */}
-                                        <div className="p-6 bg-white dark:bg-gray-900 rounded-lg border dark:border-gray-700 shadow-sm">
-                                            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-50">
-                                                {t('settingsPage.language.title')}
-                                            </h3>
-                                            <p className="mt-1 text-sm text-muted-foreground">
-                                                {t('settingsPage.language.subtitle')}
-                                            </p>
-                                            <div className="mt-4 max-w-xs">
-                                                 <Label htmlFor="language-select">{t('settingsPage.language.label')}</Label>
-                                                 <Select
-                                                    value={i18n.language}
-                                                    onValueChange={handleLanguageChange}
-                                                    disabled={authStatus === 'loading'}
-                                                 >
-                                                    <SelectTrigger id="language-select" className="mt-2">
-                                                        <SelectValue placeholder="Select language" />
+                                        <Card className={`
+                                            overflow-hidden border transition-all duration-300
+                                            ${isDarkMode 
+                                                ? 'bg-card border-border/60 shadow-lg shadow-black/10' 
+                                                : 'bg-card border-border/80 shadow-md shadow-black/5'
+                                            }
+                                        `}>
+                                            <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-cyan-500 to-blue-500`}></div>
+                                            <CardHeader className="relative z-10">
+                                                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                                                    <div className={`
+                                                        p-2 rounded-lg
+                                                        ${isDarkMode 
+                                                            ? 'bg-gradient-to-br from-blue-500/30 to-cyan-500/20 border border-blue-400/30' 
+                                                            : 'bg-gradient-to-br from-blue-500/20 to-cyan-500/10 border border-blue-300/40'
+                                                        }
+                                                    `}>
+                                                        <Globe className="h-5 w-5 text-blue-500" />
+                                                    </div>
+                                                    {t('settingsPage.language.title')}
+                                                </CardTitle>
+                                                <CardDescription>
+                                                    {t('settingsPage.language.subtitle')}
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="relative z-10">
+                                                <div className="max-w-xs">
+                                                    <Label htmlFor="language-select" className="text-sm font-medium">
+                                                        {t('settingsPage.language.label')}
+                                                    </Label>
+                                                    <Select
+                                                        value={i18n.language}
+                                                        onValueChange={handleLanguageChange}
+                                                        disabled={authStatus === 'loading'}
+                                                    >
+                                                        <SelectTrigger id="language-select" className="mt-2 cursor-pointer">
+                                                        <SelectValue placeholder={t('settingsPage.language.selectPlaceholder', 'Select language')} />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="en">English</SelectItem>
-                                                        <SelectItem value="es">Español (Spanish)</SelectItem>
-                                                        <SelectItem value="fr">Français (French)</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
+                                                        <SelectItem value="en" className="cursor-pointer">{t('settingsPage.language.english', 'English')}</SelectItem>
+                                                        <SelectItem value="es" className="cursor-pointer">{t('settingsPage.language.spanish', 'Español (Spanish)')}</SelectItem>
+                                                        <SelectItem value="fr" className="cursor-pointer">{t('settingsPage.language.french', 'Français (French)')}</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                        
                                         {/* Original Profile Form */}
                                         <ProfileForm />
 
-                                           <div className="p-6 bg-white dark:bg-gray-900 rounded-lg border border-red-500 dark:border-red-700/50 shadow-sm">
-                                            <h3 className="text-lg font-medium text-red-600 dark:text-red-500">
-                                                {t('settingsPage.dangerZone.title')}
-                                            </h3>
-                                            <p className="mt-1 text-sm text-muted-foreground">
-                                                {t('settingsPage.dangerZone.subtitle')}
-                                            </p>
-                                            <div className="mt-4">
+                                        {/* Enhanced Danger Zone Card */}
+                                        <Card className={`
+                                            overflow-hidden border transition-all duration-300 py-5
+                                            ${isDarkMode 
+                                                ? 'bg-card border-red-500/30 shadow-lg shadow-red-500/10' 
+                                                : 'bg-card border-red-500/40 shadow-md shadow-red-500/5'
+                                            }
+                                        `}>
+                                            <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500 via-rose-500 to-red-500`}></div>
+                                            <CardHeader className="relative z-10">
+                                                <CardTitle className="flex items-center gap-2 text-xl font-bold text-red-600 dark:text-red-500">
+                                                    <div className={`
+                                                        p-2 rounded-lg
+                                                        ${isDarkMode 
+                                                            ? 'bg-gradient-to-br from-red-500/30 to-rose-500/20 border border-red-400/30' 
+                                                            : 'bg-gradient-to-br from-red-500/20 to-rose-500/10 border border-red-300/40'
+                                                        }
+                                                    `}>
+                                                        <Trash2 className="h-5 w-5 text-red-500" />
+                                                    </div>
+                                                    {t('settingsPage.dangerZone.title')}
+                                                </CardTitle>
+                                                <CardDescription>
+                                                    {t('settingsPage.dangerZone.subtitle')}
+                                                </CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="relative z-10">
                                                 <AlertDialog>
                                                     <AlertDialogTrigger asChild>
-                                                        <Button variant="destructive" disabled={authStatus === 'loading'}>
+                                                        <Button 
+                                                            variant="destructive" 
+                                                            disabled={authStatus === 'loading'}
+                                                            className="cursor-pointer"
+                                                        >
+                                                            <Trash2 className="h-4 w-4 mr-2" />
                                                             {t('settingsPage.delete.buttonText')}
                                                         </Button>
                                                     </AlertDialogTrigger>
                                                     <AlertDialogContent>
                                                         <AlertDialogHeader>
-                                                            <AlertDialogTitle>{t('settingsPage.delete.confirmTitle')}</AlertDialogTitle>
+                                                            <AlertDialogTitle className="flex items-center gap-2">
+                                                                <Trash2 className="h-5 w-5 text-red-500" />
+                                                                {t('settingsPage.delete.confirmTitle')}
+                                                            </AlertDialogTitle>
                                                             <AlertDialogDescription>
                                                                 {t('settingsPage.delete.confirmDescription')}
                                                             </AlertDialogDescription>
                                                         </AlertDialogHeader>
                                                         <AlertDialogFooter>
-                                                            <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
+                                                            <AlertDialogCancel className="cursor-pointer">{t('Cancel')}</AlertDialogCancel>
                                                             <AlertDialogAction
                                                                 onClick={handleDeleteAccount}
-                                                                className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800"
+                                                                className="bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800 cursor-pointer"
                                                             >
                                                                 {t('settingsPage.delete.confirmButton')}
                                                             </AlertDialogAction>
                                                         </AlertDialogFooter>
                                                     </AlertDialogContent>
                                                 </AlertDialog>
-                                            </div>
-                                        </div>
+                                            </CardContent>
+                                        </Card>
                                     </div>
                                 )}
                                 {activeTab === 'business' && <BusinessForm />}
-                                {/* highlight-start */}
                                 {activeTab === 'security' && (
-                                    <div className="space-y-8">
+                                    <div className="space-y-6">
                                         <SecurityForm />
-
-                                
-                                     
                                     </div>
                                 )}
-                                {/* highlight-end */}
                             </div>
                         )}
                     </div>

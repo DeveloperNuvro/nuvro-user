@@ -6,9 +6,9 @@ import { LanguageToggle } from '../languageToggle';
 
 const Header = ({isColor=false} : {isColor: boolean}) => {
     return (
-        <div className="absolute top-0 left-0 right-0 z-10 flex justify-between items-center px-5 py-4">
+        <div className="absolute top-0 left-0 right-0 z-50 flex justify-between items-center px-5 py-4">
             <img src={isColor ? logoColor : logo} alt="Nuvro logo" className="h-6 md:h-8" />
-            <div>
+            <div className="flex items-center gap-2">
                 <LanguageToggle/>
                 <ModeToggle />
             </div>

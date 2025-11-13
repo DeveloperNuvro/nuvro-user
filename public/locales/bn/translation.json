@@ -168,6 +168,7 @@
   "loadingFailed": "ড্যাশবোর্ড লোড করতে ব্যর্থ",
   "noData": "কোনো ওভারভিউ ডেটা উপলব্ধ নেই।",
   "dashboardTitle": "ড্যাশবোর্ড",
+  "dashboardSubtitle": "আবার স্বাগতম! আজ আপনার ব্যবসার সাথে কী ঘটছে তা এখানে রয়েছে।",
   "totalCustomers": "মোট গ্রাহক",
   "totalCustomersDesc": "সমস্ত স্বতন্ত্র গ্রাহকের মিথস্ক্রিয়া",
   "totalConversations": "মোট কথোপকথন",
@@ -238,7 +239,11 @@
   },
   "channelPage": {
     "title": "চ্যানেল",
+    "subtitle": "কার্যকর দল সহযোগিতার জন্য আপনার সাপোর্ট চ্যানেলগুলি সংগঠিত করুন এবং পরিচালনা করুন",
     "addChannelButton": "চ্যানেল যোগ করুন",
+    "stats": {
+      "totalChannels": "মোট চ্যানেল"
+    },
     "loadingError": "ত্রুটি: {{error}}",
     "noChannelsTitle": "কোনো চ্যানেল পাওয়া যায়নি",
     "noChannelsSubtitle": "আপনার প্রথম চ্যানেল (যেমন, সেলস, সাপোর্ট) তৈরি করে শুরু করুন।",
@@ -272,6 +277,7 @@
   },
   "humanAgentPage": {
     "title": "হিউম্যান এজেন্ট",
+    "subtitle": "আপনার মানব সাপোর্ট এজেন্টদের পরিচালনা করুন এবং কার্যকর গ্রাহক সেবার জন্য তাদের চ্যানেলে নিযুক্ত করুন",
     "addAgentButton": "এজেন্ট যোগ করুন",
     "loadingError": "ত্রুটি: {{error}}",
     "noAgentsTitle": "কোনো এজেন্ট পাওয়া যায়নি",
@@ -281,6 +287,17 @@
     "createModalButton": "এজেন্ট তৈরি করুন",
     "editModalTitle": "এজেন্ট সম্পাদনা করুন",
     "editModalButton": "পরিবর্তন সংরক্ষণ করুন",
+    "stats": {
+      "totalAgents": "মোট এজেন্ট",
+      "activeAgents": "সক্রিয় এজেন্ট",
+      "totalChannels": "মোট চ্যানেল"
+    },
+    "status": {
+      "online": "অনলাইন"
+    },
+    "card": {
+      "id": "আইডি:"
+    },
     "cardEdit": "সম্পাদনা",
     "cardDelete": "মুছে ফেলুন",
     "formName": "নাম",
@@ -303,6 +320,8 @@
     "toastDeleteError": "এজেন্ট মুছতে ব্যর্থ হয়েছে।"
   },
   "ticketPage": {
+    "title": "সাপোর্ট টিকেট",
+    "subtitle": "কার্যকরভাবে গ্রাহক সাপোর্ট টিকেট পরিচালনা এবং ট্র্যাক করুন",
     "filters": {
       "all": "সমস্ত টিকেট",
       "open": "খোলা",
@@ -310,6 +329,13 @@
       "solved": "সমাধান করা হয়েছে"
     },
     "searchPlaceholder": "টিকেট খুঁজুন...",
+    "searchTitle": "বিষয়, বিবরণ, গ্রাহকের নাম, এজেন্টের নাম, সম্পূর্ণ টিকেট আইডি বা আংশিক টিকেট আইডি (শেষ ৬+ অক্ষর) দিয়ে অনুসন্ধান করুন",
+    "stats": {
+      "totalTickets": "মোট টিকেট",
+      "openTickets": "খোলা টিকেট",
+      "closedTickets": "বন্ধ টিকেট",
+      "highPriority": "উচ্চ অগ্রাধিকার"
+    },
     "addTicketButton": "টিকেট যোগ করুন",
     "editButton": "সম্পাদনা",
     "deleteButton": "মুছে ফেলুন",
@@ -415,6 +441,7 @@
   },
   "aiModelListPage": {
     "title": "এআই মডেল",
+    "subtitle": "আপনার এআই মডেলগুলি প্রশিক্ষণ দিন এবং পরিচালনা করুন। নথি আপলোড করুন, সেটিংস কনফিগার করুন এবং আপনার ব্যবসার জন্য বুদ্ধিমান মডেল মোতায়েন করুন।",
     "createNewButton": "+ নতুন তৈরি করুন",
     "loading": "মডেল লোড হচ্ছে...",
     "loadingError": "ত্রুটি: {{error}}",
@@ -427,10 +454,25 @@
     "toastDeleteSuccess": "\"{{modelName}}\" মডেলটি সফলভাবে মুছে ফেলা হয়েছে।",
     "toastDeleteError": "❌ {{error}}"
   },
+  "aiModelPage": {
+    "title": "এআই মডেল",
+    "stats": {
+      "totalModels": "মোট মডেল",
+      "deployed": "মোতায়েন করা হয়েছে",
+      "training": "প্রশিক্ষণ চলছে"
+    }
+  },
   "aiAgentPage": {
     "title": "এআই এজেন্ট",
+    "subtitle": "আপনার এআই এজেন্টগুলি পরিচালনা করুন এবং কনফিগার করুন। আপনার ব্যবসার জন্য বুদ্ধিমান সহায়ক তৈরি, সম্পাদনা এবং মোতায়েন করুন।",
     "modelLabel": "মডেল",
     "unknown": "অজানা",
+    "stats": {
+      "totalAgents": "মোট এজেন্ট",
+      "activeAgents": "সক্রিয় এজেন্ট",
+      "inactiveAgents": "নিষ্ক্রিয় এজেন্ট"
+    },
+    "searchPlaceholder": "এজেন্টের নাম লিখুন",
     "modal": {
       "viewingTitle": "দেখছেন",
       "editingTitle": "সম্পাদনা করছেন",
@@ -482,7 +524,9 @@
     },
     "header": {
       "title": "পারফরম্যান্স ড্যাশবোর্ড",
-      "subtitle": "এর জন্য এআই বিশ্লেষণ"
+      "subtitle": "এর জন্য এআই বিশ্লেষণ",
+      "showingReportFor": "রিপোর্ট দেখাচ্ছে",
+      "selectReport": "রিপোর্ট নির্বাচন করুন"
     },
     "stats": {
       "overallScore": "সামগ্রিক স্কোর",
@@ -511,10 +555,17 @@
     }
   },
   "customersPage": {
+    "title": "গ্রাহক",
+    "description": "আপনার সমস্ত গ্রাহক পরিচালনা করুন এবং দেখুন। সহজেই অনুসন্ধান, ফিল্টার করুন এবং গ্রাহকের তথ্যে অ্যাক্সেস করুন।",
     "filters": {
       "all": "সমস্ত গ্রাহক"
     },
     "searchPlaceholder": "অনুসন্ধান...",
+    "stats": {
+      "totalCustomers": "মোট গ্রাহক",
+      "withEmail": "ইমেল সহ",
+      "withPhone": "ফোন সহ"
+    },
     "table": {
       "loading": "গ্রাহকদের লোড করা হচ্ছে...",
       "error": "ত্রুটি: {{error}}",
@@ -529,7 +580,11 @@
     "pagination": {
       "previous": "পূর্ববর্তী",
       "next": "পরবর্তী",
-      "page": "পৃষ্ঠা {{currentPage}} এর {{totalPages}}"
+      "page": "পৃষ্ঠা {{currentPage}} এর {{totalPages}}",
+      "showing": "{{total}} গ্রাহকের মধ্যে {{start}} - {{end}} দেখানো হচ্ছে"
+    },
+    "empty": {
+      "description": "কোনো গ্রাহক পাওয়া যায়নি। আপনার ব্যবসার সাথে কথোপকথন শুরু করার পর গ্রাহকরা এখানে উপস্থিত হবে।"
     }
   },
   "pricingPage": {
@@ -621,6 +676,10 @@
       "title": "ভাষা ও অঞ্চল",
       "subtitle": "অ্যাপ্লিকেশনে ব্যবহারের জন্য আপনার পছন্দের ভাষা বেছে নিন।",
       "label": "ভাষা",
+      "selectPlaceholder": "ভাষা নির্বাচন করুন",
+      "english": "English",
+      "spanish": "Español (Spanish)",
+      "french": "Français (French)",
       "updateSuccess": "ভাষা সফলভাবে আপডেট করা হয়েছে।",
       "updateError": "আপনার ভাষার পছন্দ আপডেট করতে ব্যর্থ হয়েছে।"
     },
@@ -827,6 +886,25 @@
     "toast": {
       "passwordMismatch": "নতুন পাসওয়ার্ড মিলছে না।",
       "updateSuccess": "পাসওয়ার্ড সফলভাবে আপডেট হয়েছে!"
+    }
+  },
+  "createAiAgentPage": {
+    "title": "এআই এজেন্ট তৈরি করুন",
+    "subtitle": "আপনার ব্যবসার প্রয়োজনের জন্য কাস্টমাইজ করা এআই এজেন্ট তৈরি করুন। এর ব্যক্তিত্ব, প্রতিক্রিয়া এবং আচরণ কনফিগার করুন।",
+    "form": {
+      "agentConfiguration": "এজেন্ট কনফিগারেশন",
+      "defaultQaResponses": "ডিফল্ট প্রশ্ন-উত্তর প্রতিক্রিয়া",
+      "templatesCount": "{{count}} / {{max}}",
+      "templatesDescription": "সাধারণ প্রশ্ন এবং উত্তর যোগ করুন যাতে আপনার এজেন্ট ঘন ঘন জিজ্ঞাসাগুলিতে দ্রুত প্রতিক্রিয়া দিতে পারে।",
+      "templateLabel": "টেমপ্লেট #{{index}}",
+      "questionLabel": "প্রশ্ন",
+      "questionPlaceholder": "যেমন, আপনার রিটার্ন পলিসি কি?",
+      "answerLabel": "উত্তর",
+      "answerPlaceholder": "এই প্রশ্নের জন্য উত্তর লিখুন...",
+      "addAnotherTemplate": "আরেকটি প্রশ্ন-উত্তর টেমপ্লেট যোগ করুন",
+      "createButton": "এজেন্ট তৈরি করুন",
+      "creatingButton": "তৈরি করা হচ্ছে...",
+      "cancelButton": "বাতিল"
     }
   }
 }
