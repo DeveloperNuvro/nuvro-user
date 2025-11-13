@@ -118,6 +118,31 @@ export const deleteAIAgent = createAsyncThunk<string, string, { rejectValue: str
     }
 );
 
+export const toggleAIAgentStatus = createAsyncThunk<AIAgent, string, { rejectValue: string }>(
+    "aiAgent/toggleAIAgentStatus",
+    async (agentId, thunkAPI) => {
+        try {
+            const response = await api.patch(`/api/v1/ai-agent/${agentId}/toggle-status`);
+            return response.data.data.agent;
+        } catch (err: any) {
+            return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to toggle agent status");
+        }
+    }
+);
+
+export const updateAIAgentStatus = createAsyncThunk<AIAgent, { agentId: string; active: boolean }, { rejectValue: string }>(
+    "aiAgent/updateAIAgentStatus",
+    async (payload, thunkAPI) => {
+        try {
+            const { agentId, active } = payload;
+            const response = await api.patch(`/api/v1/ai-agent/${agentId}/status`, { active });
+            return response.data.data.agent;
+        } catch (err: any) {
+            return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to update agent status");
+        }
+    }
+);
+
 // --- Slice Definition ---
 
 const aiAgentSlice = createSlice({
@@ -193,6 +218,40 @@ const aiAgentSlice = createSlice({
         }
       })
       .addCase(deleteAIAgent.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload ?? "An unknown error occurred";
+      })
+
+      // Toggle Agent Status
+      .addCase(toggleAIAgentStatus.pending, (state) => { state.status = "loading"; })
+      .addCase(toggleAIAgentStatus.fulfilled, (state, action: PayloadAction<AIAgent>) => {
+        state.status = "succeeded";
+        const index = state.aiAgents.findIndex(agent => agent._id === action.payload._id);
+        if (index !== -1) {
+            state.aiAgents[index] = action.payload;
+        }
+        if (state.selectedAgent?._id === action.payload._id) {
+            state.selectedAgent = action.payload;
+        }
+      })
+      .addCase(toggleAIAgentStatus.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload ?? "An unknown error occurred";
+      })
+
+      // Update Agent Status
+      .addCase(updateAIAgentStatus.pending, (state) => { state.status = "loading"; })
+      .addCase(updateAIAgentStatus.fulfilled, (state, action: PayloadAction<AIAgent>) => {
+        state.status = "succeeded";
+        const index = state.aiAgents.findIndex(agent => agent._id === action.payload._id);
+        if (index !== -1) {
+            state.aiAgents[index] = action.payload;
+        }
+        if (state.selectedAgent?._id === action.payload._id) {
+            state.selectedAgent = action.payload;
+        }
+      })
+      .addCase(updateAIAgentStatus.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload ?? "An unknown error occurred";
       });

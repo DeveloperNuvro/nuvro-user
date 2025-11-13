@@ -40,7 +40,7 @@ dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 dayjs.extend(relativeTime);
 
-const SystemMessage = ({ text }: { text: string }) => ( <div className="flex items-center justify-center my-4"><div className="text-center text-xs text-muted-foreground px-4 py-1 bg-muted rounded-full">{text}</div></div> );
+const SystemMessage = ({ text }: { text: string }) => ( <div className="flex items-center justify-center my-4"><div className="text-center text-xs text-muted-foreground px-4 py-1 bg-muted rounded-full whitespace-pre-wrap break-words">{text}</div></div> );
 const useDebounce = (value: string, delay: number) => { const [debouncedValue, setDebouncedValue] = useState(value); useEffect(() => { const handler = setTimeout(() => { setDebouncedValue(value); }, delay); return () => { clearTimeout(handler); }; }, [value, delay]); return debouncedValue; };
 
 // 🔧 Helper function to optimize Cloudinary URLs with transformations
@@ -903,12 +903,12 @@ export default function ChatInbox() {
                                 )}
                                 {/* Show text caption if available and not just placeholder */}
                                 {msg.text && !isPlaceholderText && (
-                                  <div className="p-3 pt-2 text-sm">{msg.text}</div>
+                                  <div className="p-3 pt-2 text-sm whitespace-pre-wrap break-words">{msg.text}</div>
                                 )}
                               </>
                             ) : (
                               /* Regular text message - but hide if it's just a placeholder for media */
-                              !isPlaceholderText && <div>{msg.text}</div>
+                              !isPlaceholderText && <div className="whitespace-pre-wrap break-words">{msg.text}</div>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1.5 px-1 whitespace-nowrap">

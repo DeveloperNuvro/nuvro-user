@@ -28,6 +28,7 @@ export interface CreateConnectionRequest {
   platform: 'whatsapp' | 'instagram' | 'telegram' | 'email' | 'linkedin' | 'google' | 'microsoft' | 'imap' | 'twitter' | 'facebook';
   name: string;
   credentials?: UnipileCredentials; // Optional since Unipile handles auth via hosted wizard
+  agentId?: string; // 🔧 NEW: Associate connection with specific AI agent
 }
 
 export interface PlatformStats {
@@ -56,9 +57,13 @@ const initialState: UnipileState = {
 // Async thunks
 export const fetchUnipileConnections = createAsyncThunk(
   'unipile/fetchConnections',
-  async (_, { rejectWithValue: _rejectWithValue }) => {
+  async (agentId: string | undefined, { rejectWithValue: _rejectWithValue }) => {
     try {
-      const response = await api.get('/api/v1/unipile/connections');
+      // 🔧 NEW: Add agentId as query param if provided
+      const url = agentId 
+        ? `/api/v1/unipile/connections?agentId=${agentId}`
+        : '/api/v1/unipile/connections';
+      const response = await api.get(url);
       
       let connections = [];
       if (Array.isArray(response.data)) {
@@ -110,7 +115,8 @@ export const createUnipileConnection = createAsyncThunk(
       const response = await api.post('/api/v1/unipile/connections', {
         platform: connectionData.platform,
         name: connectionData.name,
-        credentials: connectionData.credentials || {}
+        credentials: connectionData.credentials || {},
+        agentId: connectionData.agentId // 🔧 NEW: Pass agentId to backend
       });
       
       const responseData = response.data.data || response.data;

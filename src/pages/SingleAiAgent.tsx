@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { Copy, Loader2, CheckCircle, XCircle, Globe, MessageSquare, Code, Zap, Sparkles } from "lucide-react";
+import { Copy, Loader2, CheckCircle, XCircle, Globe, MessageSquare, Code, Zap, Sparkles, Power } from "lucide-react";
 import toast from "react-hot-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
-import { fetchAIAgentById } from "@/features/aiAgent/aiAgentSlice";
+import { fetchAIAgentById, toggleAIAgentStatus } from "@/features/aiAgent/aiAgentSlice";
 import { useParams } from "react-router-dom";
 import UnipileIntegrationTab from "@/components/custom/unipile/UnipileIntegrationTab";
+import { Label } from "@/components/ui/label";
 
 // --- SUB-COMPONENT: Website Embed Tab ---
 const WebsiteEmbedTab = ({ script }: { script: string }) => {
@@ -209,6 +210,7 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
 export default function SingleAiAgent() {
     const { id } = useParams<{ id: string }>();
     const dispatch = useDispatch<AppDispatch>();
+    const [isToggling, setIsToggling] = useState(false);
 
     const { selectedAgent, status: agentStatus, apiKey } = useSelector((state: RootState) => state.aiAgent);
 
@@ -217,6 +219,20 @@ export default function SingleAiAgent() {
             dispatch(fetchAIAgentById(id));
         }
     }, [dispatch, id]);
+
+    const handleToggleStatus = async () => {
+        if (!id || !selectedAgent) return;
+        
+        setIsToggling(true);
+        try {
+            await dispatch(toggleAIAgentStatus(id)).unwrap();
+            toast.success(`Agent ${selectedAgent.active ? 'deactivated' : 'activated'} successfully`);
+        } catch (error: any) {
+            toast.error(error || 'Failed to toggle agent status');
+        } finally {
+            setIsToggling(false);
+        }
+    };
 
     const script = `<script src="https://nuvro-dtao9.ondigitalocean.app/public/widget.js?apiKey=${apiKey || ''}&agentName=${encodeURIComponent(selectedAgent?.name || '')}" async></script>`;
 
@@ -261,6 +277,37 @@ export default function SingleAiAgent() {
                                 Manage your AI agent integrations and settings. Connect to multiple platforms and embed on your website.
                             </p>
                         </div>
+                        {/* Toggle Status Switch */}
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 shadow-sm">
+                                <Power className={`w-5 h-5 ${selectedAgent?.active ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
+                                <div className="flex flex-col">
+                                    <Label htmlFor="agent-status-toggle" className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer">
+                                        Agent Status
+                                    </Label>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {selectedAgent?.active ? 'Currently Active' : 'Currently Inactive'}
+                                    </p>
+                                </div>
+                                <button
+                                    id="agent-status-toggle"
+                                    onClick={handleToggleStatus}
+                                    disabled={isToggling}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ml-3 ${
+                                        selectedAgent?.active 
+                                            ? 'bg-green-600 dark:bg-green-500' 
+                                            : 'bg-gray-300 dark:bg-gray-600'
+                                    } ${isToggling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                                    aria-label="Toggle agent status"
+                                >
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                            selectedAgent?.active ? 'translate-x-6' : 'translate-x-1'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -291,7 +338,7 @@ export default function SingleAiAgent() {
                         </TabsContent>
 
                         <TabsContent value="integration-unipile" className="mt-0">
-                            <UnipileIntegrationTab />
+                            <UnipileIntegrationTab agentId={selectedAgent?._id} />
                         </TabsContent>
                     </div>
                 </Tabs>

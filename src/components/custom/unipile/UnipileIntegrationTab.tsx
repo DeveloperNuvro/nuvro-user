@@ -77,7 +77,11 @@ interface ConnectionFormData {
   name: string;
 }
 
-const UnipileIntegrationTab = () => {
+interface UnipileIntegrationTabProps {
+  agentId?: string; // 🔧 NEW: Optional agentId prop to filter connections
+}
+
+const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const { connections: rawConnections, status, error } = useSelector((state: RootState) => state.unipile);
   
@@ -93,8 +97,9 @@ const UnipileIntegrationTab = () => {
   const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchUnipileConnections()).catch(() => {});
-  }, [dispatch]);
+    // 🔧 NEW: Pass agentId when fetching connections
+    dispatch(fetchUnipileConnections(agentId)).catch(() => {});
+  }, [dispatch, agentId]);
 
   useEffect(() => {
     if (error) {
@@ -134,6 +139,7 @@ const UnipileIntegrationTab = () => {
       const result = await dispatch(createUnipileConnection({
         platform: formData.platform as any,
         name: formData.name,
+        agentId: agentId, // 🔧 NEW: Pass agentId when creating connection
       })).unwrap();
       
       console.log('🔍 Connection creation result:', result);
@@ -180,7 +186,7 @@ const UnipileIntegrationTab = () => {
               const pollForConnections = () => {
                 pollCount++;
                 
-                dispatch(fetchUnipileConnections())
+                dispatch(fetchUnipileConnections(agentId)) // 🔧 NEW: Pass agentId when polling
                   .then(() => {
                     if (pollCount === 1) {
                       toast.success('Authentication completed! Checking connection status...');
@@ -225,7 +231,7 @@ const UnipileIntegrationTab = () => {
       
       // Refresh connections after a delay
       setTimeout(() => {
-        dispatch(fetchUnipileConnections());
+        dispatch(fetchUnipileConnections(agentId)); // 🔧 NEW: Pass agentId when refreshing
       }, 2000);
       
     } catch (error: any) {
@@ -273,7 +279,7 @@ const UnipileIntegrationTab = () => {
               const pollForConnections = () => {
                 pollCount++;
                 
-                dispatch(fetchUnipileConnections())
+                dispatch(fetchUnipileConnections(agentId)) // 🔧 NEW: Pass agentId when polling
                   .then(() => {
                     if (pollCount === 1) {
                       toast.success('Authentication completed! Checking connection status...');
@@ -311,7 +317,7 @@ const UnipileIntegrationTab = () => {
       
       // Refresh connections after a delay
       setTimeout(() => {
-        dispatch(fetchUnipileConnections());
+        dispatch(fetchUnipileConnections(agentId)); // 🔧 NEW: Pass agentId when refreshing
       }, 2000);
       
     } catch (error: any) {
@@ -329,7 +335,7 @@ const UnipileIntegrationTab = () => {
         await dispatch(deleteUnipileConnection(connectionId)).unwrap();
       toast.success(`${platform} disconnected successfully!`);
           setTimeout(() => {
-            dispatch(fetchUnipileConnections());
+            dispatch(fetchUnipileConnections(agentId)); // 🔧 NEW: Pass agentId when refreshing
       }, 500);
       } catch (error: any) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete connection';

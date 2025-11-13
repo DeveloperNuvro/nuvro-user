@@ -228,16 +228,35 @@ const chatInboxSlice = createSlice({
             state.totalPages = 1;
             state.status = 'idle';
         },
-        addRealtimeMessage: (state, action: PayloadAction<{ customerId: string; message: Message }>) => {
-            const { customerId, message } = action.payload;
+        addRealtimeMessage: (state, action: PayloadAction<{ customerId: string; message: any }>) => {
+            const { customerId, message: rawMessage } = action.payload;
+            
+            // 🔧 FIX: Transform socket message to match expected Message format
+            // Socket messages might have different field names (message vs text, sender vs sentBy, createdAt vs time)
+            const transformedMessage: Message = {
+                _id: rawMessage._id || rawMessage.id || `msg_${Date.now()}`,
+                text: rawMessage.text || rawMessage.message || '',
+                time: rawMessage.time || rawMessage.createdAt || rawMessage.timestamp || new Date().toISOString(),
+                sentBy: rawMessage.sentBy || rawMessage.sender || 'customer',
+                status: rawMessage.status,
+                // 🔧 NEW: Include media metadata from socket message
+                messageType: rawMessage.messageType || rawMessage.metadata?.messageType || 'text',
+                mediaUrl: rawMessage.mediaUrl || rawMessage.metadata?.mediaUrl || rawMessage.metadata?.cloudinaryUrl || null,
+                cloudinaryUrl: rawMessage.cloudinaryUrl || rawMessage.metadata?.cloudinaryUrl || null,
+                originalMediaUrl: rawMessage.originalMediaUrl || rawMessage.metadata?.originalMediaUrl || null,
+                proxyUrl: rawMessage.proxyUrl || rawMessage.metadata?.proxyUrl || null,
+                attachmentId: rawMessage.attachmentId || rawMessage.metadata?.attachmentId || null,
+                metadata: rawMessage.metadata || {}
+            };
+            
             if (state.chatData[customerId]) {
-                state.chatData[customerId].list.push(message);
+                state.chatData[customerId].list.push(transformedMessage);
             }
             const convoIndex = state.conversations.findIndex(c => c.customer.id === customerId);
             if (convoIndex !== -1) {
                 const conversationToMove = state.conversations[convoIndex];
-                conversationToMove.preview = message.text;
-                conversationToMove.latestMessageTimestamp = message.time;
+                conversationToMove.preview = transformedMessage.text;
+                conversationToMove.latestMessageTimestamp = transformedMessage.time;
                 state.conversations.splice(convoIndex, 1);
                 state.conversations.unshift(conversationToMove);
             }
