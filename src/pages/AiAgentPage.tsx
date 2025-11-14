@@ -310,7 +310,7 @@ export default function AiAgentPage() {
                         }
                       `}>
                         <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                        Active
+                        {t('aiAgentPage.active')}
                       </div>
                     ) : (
                       <div className={`
@@ -321,7 +321,7 @@ export default function AiAgentPage() {
                         }
                       `}>
                         <XCircle className="w-3 h-3" />
-                        Inactive
+                        {t('aiAgentPage.inactive')}
                       </div>
                     )}
                   </div>
@@ -371,8 +371,8 @@ export default function AiAgentPage() {
               `}>
                 <Plus className="text-primary" size={32} />
               </div>
-              <p className="text-sm font-semibold text-foreground">Create New Agent</p>
-              <p className="text-xs text-muted-foreground mt-1">Add a new AI agent</p>
+              <p className="text-sm font-semibold text-foreground">{t('aiAgentPage.createNewAgent')}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t('aiAgentPage.addNewAgent')}</p>
             </div>
           </Link>
         )}
@@ -400,14 +400,14 @@ export default function AiAgentPage() {
               <Bot className="h-20 w-20 text-primary" />
             </div>
           </div>
-          <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">No AI Agents Yet</h3>
+          <h3 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">{t('aiAgentPage.noAgentsTitle')}</h3>
           <p className="text-muted-foreground max-w-md mb-8 text-sm sm:text-base">
-            Create your first AI agent to get started. Configure its personality, responses, and connect it to your platforms.
+            {t('aiAgentPage.noAgentsSubtitle')}
           </p>
           <Link to="/main-menu/ai-agent/create">
             <Button className="bg-pink-500 hover:bg-pink-600 text-white shadow-lg shadow-pink-500/25 hover:shadow-xl hover:shadow-pink-500/30 transition-all duration-200 flex items-center gap-2 px-6 py-2.5 cursor-pointer font-semibold">
               <Plus className="h-4 w-4" />
-              Create Your First Agent
+              {t('aiAgentPage.createFirstAgent')}
             </Button>
           </Link>
         </div>

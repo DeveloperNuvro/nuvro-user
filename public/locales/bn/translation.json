@@ -465,6 +465,14 @@
   "aiAgentPage": {
     "title": "এআই এজেন্ট",
     "subtitle": "আপনার এআই এজেন্টগুলি পরিচালনা করুন এবং কনফিগার করুন। আপনার ব্যবসার জন্য বুদ্ধিমান সহায়ক তৈরি, সম্পাদনা এবং মোতায়েন করুন।",
+    "createButton": "এজেন্ট তৈরি করুন",
+    "createNewAgent": "নতুন এজেন্ট তৈরি করুন",
+    "addNewAgent": "একটি নতুন এআই এজেন্ট যোগ করুন",
+    "noAgentsTitle": "এখনও কোনো এআই এজেন্ট নেই",
+    "noAgentsSubtitle": "শুরু করতে আপনার প্রথম এআই এজেন্ট তৈরি করুন। এর ব্যক্তিত্ব, প্রতিক্রিয়া কনফিগার করুন এবং এটিকে আপনার প্ল্যাটফর্মগুলির সাথে সংযুক্ত করুন।",
+    "createFirstAgent": "আপনার প্রথম এজেন্ট তৈরি করুন",
+    "active": "সক্রিয়",
+    "inactive": "নিষ্ক্রিয়",
     "modelLabel": "মডেল",
     "unknown": "অজানা",
     "stats": {
@@ -905,6 +913,142 @@
       "createButton": "এজেন্ট তৈরি করুন",
       "creatingButton": "তৈরি করা হচ্ছে...",
       "cancelButton": "বাতিল"
+    }
+  },
+  "singleAiAgentPage": {
+    "loading": "এআই এজেন্ট লোড হচ্ছে...",
+    "title": "এআই এজেন্ট",
+    "subtitle": "আপনার এআই এজেন্ট ইন্টিগ্রেশন এবং সেটিংস পরিচালনা করুন। একাধিক প্ল্যাটফর্মে সংযুক্ত করুন এবং আপনার ওয়েবসাইটে এম্বেড করুন।",
+    "active": "সক্রিয়",
+    "inactive": "নিষ্ক্রিয়",
+    "agentStatus": "এজেন্ট স্ট্যাটাস",
+    "currentlyActive": "বর্তমানে সক্রিয়",
+    "currentlyInactive": "বর্তমানে নিষ্ক্রিয়",
+    "tabs": {
+      "websiteEmbed": "ওয়েবসাইট এম্বেড",
+      "multiPlatform": "মাল্টি-প্ল্যাটফর্ম"
+    },
+    "websiteEmbed": {
+      "title": "ওয়েবসাইট ইন্টিগ্রেশন",
+      "subtitle": "সেকেন্ডের মধ্যে আপনার ওয়েবসাইটে এআই এজেন্ট যোগ করুন",
+      "embedScript": "এম্বেড স্ক্রিপ্ট",
+      "copy": "কপি করুন",
+      "copied": "কপি করা হয়েছে!",
+      "description": "এআই চ্যাট উইজেট সক্রিয় করতে আপনার ওয়েবসাইটে এই স্ক্রিপ্টটি কপি এবং পেস্ট করুন",
+      "easySetup": "সহজ সেটআপ",
+      "oneScript": "১টি স্ক্রিপ্ট",
+      "instant": "তাত্ক্ষণিক",
+      "activation": "অ্যাক্টিভেশন",
+      "universal": "সার্বজনীন",
+      "compatible": "সামঞ্জস্যপূর্ণ",
+      "quickSetupGuide": "দ্রুত সেটআপ গাইড",
+      "step1Title": "স্ক্রিপ্ট কপি করুন",
+      "step1Description": "এম্বেড কোড কপি করতে উপরের কপি বোতামে ক্লিক করুন",
+      "step2Title": "HTML এ পেস্ট করুন",
+      "step2Description": "<code>&lt;/body&gt;</code> ট্যাগের ঠিক আগে এটি ঢোকান",
+      "step3Title": "প্রকাশ করুন এবং উপভোগ করুন",
+      "step3Description": "আপনার পরিবর্তনগুলি সংরক্ষণ করুন এবং আপনার এআই এজেন্ট লাইভ!",
+      "keyFeatures": "মূল বৈশিষ্ট্য",
+      "worksOnAnyWebsite": "যেকোনো ওয়েবসাইটে কাজ করে",
+      "noServerConfig": "সার্ভার কনফিগারেশন প্রয়োজন নেই",
+      "automaticallyResponsive": "স্বয়ংক্রিয়ভাবে রেসপন্সিভ",
+      "realtimeAiResponses": "রিয়েল-টাইম এআই প্রতিক্রিয়া"
+    },
+    "toast": {
+      "copySuccess": "এম্বেড স্ক্রিপ্ট ক্লিপবোর্ডে কপি করা হয়েছে!",
+      "copyError": "API কী প্রস্তুত নয়। অনুগ্রহ করে রিফ্রেশ করুন।",
+      "toggleSuccess": "এজেন্ট {{status}} সফলভাবে",
+      "toggleError": "এজেন্ট স্ট্যাটাস টগল করতে ব্যর্থ হয়েছে"
+    },
+    "multiPlatform": {
+      "title": "মাল্টি-প্ল্যাটফর্ম ইন্টিগ্রেশন",
+      "subtitle": "আপনার মেসেজিং প্ল্যাটফর্ম এবং ইমেইল অ্যাকাউন্ট সংযুক্ত করুন। সমস্ত সংযোগ নিরাপদ Hosted Auth Wizard প্রমাণীকরণ ব্যবহার করে।",
+      "connectPlatform": "প্ল্যাটফর্ম সংযুক্ত করুন",
+      "connectAccount": "আপনার অ্যাকাউন্ট সংযুক্ত করুন",
+      "connectDescription": "আমরা অফিসিয়াল প্ল্যাটফর্ম প্রমাণীকরণ ফ্লো ব্যবহার করে আপনার অ্যাকাউন্ট নিরাপদে প্রমাণীকরণ করব।",
+      "platformLabel": "প্ল্যাটফর্ম *",
+      "selectPlatform": "একটি প্ল্যাটফর্ম নির্বাচন করুন",
+      "connectionNameLabel": "সংযোগের নাম *",
+      "connectionNamePlaceholder": "যেমন, আমার WhatsApp Business",
+      "secureAuth": "নিরাপদ প্রমাণীকরণ",
+      "cancel": "বাতিল",
+      "connect": "সংযুক্ত করুন",
+      "stats": {
+        "total": "মোট",
+        "active": "সক্রিয়",
+        "pending": "বিচারাধীন",
+        "inactiveErrors": "নিষ্ক্রিয়/ত্রুটি"
+      },
+      "connectedPlatforms": "সংযুক্ত প্ল্যাটফর্ম",
+      "loadingConnections": "সংযোগ লোড হচ্ছে...",
+      "noConnections": "এখনও কোনো সংযোগ নেই",
+      "noConnectionsSubtitle": "সব চ্যানেলে গ্রাহক বার্তা গ্রহণ এবং প্রতিক্রিয়া জানাতে আপনার প্রথম প্ল্যাটফর্ম সংযুক্ত করুন।",
+      "connectFirstPlatform": "আপনার প্রথম প্ল্যাটফর্ম সংযুক্ত করুন",
+      "status": {
+        "active": "সক্রিয়",
+        "pending": "বিচারাধীন",
+        "inactive": "নিষ্ক্রিয়",
+        "error": "ত্রুটি"
+      },
+      "connected": "সংযুক্ত",
+      "reconnect": "পুনঃসংযুক্ত করুন",
+      "qrCode": {
+        "title": "QR কোড স্ক্যান করুন",
+        "description": "আপনার {{platform}} অ্যাপ খুলুন এবং সংযোগ সম্পূর্ণ করতে এই কোডটি স্ক্যান করুন।",
+        "generating": "QR কোড তৈরি করা হচ্ছে...",
+        "failed": "QR কোড তৈরি করতে ব্যর্থ হয়েছে",
+        "openUrl": "URL খুলুন",
+        "keepOpen": "আপনি কোড স্ক্যান করার সময় এই উইন্ডোটি খোলা রাখুন",
+        "close": "বন্ধ করুন"
+      },
+      "platforms": {
+        "whatsapp": {
+          "name": "WhatsApp",
+          "description": "আপনার WhatsApp Business অ্যাকাউন্ট সংযুক্ত করুন"
+        },
+        "instagram": {
+          "name": "Instagram",
+          "description": "আপনার Instagram Business অ্যাকাউন্ট সংযুক্ত করুন"
+        },
+        "telegram": {
+          "name": "Telegram",
+          "description": "আপনার Telegram bot সংযুক্ত করুন"
+        },
+        "email": {
+          "name": "ইমেইল",
+          "description": "আপনার ইমেইল অ্যাকাউন্ট সংযুক্ত করুন"
+        },
+        "linkedin": {
+          "name": "LinkedIn",
+          "description": "আপনার LinkedIn অ্যাকাউন্ট সংযুক্ত করুন"
+        },
+        "google": {
+          "name": "Google",
+          "description": "আপনার Google অ্যাকাউন্ট সংযুক্ত করুন"
+        },
+        "microsoft": {
+          "name": "Microsoft",
+          "description": "আপনার Microsoft অ্যাকাউন্ট সংযুক্ত করুন"
+        },
+        "twitter": {
+          "name": "X (Twitter)",
+          "description": "আপনার X (Twitter) অ্যাকাউন্ট সংযুক্ত করুন"
+        }
+      },
+      "toast": {
+        "fillFields": "অনুগ্রহ করে সমস্ত প্রয়োজনীয় ক্ষেত্র পূরণ করুন",
+        "openingAuth": "{{platform}} প্রমাণীকরণ খোলা হচ্ছে...",
+        "popupBlocked": "পপআপ ব্লক করা হয়েছে। অনুগ্রহ করে পপআপ অনুমোদন করুন অথবা আমরা আপনাকে রিডাইরেক্ট করব...",
+        "authCompleted": "প্রমাণীকরণ সম্পন্ন হয়েছে! সংযোগের স্ট্যাটাস পরীক্ষা করা হচ্ছে...",
+        "connectionMayTakeTime": "সংযোগ প্রদর্শিত হতে আরও কয়েক মুহূর্ত সময় লাগতে পারে। প্রয়োজনে রিফ্রেশ করুন।",
+        "noAuthUrl": "প্রমাণীকরণ URL পাওয়া যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।",
+        "disconnectConfirm": "আপনি কি {{platform}} সংযোগ বিচ্ছিন্ন করতে নিশ্চিত?",
+        "disconnected": "{{platform}} সফলভাবে সংযোগ বিচ্ছিন্ন হয়েছে!",
+        "reconnectAuth": "অনুগ্রহ করে পপআপ উইন্ডোতে {{platform}} প্রমাণীকরণ সম্পন্ন করুন।",
+        "reconnectNoUrl": "প্রমাণীকরণ URL পাওয়া যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।",
+        "reconnectFailed": "সংযোগ পুনঃসংযুক্ত করতে ব্যর্থ হয়েছে",
+        "deleteFailed": "সংযোগ মুছতে ব্যর্থ হয়েছে"
+      }
     }
   }
 }

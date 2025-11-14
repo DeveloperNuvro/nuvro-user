@@ -10,19 +10,21 @@ import { fetchAIAgentById, toggleAIAgentStatus } from "@/features/aiAgent/aiAgen
 import { useParams } from "react-router-dom";
 import UnipileIntegrationTab from "@/components/custom/unipile/UnipileIntegrationTab";
 import { Label } from "@/components/ui/label";
+import { useTranslation } from "react-i18next";
 
 // --- SUB-COMPONENT: Website Embed Tab ---
 const WebsiteEmbedTab = ({ script }: { script: string }) => {
+    const { t } = useTranslation();
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
         if (script && !script.includes("apiKey=&")) {
             navigator.clipboard.writeText(script);
-            toast.success("Embed script copied to clipboard!");
+            toast.success(t('singleAiAgentPage.toast.copySuccess'));
             setCopied(true);
             setTimeout(() => setCopied(false), 3000);
         } else {
-            toast.error("API Key not ready. Please refresh.");
+            toast.error(t('singleAiAgentPage.toast.copyError'));
         }
     };
 
@@ -36,9 +38,9 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                             <Code className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Website Integration</h3>
+                            <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">{t('singleAiAgentPage.websiteEmbed.title')}</h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                                Add your AI agent to your website in seconds
+                                {t('singleAiAgentPage.websiteEmbed.subtitle')}
                             </p>
                         </div>
                     </div>
@@ -53,7 +55,7 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-white">
                                     <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                                    Embed Script
+                                    {t('singleAiAgentPage.websiteEmbed.embedScript')}
                                 </CardTitle>
                                 <Button
                                     onClick={handleCopy}
@@ -64,18 +66,18 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                                     {copied ? (
                                         <>
                                             <CheckCircle className="w-4 h-4 text-green-600" />
-                                            Copied!
+                                            {t('singleAiAgentPage.websiteEmbed.copied')}
                                         </>
                                     ) : (
                                         <>
                                             <Copy className="w-4 h-4" />
-                                            Copy
+                                            {t('singleAiAgentPage.websiteEmbed.copy')}
                                         </>
                                     )}
                                 </Button>
                             </div>
                             <CardDescription className="text-sm mt-2">
-                                Copy and paste this script into your website to enable the AI chat widget
+                                {t('singleAiAgentPage.websiteEmbed.description')}
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -96,8 +98,8 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                                         <Globe className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400">Easy Setup</p>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">1 Script</p>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.websiteEmbed.easySetup')}</p>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('singleAiAgentPage.websiteEmbed.oneScript')}</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -109,8 +111,8 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                                         <Zap className="w-4 h-4 text-green-600 dark:text-green-400" />
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400">Instant</p>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Activation</p>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.websiteEmbed.instant')}</p>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('singleAiAgentPage.websiteEmbed.activation')}</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -122,8 +124,8 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                                         <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                                     </div>
                                     <div>
-                                        <p className="text-xs text-gray-600 dark:text-gray-400">Universal</p>
-                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Compatible</p>
+                                        <p className="text-xs text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.websiteEmbed.universal')}</p>
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('singleAiAgentPage.websiteEmbed.compatible')}</p>
                                     </div>
                                 </div>
                             </CardContent>
@@ -137,7 +139,7 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                         <CardHeader>
                             <CardTitle className="text-lg flex items-center gap-2 text-gray-900 dark:text-white">
                                 <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                                Quick Setup Guide
+                                {t('singleAiAgentPage.websiteEmbed.quickSetupGuide')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -147,8 +149,8 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                                         1
                                     </div>
                                     <div>
-                                        <p className="font-semibold mb-1 text-gray-900 dark:text-white">Copy the Script</p>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">Click the copy button above to copy the embed code</p>
+                                        <p className="font-semibold mb-1 text-gray-900 dark:text-white">{t('singleAiAgentPage.websiteEmbed.step1Title')}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.websiteEmbed.step1Description')}</p>
                                     </div>
                                 </li>
                                 <li className="flex items-start gap-3">
@@ -156,8 +158,8 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                                         2
                                     </div>
                                     <div>
-                                        <p className="font-semibold mb-1 text-gray-900 dark:text-white">Paste in HTML</p>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">Insert it just before the <code className="bg-gray-100 dark:bg-[#1a1a1a] px-1 rounded text-xs border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200">&lt;/body&gt;</code> tag</p>
+                                        <p className="font-semibold mb-1 text-gray-900 dark:text-white">{t('singleAiAgentPage.websiteEmbed.step2Title')}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.websiteEmbed.step2Description')}</p>
                                     </div>
                                 </li>
                                 <li className="flex items-start gap-3">
@@ -165,8 +167,8 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                                         3
                                     </div>
                                     <div>
-                                        <p className="font-semibold mb-1 text-gray-900 dark:text-white">Publish & Enjoy</p>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">Save your changes and your AI agent is live!</p>
+                                        <p className="font-semibold mb-1 text-gray-900 dark:text-white">{t('singleAiAgentPage.websiteEmbed.step3Title')}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">{t('singleAiAgentPage.websiteEmbed.step3Description')}</p>
                                     </div>
                                 </li>
                             </ol>
@@ -178,25 +180,25 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
                         <CardHeader>
                             <CardTitle className="text-base flex items-center gap-2 text-gray-900 dark:text-white">
                                 <CheckCircle className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                                Key Features
+                                {t('singleAiAgentPage.websiteEmbed.keyFeatures')}
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
                             <div className="flex items-start gap-2">
                                 <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                                <p className="text-sm text-gray-700 dark:text-gray-300">Works on any website</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">{t('singleAiAgentPage.websiteEmbed.worksOnAnyWebsite')}</p>
                             </div>
                             <div className="flex items-start gap-2">
                                 <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                                <p className="text-sm text-gray-700 dark:text-gray-300">No server configuration needed</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">{t('singleAiAgentPage.websiteEmbed.noServerConfig')}</p>
                             </div>
                             <div className="flex items-start gap-2">
                                 <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                                <p className="text-sm text-gray-700 dark:text-gray-300">Automatically responsive</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">{t('singleAiAgentPage.websiteEmbed.automaticallyResponsive')}</p>
                             </div>
                             <div className="flex items-start gap-2">
                                 <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                                <p className="text-sm text-gray-700 dark:text-gray-300">Real-time AI responses</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">{t('singleAiAgentPage.websiteEmbed.realtimeAiResponses')}</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -210,6 +212,7 @@ const WebsiteEmbedTab = ({ script }: { script: string }) => {
 export default function SingleAiAgent() {
     const { id } = useParams<{ id: string }>();
     const dispatch = useDispatch<AppDispatch>();
+    const { t } = useTranslation();
     const [isToggling, setIsToggling] = useState(false);
 
     const { selectedAgent, status: agentStatus, apiKey } = useSelector((state: RootState) => state.aiAgent);
@@ -226,9 +229,10 @@ export default function SingleAiAgent() {
         setIsToggling(true);
         try {
             await dispatch(toggleAIAgentStatus(id)).unwrap();
-            toast.success(`Agent ${selectedAgent.active ? 'deactivated' : 'activated'} successfully`);
+            const status = selectedAgent.active ? 'deactivated' : 'activated';
+            toast.success(t('singleAiAgentPage.toast.toggleSuccess', { status }));
         } catch (error: any) {
-            toast.error(error || 'Failed to toggle agent status');
+            toast.error(error || t('singleAiAgentPage.toast.toggleError'));
         } finally {
             setIsToggling(false);
         }
@@ -240,7 +244,7 @@ export default function SingleAiAgent() {
         return (
             <div className="flex flex-col items-center justify-center h-96 space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
-                <p className="text-gray-600 dark:text-gray-400">Loading AI agent...</p>
+                <p className="text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.loading')}</p>
             </div>
         );
     }
@@ -258,23 +262,23 @@ export default function SingleAiAgent() {
                                 </div>
                                 <div>
                                     <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
-                                        {selectedAgent?.name || 'AI Agent'}
+                                        {selectedAgent?.name || t('singleAiAgentPage.title')}
                                     </h1>
                                 </div>
                                 {selectedAgent?.active ? (
                                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800">
                                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        Active
+                                        {t('singleAiAgentPage.active')}
                                     </div>
                                 ) : (
                                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
                                         <XCircle className="w-4 h-4" />
-                                        Inactive
+                                        {t('singleAiAgentPage.inactive')}
                                     </div>
                                 )}
                             </div>
                             <p className="text-gray-700 dark:text-gray-300 text-base max-w-2xl">
-                                Manage your AI agent integrations and settings. Connect to multiple platforms and embed on your website.
+                                {t('singleAiAgentPage.subtitle')}
                             </p>
                         </div>
                         {/* Toggle Status Switch */}
@@ -283,10 +287,10 @@ export default function SingleAiAgent() {
                                 <Power className={`w-5 h-5 ${selectedAgent?.active ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`} />
                                 <div className="flex flex-col">
                                     <Label htmlFor="agent-status-toggle" className="text-sm font-semibold text-gray-900 dark:text-white cursor-pointer">
-                                        Agent Status
+                                        {t('singleAiAgentPage.agentStatus')}
                                     </Label>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                                        {selectedAgent?.active ? 'Currently Active' : 'Currently Inactive'}
+                                        {selectedAgent?.active ? t('singleAiAgentPage.currentlyActive') : t('singleAiAgentPage.currentlyInactive')}
                                     </p>
                                 </div>
                                 <button
@@ -321,14 +325,14 @@ export default function SingleAiAgent() {
                             className="data-[state=active]:bg-blue-50 data-[state=active]:dark:bg-blue-900/20 data-[state=active]:text-blue-700 data-[state=active]:dark:text-blue-300 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400 px-6 py-4 text-base font-semibold transition-all text-gray-600 dark:text-gray-400"
                         >
                             <Globe className="mr-2 h-5 w-5" />
-                            Website Embed
+                            {t('singleAiAgentPage.tabs.websiteEmbed')}
                         </TabsTrigger>
                         <TabsTrigger 
                             value="integration-unipile" 
                             className="data-[state=active]:bg-blue-50 data-[state=active]:dark:bg-blue-900/20 data-[state=active]:text-blue-700 data-[state=active]:dark:text-blue-300 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400 px-6 py-4 text-base font-semibold transition-all text-gray-600 dark:text-gray-400"
                         >
                             <MessageSquare className="mr-2 h-5 w-5" />
-                            Multi-Platform
+                            {t('singleAiAgentPage.tabs.multiPlatform')}
                         </TabsTrigger>
                     </TabsList>
 

@@ -18,57 +18,9 @@ import {
   clearError 
 } from "@/features/unipile/unipileSlice";
 import toast from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
-const platformConfig = {
-  whatsapp: {
-    icon: Phone,
-    color: "bg-green-500",
-    name: "WhatsApp",
-    description: "Connect your WhatsApp Business account"
-  },
-  instagram: {
-    icon: Instagram,
-    color: "bg-pink-500",
-    name: "Instagram",
-    description: "Connect your Instagram Business account"
-  },
-  telegram: {
-    icon: MessageSquare,
-    color: "bg-blue-500",
-    name: "Telegram",
-    description: "Connect your Telegram bot"
-  },
-  email: {
-    icon: Mail,
-    color: "bg-red-500",
-    name: "Email",
-    description: "Connect your email account"
-  },
-  linkedin: {
-    icon: Linkedin,
-    color: "bg-blue-600",
-    name: "LinkedIn",
-    description: "Connect your LinkedIn account"
-  },
-  google: {
-    icon: Globe,
-    color: "bg-blue-500",
-    name: "Google",
-    description: "Connect your Google account"
-  },
-  microsoft: {
-    icon: Building2,
-    color: "bg-gray-600",
-    name: "Microsoft",
-    description: "Connect your Microsoft account"
-  },
-  twitter: {
-    icon: AtSign,
-    color: "bg-sky-500",
-    name: "X (Twitter)",
-    description: "Connect your X (Twitter) account"
-  }
-};
+// Platform config will be created inside component to access translations
 
 const supportedPlatforms = ['whatsapp', 'instagram', 'telegram', 'email', 'linkedin', 'google', 'microsoft', 'twitter'] as const;
 
@@ -82,10 +34,63 @@ interface UnipileIntegrationTabProps {
 }
 
 const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
+  const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
   const { connections: rawConnections, status, error } = useSelector((state: RootState) => state.unipile);
   
   const connections = Array.isArray(rawConnections) ? rawConnections : [];
+  
+  // Platform config with translations
+  const platformConfig = {
+    whatsapp: {
+      icon: Phone,
+      color: "bg-green-500",
+      name: t('singleAiAgentPage.multiPlatform.platforms.whatsapp.name'),
+      description: t('singleAiAgentPage.multiPlatform.platforms.whatsapp.description')
+    },
+    instagram: {
+      icon: Instagram,
+      color: "bg-pink-500",
+      name: t('singleAiAgentPage.multiPlatform.platforms.instagram.name'),
+      description: t('singleAiAgentPage.multiPlatform.platforms.instagram.description')
+    },
+    telegram: {
+      icon: MessageSquare,
+      color: "bg-blue-500",
+      name: t('singleAiAgentPage.multiPlatform.platforms.telegram.name'),
+      description: t('singleAiAgentPage.multiPlatform.platforms.telegram.description')
+    },
+    email: {
+      icon: Mail,
+      color: "bg-red-500",
+      name: t('singleAiAgentPage.multiPlatform.platforms.email.name'),
+      description: t('singleAiAgentPage.multiPlatform.platforms.email.description')
+    },
+    linkedin: {
+      icon: Linkedin,
+      color: "bg-blue-600",
+      name: t('singleAiAgentPage.multiPlatform.platforms.linkedin.name'),
+      description: t('singleAiAgentPage.multiPlatform.platforms.linkedin.description')
+    },
+    google: {
+      icon: Globe,
+      color: "bg-blue-500",
+      name: t('singleAiAgentPage.multiPlatform.platforms.google.name'),
+      description: t('singleAiAgentPage.multiPlatform.platforms.google.description')
+    },
+    microsoft: {
+      icon: Building2,
+      color: "bg-gray-600",
+      name: t('singleAiAgentPage.multiPlatform.platforms.microsoft.name'),
+      description: t('singleAiAgentPage.multiPlatform.platforms.microsoft.description')
+    },
+    twitter: {
+      icon: AtSign,
+      color: "bg-sky-500",
+      name: t('singleAiAgentPage.multiPlatform.platforms.twitter.name'),
+      description: t('singleAiAgentPage.multiPlatform.platforms.twitter.description')
+    }
+  };
   
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [formData, setFormData] = useState<ConnectionFormData>({
@@ -131,7 +136,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
 
   const handleCreateConnection = async () => {
     if (!formData.platform || !formData.name) {
-      toast.error("Please fill in all required fields");
+      toast.error(t('singleAiAgentPage.multiPlatform.toast.fillFields'));
       return;
     }
 
@@ -153,7 +158,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
         // 🔧 FIX: For WhatsApp, open the Hosted Auth Wizard URL (it contains the QR code page)
         // The authUrl is a URL to Unipile's Hosted Auth Wizard which will display the QR code
         // We should NOT try to generate a QR code from the URL
-        toast.success(`Opening ${formData.platform} authentication...`, {
+        toast.success(t('singleAiAgentPage.multiPlatform.toast.openingAuth', { platform: formData.platform }), {
           duration: 2000
         });
         
@@ -167,7 +172,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
         // Check if popup was blocked
         if (!authWindow || authWindow.closed || typeof authWindow.closed === 'undefined') {
           // Popup was blocked, fallback to redirect
-          toast.error('Popup blocked. Please allow popups or we will redirect you...', {
+          toast.error(t('singleAiAgentPage.multiPlatform.toast.popupBlocked'), {
             duration: 3000
           });
           setTimeout(() => {
@@ -189,14 +194,14 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                 dispatch(fetchUnipileConnections(agentId)) // 🔧 NEW: Pass agentId when polling
                   .then(() => {
                     if (pollCount === 1) {
-                      toast.success('Authentication completed! Checking connection status...');
+                      toast.success(t('singleAiAgentPage.multiPlatform.toast.authCompleted'));
                     }
                     
                     // Continue polling if we haven't reached max attempts
                     if (pollCount < maxPolls) {
                       setTimeout(pollForConnections, 2000); // Poll every 2 seconds
                     } else {
-                      toast('Connection may take a few more moments to appear. Please refresh if needed.', { icon: 'ℹ️' });
+                      toast(t('singleAiAgentPage.multiPlatform.toast.connectionMayTakeTime'), { icon: 'ℹ️' });
                     }
                   })
                   .catch((error) => {
@@ -223,7 +228,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
       } else {
         // No auth URL found
         console.error('❌ No auth URL found in response:', result);
-        toast.error('Authentication URL not received. Please try again.');
+        toast.error(t('singleAiAgentPage.multiPlatform.toast.noAuthUrl'));
       }
       
       setIsCreateDialogOpen(false);
@@ -258,14 +263,14 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
         
         // Check if popup was blocked
         if (!authWindow || authWindow.closed || typeof authWindow.closed === 'undefined') {
-          toast.error('Popup blocked. Please allow popups or we will redirect you...', {
+          toast.error(t('singleAiAgentPage.multiPlatform.toast.popupBlocked'), {
             duration: 3000
           });
           setTimeout(() => {
             window.location.href = authUrl;
           }, 2000);
         } else {
-          toast.success(`Please complete the ${platform} authentication in the popup window.`);
+          toast.success(t('singleAiAgentPage.multiPlatform.toast.reconnectAuth', { platform }));
           
           // Monitor popup for completion
           let pollCount = 0;
@@ -282,13 +287,13 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                 dispatch(fetchUnipileConnections(agentId)) // 🔧 NEW: Pass agentId when polling
                   .then(() => {
                     if (pollCount === 1) {
-                      toast.success('Authentication completed! Checking connection status...');
+                      toast.success(t('singleAiAgentPage.multiPlatform.toast.authCompleted'));
                     }
                     
                     if (pollCount < maxPolls) {
                       setTimeout(pollForConnections, 2000);
                     } else {
-                      toast('Connection may take a few more moments to appear. Please refresh if needed.', { icon: 'ℹ️' });
+                      toast(t('singleAiAgentPage.multiPlatform.toast.connectionMayTakeTime'), { icon: 'ℹ️' });
                     }
                   })
                   .catch((error) => {
@@ -312,7 +317,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
           }, 300000);
         }
       } else {
-        toast.error('No authentication URL received. Please try again.');
+        toast.error(t('singleAiAgentPage.multiPlatform.toast.reconnectNoUrl'));
       }
       
       // Refresh connections after a delay
@@ -321,24 +326,24 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
       }, 2000);
       
     } catch (error: any) {
-      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to reconnect connection';
+      const errorMessage = typeof error === 'string' ? error : error?.message || t('singleAiAgentPage.multiPlatform.toast.reconnectFailed');
       toast.error(errorMessage);
     }
   };
 
   const handleDeleteConnection = async (connectionId: string, platform: string) => {
-    if (!window.confirm(`Are you sure you want to disconnect ${platform}?`)) {
+    if (!window.confirm(t('singleAiAgentPage.multiPlatform.toast.disconnectConfirm', { platform }))) {
           return;
         }
         
     try {
         await dispatch(deleteUnipileConnection(connectionId)).unwrap();
-      toast.success(`${platform} disconnected successfully!`);
+      toast.success(t('singleAiAgentPage.multiPlatform.toast.disconnected', { platform }));
           setTimeout(() => {
             dispatch(fetchUnipileConnections(agentId)); // 🔧 NEW: Pass agentId when refreshing
       }, 500);
       } catch (error: any) {
-      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete connection';
+      const errorMessage = typeof error === 'string' ? error : error?.message || t('singleAiAgentPage.multiPlatform.toast.deleteFailed');
       toast.error(errorMessage);
     }
   };
@@ -346,16 +351,16 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
   const formatConnectionDate = (connection: any) => {
     try {
       const dateString = connection.created_at || connection.createdAt;
-      if (!dateString) return 'Unknown';
+      if (!dateString) return t('singleAiAgentPage.multiPlatform.connected');
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Invalid date';
+      if (isNaN(date.getTime())) return t('singleAiAgentPage.multiPlatform.connected');
       return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
       });
     } catch {
-      return 'Invalid date';
+      return t('singleAiAgentPage.multiPlatform.connected');
     }
   };
 
@@ -368,27 +373,27 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
       case 'connected':
         return (
           <Badge className="bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300 border-green-300 dark:border-green-700">
-            <CheckCircle className="w-3 h-3 mr-1" /> Active
+            <CheckCircle className="w-3 h-3 mr-1" /> {t('singleAiAgentPage.multiPlatform.status.active')}
           </Badge>
         );
       case 'pending':
         return (
           <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300 border-yellow-300 dark:border-yellow-700">
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" /> Pending
+            <Loader2 className="w-3 h-3 mr-1 animate-spin" /> {t('singleAiAgentPage.multiPlatform.status.pending')}
           </Badge>
         );
       case 'inactive':
       case 'disconnected':
         return (
           <Badge variant="secondary" className="bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300 border-red-300 dark:border-red-700">
-            <XCircle className="w-3 h-3 mr-1" /> Inactive
+            <XCircle className="w-3 h-3 mr-1" /> {t('singleAiAgentPage.multiPlatform.status.inactive')}
           </Badge>
         );
       case 'error':
       case 'failed':
         return (
           <Badge variant="destructive">
-            <XCircle className="w-3 h-3 mr-1" /> Error
+            <XCircle className="w-3 h-3 mr-1" /> {t('singleAiAgentPage.multiPlatform.status.error')}
           </Badge>
         );
       default:
@@ -401,34 +406,34 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">Multi-Platform Integration</h3>
+          <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">{t('singleAiAgentPage.multiPlatform.title')}</h3>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Connect your messaging platforms and email accounts. All connections use secure Hosted Auth Wizard authentication.
+            {t('singleAiAgentPage.multiPlatform.subtitle')}
           </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 dark:border-blue-500">
               <Plus className="w-4 h-4 mr-2" />
-              Connect Platform
+              {t('singleAiAgentPage.multiPlatform.connectPlatform')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle className="text-xl">Connect Your Account</DialogTitle>
+              <DialogTitle className="text-xl">{t('singleAiAgentPage.multiPlatform.connectAccount')}</DialogTitle>
               <DialogDescription>
-                We'll securely authenticate your account using the official platform authentication flow.
+                {t('singleAiAgentPage.multiPlatform.connectDescription')}
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="platform">Platform *</Label>
+                <Label htmlFor="platform">{t('singleAiAgentPage.multiPlatform.platformLabel')}</Label>
                 <Select 
                   value={formData.platform} 
                   onValueChange={(value) => setFormData({ ...formData, platform: value as any })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a platform" />
+                    <SelectValue placeholder={t('singleAiAgentPage.multiPlatform.selectPlatform')} />
                   </SelectTrigger>
                   <SelectContent>
                     {supportedPlatforms.map((platform) => {
@@ -448,10 +453,10 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="name">Connection Name *</Label>
+                <Label htmlFor="name">{t('singleAiAgentPage.multiPlatform.connectionNameLabel')}</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., My WhatsApp Business"
+                  placeholder={t('singleAiAgentPage.multiPlatform.connectionNamePlaceholder')}
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
@@ -464,11 +469,11 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                     <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                     <div>
                         <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">
-                          Secure Authentication
+                          {t('singleAiAgentPage.multiPlatform.secureAuth')}
                       </h4>
                       <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                           {platformConfig[formData.platform as keyof typeof platformConfig]?.description || 
-                           "We'll guide you through a secure authentication process."}
+                           t('singleAiAgentPage.multiPlatform.connectDescription')}
                       </p>
                     </div>
                   </div>
@@ -478,7 +483,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                Cancel
+                {t('singleAiAgentPage.multiPlatform.cancel')}
               </Button>
               <Button 
                 onClick={handleCreateConnection} 
@@ -486,7 +491,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                 className="bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 dark:border-blue-500"
               >
                 {status === 'loading' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Connect
+                {t('singleAiAgentPage.multiPlatform.connect')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -500,7 +505,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
             <CardContent className="px-4">
               <div className="flex items-center justify-between">
             <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.multiPlatform.stats.total')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{connections.length}</p>
                 </div>
                 <div className="p-3 bg-blue-500 rounded-lg">
@@ -514,7 +519,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
             <CardContent className="px-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.multiPlatform.stats.active')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                     {connections.filter(c => c.status === 'active').length}
                   </p>
@@ -530,7 +535,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
             <CardContent className="px-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.multiPlatform.stats.pending')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                     {connections.filter(c => c.status === 'pending').length}
                   </p>
@@ -546,7 +551,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
             <CardContent className="px-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Inactive/Errors</p>
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.multiPlatform.stats.inactiveErrors')}</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                     {connections.filter(c => c.status === 'error' || c.status === 'inactive').length}
                   </p>
@@ -563,7 +568,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
       {/* Connections List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Connected Platforms</h4>
+          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{t('singleAiAgentPage.multiPlatform.connectedPlatforms')}</h4>
           {status === 'loading' && (
             <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
           )}
@@ -573,7 +578,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
           <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 py-6">
             <CardContent className="p-12 text-center">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">Loading connections...</p>
+              <p className="text-gray-600 dark:text-gray-400">{t('singleAiAgentPage.multiPlatform.loadingConnections')}</p>
             </CardContent>
           </Card>
         ) : connections.length === 0 ? (
@@ -582,16 +587,16 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
                 <MessageSquare className="w-8 h-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No connections yet</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{t('singleAiAgentPage.multiPlatform.noConnections')}</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                Connect your first platform to start receiving and responding to customer messages across all channels.
+                {t('singleAiAgentPage.multiPlatform.noConnectionsSubtitle')}
               </p>
               <Button 
                 onClick={() => setIsCreateDialogOpen(true)}
                 className="bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 dark:border-blue-500"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Connect Your First Platform
+                {t('singleAiAgentPage.multiPlatform.connectFirstPlatform')}
               </Button>
             </CardContent>
           </Card>
@@ -641,7 +646,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                   <CardContent className="pt-0">
                     <div className="flex items-center justify-between">
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Connected {formatConnectionDate(connection)}
+                        {t('singleAiAgentPage.multiPlatform.connected')} {formatConnectionDate(connection)}
                       </div>
                       <div className="flex items-center gap-2">
                         {/* Show Reconnect button for inactive, error, disconnected, or failed status */}
@@ -655,10 +660,10 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                             }}
                             disabled={status === 'loading'}
                             className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20 border border-orange-200 dark:border-orange-800 font-medium"
-                            title={`Reconnect ${connection.platform} (Status: ${normalizedStatus})`}
+                            title={`${t('singleAiAgentPage.multiPlatform.reconnect')} ${connection.platform} (Status: ${normalizedStatus})`}
                           >
                             <RefreshCw className="w-4 h-4 mr-1" />
-                            Reconnect
+                            {t('singleAiAgentPage.multiPlatform.reconnect')}
                           </Button>
                         )}
                         {/* Debug: Show if button should appear but connectionId is missing */}
@@ -692,9 +697,9 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
           <Dialog open={!!qrCodeData} onOpenChange={() => setQrCodeData(null)}>
           <DialogContent className="max-w-md">
               <DialogHeader>
-              <DialogTitle>Scan QR Code</DialogTitle>
+              <DialogTitle>{t('singleAiAgentPage.multiPlatform.qrCode.title')}</DialogTitle>
                 <DialogDescription>
-                Open your {qrCodeData.platform} app and scan this code to complete the connection.
+                {t('singleAiAgentPage.multiPlatform.qrCode.description', { platform: qrCodeData.platform })}
                 </DialogDescription>
               </DialogHeader>
             <div className="flex flex-col items-center space-y-4 py-4">
@@ -702,7 +707,7 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                   {isGenerating ? (
                     <div className="flex flex-col items-center space-y-2">
                       <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
-                      <p className="text-sm text-gray-500">Generating QR code...</p>
+                      <p className="text-sm text-gray-500">{t('singleAiAgentPage.multiPlatform.qrCode.generating')}</p>
                     </div>
                   ) : qrCodeImage ? (
                     <img 
@@ -712,26 +717,26 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                     />
                   ) : (
                   <div className="text-center p-4">
-                      <p className="text-sm text-red-500 mb-2">Failed to generate QR code</p>
+                      <p className="text-sm text-red-500 mb-2">{t('singleAiAgentPage.multiPlatform.qrCode.failed')}</p>
                 {qrCodeData.qrCode.startsWith('http') && (
                   <Button 
                     variant="outline"
                     size="sm"
                         onClick={() => window.open(qrCodeData.qrCode, '_blank')}
                   >
-                    Open URL
+                    {t('singleAiAgentPage.multiPlatform.qrCode.openUrl')}
                   </Button>
                 )}
                   </div>
                 )}
               </div>
               <p className="text-sm text-gray-500 text-center">
-                Keep this window open while you scan the code
+                {t('singleAiAgentPage.multiPlatform.qrCode.keepOpen')}
               </p>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setQrCodeData(null)}>
-                Close
+                {t('singleAiAgentPage.multiPlatform.qrCode.close')}
                 </Button>
               </DialogFooter>
             </DialogContent>

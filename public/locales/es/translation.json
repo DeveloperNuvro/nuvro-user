@@ -394,6 +394,14 @@
   "aiAgentPage": {
     "title": "Agentes de IA",
     "subtitle": "Administra y configura tus agentes de IA. Crea, edita y despliega asistentes inteligentes para tu negocio.",
+    "createButton": "Crear Agente",
+    "createNewAgent": "Crear Nuevo Agente",
+    "addNewAgent": "Agregar un nuevo agente de IA",
+    "noAgentsTitle": "Aún No Hay Agentes de IA",
+    "noAgentsSubtitle": "Crea tu primer agente de IA para comenzar. Configura su personalidad, respuestas y conéctalo a tus plataformas.",
+    "createFirstAgent": "Crea Tu Primer Agente",
+    "active": "Activo",
+    "inactive": "Inactivo",
     "modelLabel": "Modelo",
     "unknown": "Desconocido",
     "stats": {
@@ -834,6 +842,142 @@
       "createButton": "Crear Agente",
       "creatingButton": "Creando...",
       "cancelButton": "Cancelar"
+    }
+  },
+  "singleAiAgentPage": {
+    "loading": "Cargando agente de IA...",
+    "title": "Agente de IA",
+    "subtitle": "Administra las integraciones y configuraciones de tu agente de IA. Conecta a múltiples plataformas e intégralo en tu sitio web.",
+    "active": "Activo",
+    "inactive": "Inactivo",
+    "agentStatus": "Estado del Agente",
+    "currentlyActive": "Actualmente Activo",
+    "currentlyInactive": "Actualmente Inactivo",
+    "tabs": {
+      "websiteEmbed": "Integración Web",
+      "multiPlatform": "Multiplataforma"
+    },
+    "websiteEmbed": {
+      "title": "Integración Web",
+      "subtitle": "Agrega tu agente de IA a tu sitio web en segundos",
+      "embedScript": "Script de Integración",
+      "copy": "Copiar",
+      "copied": "¡Copiado!",
+      "description": "Copia y pega este script en tu sitio web para habilitar el widget de chat de IA",
+      "easySetup": "Configuración Fácil",
+      "oneScript": "1 Script",
+      "instant": "Instantáneo",
+      "activation": "Activación",
+      "universal": "Universal",
+      "compatible": "Compatible",
+      "quickSetupGuide": "Guía de Configuración Rápida",
+      "step1Title": "Copiar el Script",
+      "step1Description": "Haz clic en el botón copiar arriba para copiar el código de integración",
+      "step2Title": "Pegar en HTML",
+      "step2Description": "Insértalo justo antes de la etiqueta <code>&lt;/body&gt;</code>",
+      "step3Title": "Publicar y Disfrutar",
+      "step3Description": "¡Guarda tus cambios y tu agente de IA está en vivo!",
+      "keyFeatures": "Características Clave",
+      "worksOnAnyWebsite": "Funciona en cualquier sitio web",
+      "noServerConfig": "No se necesita configuración del servidor",
+      "automaticallyResponsive": "Automáticamente responsivo",
+      "realtimeAiResponses": "Respuestas de IA en tiempo real"
+    },
+    "toast": {
+      "copySuccess": "¡Script de integración copiado al portapapeles!",
+      "copyError": "La clave API no está lista. Por favor, actualiza.",
+      "toggleSuccess": "Agente {{status}} exitosamente",
+      "toggleError": "Error al cambiar el estado del agente"
+    },
+    "multiPlatform": {
+      "title": "Integración Multiplataforma",
+      "subtitle": "Conecta tus plataformas de mensajería y cuentas de correo electrónico. Todas las conexiones usan autenticación segura de Hosted Auth Wizard.",
+      "connectPlatform": "Conectar Plataforma",
+      "connectAccount": "Conectar Tu Cuenta",
+      "connectDescription": "Autenticaremos tu cuenta de forma segura usando el flujo de autenticación oficial de la plataforma.",
+      "platformLabel": "Plataforma *",
+      "selectPlatform": "Selecciona una plataforma",
+      "connectionNameLabel": "Nombre de Conexión *",
+      "connectionNamePlaceholder": "p. ej., Mi WhatsApp Business",
+      "secureAuth": "Autenticación Segura",
+      "cancel": "Cancelar",
+      "connect": "Conectar",
+      "stats": {
+        "total": "Total",
+        "active": "Activo",
+        "pending": "Pendiente",
+        "inactiveErrors": "Inactivo/Errores"
+      },
+      "connectedPlatforms": "Plataformas Conectadas",
+      "loadingConnections": "Cargando conexiones...",
+      "noConnections": "Aún no hay conexiones",
+      "noConnectionsSubtitle": "Conecta tu primera plataforma para comenzar a recibir y responder mensajes de clientes en todos los canales.",
+      "connectFirstPlatform": "Conecta Tu Primera Plataforma",
+      "status": {
+        "active": "Activo",
+        "pending": "Pendiente",
+        "inactive": "Inactivo",
+        "error": "Error"
+      },
+      "connected": "Conectado",
+      "reconnect": "Reconectar",
+      "qrCode": {
+        "title": "Escanear Código QR",
+        "description": "Abre tu aplicación {{platform}} y escanea este código para completar la conexión.",
+        "generating": "Generando código QR...",
+        "failed": "Error al generar código QR",
+        "openUrl": "Abrir URL",
+        "keepOpen": "Mantén esta ventana abierta mientras escaneas el código",
+        "close": "Cerrar"
+      },
+      "platforms": {
+        "whatsapp": {
+          "name": "WhatsApp",
+          "description": "Conecta tu cuenta de WhatsApp Business"
+        },
+        "instagram": {
+          "name": "Instagram",
+          "description": "Conecta tu cuenta de Instagram Business"
+        },
+        "telegram": {
+          "name": "Telegram",
+          "description": "Conecta tu bot de Telegram"
+        },
+        "email": {
+          "name": "Correo Electrónico",
+          "description": "Conecta tu cuenta de correo electrónico"
+        },
+        "linkedin": {
+          "name": "LinkedIn",
+          "description": "Conecta tu cuenta de LinkedIn"
+        },
+        "google": {
+          "name": "Google",
+          "description": "Conecta tu cuenta de Google"
+        },
+        "microsoft": {
+          "name": "Microsoft",
+          "description": "Conecta tu cuenta de Microsoft"
+        },
+        "twitter": {
+          "name": "X (Twitter)",
+          "description": "Conecta tu cuenta de X (Twitter)"
+        }
+      },
+      "toast": {
+        "fillFields": "Por favor, completa todos los campos requeridos",
+        "openingAuth": "Abriendo autenticación de {{platform}}...",
+        "popupBlocked": "Popup bloqueado. Por favor, permite popups o te redirigiremos...",
+        "authCompleted": "¡Autenticación completada! Verificando estado de conexión...",
+        "connectionMayTakeTime": "La conexión puede tardar unos momentos más en aparecer. Por favor, actualiza si es necesario.",
+        "noAuthUrl": "URL de autenticación no recibida. Por favor, intenta de nuevo.",
+        "disconnectConfirm": "¿Estás seguro de que quieres desconectar {{platform}}?",
+        "disconnected": "¡{{platform}} desconectado exitosamente!",
+        "reconnectAuth": "Por favor, completa la autenticación de {{platform}} en la ventana emergente.",
+        "reconnectNoUrl": "No se recibió URL de autenticación. Por favor, intenta de nuevo.",
+        "reconnectFailed": "Error al reconectar conexión",
+        "deleteFailed": "Error al eliminar conexión"
+      }
     }
   }
 }

@@ -394,6 +394,14 @@
   "aiAgentPage": {
     "title": "AI Agents",
     "subtitle": "Manage and configure your AI agents. Create, edit, and deploy intelligent assistants for your business.",
+    "createButton": "Create Agent",
+    "createNewAgent": "Create New Agent",
+    "addNewAgent": "Add a new AI agent",
+    "noAgentsTitle": "No AI Agents Yet",
+    "noAgentsSubtitle": "Create your first AI agent to get started. Configure its personality, responses, and connect it to your platforms.",
+    "createFirstAgent": "Create Your First Agent",
+    "active": "Active",
+    "inactive": "Inactive",
     "modelLabel": "Model",
     "unknown": "Unknown",
     "stats": {
@@ -834,6 +842,142 @@
       "createButton": "Create Agent",
       "creatingButton": "Creating...",
       "cancelButton": "Cancel"
+    }
+  },
+  "singleAiAgentPage": {
+    "loading": "Loading AI agent...",
+    "title": "AI Agent",
+    "subtitle": "Manage your AI agent integrations and settings. Connect to multiple platforms and embed on your website.",
+    "active": "Active",
+    "inactive": "Inactive",
+    "agentStatus": "Agent Status",
+    "currentlyActive": "Currently Active",
+    "currentlyInactive": "Currently Inactive",
+    "tabs": {
+      "websiteEmbed": "Website Embed",
+      "multiPlatform": "Multi-Platform"
+    },
+    "websiteEmbed": {
+      "title": "Website Integration",
+      "subtitle": "Add your AI agent to your website in seconds",
+      "embedScript": "Embed Script",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "description": "Copy and paste this script into your website to enable the AI chat widget",
+      "easySetup": "Easy Setup",
+      "oneScript": "1 Script",
+      "instant": "Instant",
+      "activation": "Activation",
+      "universal": "Universal",
+      "compatible": "Compatible",
+      "quickSetupGuide": "Quick Setup Guide",
+      "step1Title": "Copy the Script",
+      "step1Description": "Click the copy button above to copy the embed code",
+      "step2Title": "Paste in HTML",
+      "step2Description": "Insert it just before the <code>&lt;/body&gt;</code> tag",
+      "step3Title": "Publish & Enjoy",
+      "step3Description": "Save your changes and your AI agent is live!",
+      "keyFeatures": "Key Features",
+      "worksOnAnyWebsite": "Works on any website",
+      "noServerConfig": "No server configuration needed",
+      "automaticallyResponsive": "Automatically responsive",
+      "realtimeAiResponses": "Real-time AI responses"
+    },
+    "toast": {
+      "copySuccess": "Embed script copied to clipboard!",
+      "copyError": "API Key not ready. Please refresh.",
+      "toggleSuccess": "Agent {{status}} successfully",
+      "toggleError": "Failed to toggle agent status"
+    },
+    "multiPlatform": {
+      "title": "Multi-Platform Integration",
+      "subtitle": "Connect your messaging platforms and email accounts. All connections use secure Hosted Auth Wizard authentication.",
+      "connectPlatform": "Connect Platform",
+      "connectAccount": "Connect Your Account",
+      "connectDescription": "We'll securely authenticate your account using the official platform authentication flow.",
+      "platformLabel": "Platform *",
+      "selectPlatform": "Select a platform",
+      "connectionNameLabel": "Connection Name *",
+      "connectionNamePlaceholder": "e.g., My WhatsApp Business",
+      "secureAuth": "Secure Authentication",
+      "cancel": "Cancel",
+      "connect": "Connect",
+      "stats": {
+        "total": "Total",
+        "active": "Active",
+        "pending": "Pending",
+        "inactiveErrors": "Inactive/Errors"
+      },
+      "connectedPlatforms": "Connected Platforms",
+      "loadingConnections": "Loading connections...",
+      "noConnections": "No connections yet",
+      "noConnectionsSubtitle": "Connect your first platform to start receiving and responding to customer messages across all channels.",
+      "connectFirstPlatform": "Connect Your First Platform",
+      "status": {
+        "active": "Active",
+        "pending": "Pending",
+        "inactive": "Inactive",
+        "error": "Error"
+      },
+      "connected": "Connected",
+      "reconnect": "Reconnect",
+      "qrCode": {
+        "title": "Scan QR Code",
+        "description": "Open your {{platform}} app and scan this code to complete the connection.",
+        "generating": "Generating QR code...",
+        "failed": "Failed to generate QR code",
+        "openUrl": "Open URL",
+        "keepOpen": "Keep this window open while you scan the code",
+        "close": "Close"
+      },
+      "platforms": {
+        "whatsapp": {
+          "name": "WhatsApp",
+          "description": "Connect your WhatsApp Business account"
+        },
+        "instagram": {
+          "name": "Instagram",
+          "description": "Connect your Instagram Business account"
+        },
+        "telegram": {
+          "name": "Telegram",
+          "description": "Connect your Telegram bot"
+        },
+        "email": {
+          "name": "Email",
+          "description": "Connect your email account"
+        },
+        "linkedin": {
+          "name": "LinkedIn",
+          "description": "Connect your LinkedIn account"
+        },
+        "google": {
+          "name": "Google",
+          "description": "Connect your Google account"
+        },
+        "microsoft": {
+          "name": "Microsoft",
+          "description": "Connect your Microsoft account"
+        },
+        "twitter": {
+          "name": "X (Twitter)",
+          "description": "Connect your X (Twitter) account"
+        }
+      },
+      "toast": {
+        "fillFields": "Please fill in all required fields",
+        "openingAuth": "Opening {{platform}} authentication...",
+        "popupBlocked": "Popup blocked. Please allow popups or we will redirect you...",
+        "authCompleted": "Authentication completed! Checking connection status...",
+        "connectionMayTakeTime": "Connection may take a few more moments to appear. Please refresh if needed.",
+        "noAuthUrl": "Authentication URL not received. Please try again.",
+        "disconnectConfirm": "Are you sure you want to disconnect {{platform}}?",
+        "disconnected": "{{platform}} disconnected successfully!",
+        "reconnectAuth": "Please complete the {{platform}} authentication in the popup window.",
+        "reconnectNoUrl": "No authentication URL received. Please try again.",
+        "reconnectFailed": "Failed to reconnect connection",
+        "deleteFailed": "Failed to delete connection"
+      }
     }
   }
 }
