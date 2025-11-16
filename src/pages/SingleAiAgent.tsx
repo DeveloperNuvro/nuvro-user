@@ -238,7 +238,7 @@ export default function SingleAiAgent() {
         }
     };
 
-    const script = `<script src="https://nuvro-dtao9.ondigitalocean.app/public/widget.js?apiKey=${apiKey || ''}&agentName=${encodeURIComponent(selectedAgent?.name || '')}" async></script>`;
+    const script = `<script src="https://api.nuvro.ai/public/widget.js?apiKey=${apiKey || ''}&agentName=${encodeURIComponent(selectedAgent?.name || '')}" async></script>`;
 
     if (agentStatus === 'loading' || agentStatus === 'idle') {
         return (
