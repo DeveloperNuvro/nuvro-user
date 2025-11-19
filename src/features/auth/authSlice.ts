@@ -66,7 +66,7 @@ export const loginUser = createAsyncThunk<
 
 
 export const refreshAccessToken = createAsyncThunk<
-  { accessToken: string }
+  { accessToken: string; user: User }
 >('auth/refreshAccessToken', async (_, thunkAPI) => {
   try {
     const response = await api.post('/api/v1/users/refresh-token');

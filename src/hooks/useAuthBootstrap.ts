@@ -17,18 +17,23 @@ useEffect(() => {
     location.pathname === '/signup' ||
     location.pathname === '/signin';
   
-  console.log("🔁 Bootstrapping session...");
+  console.log("🔁 Bootstrapping session...", { pathname: location.pathname, isPublicPage });
+  
   dispatch(refreshAccessToken())
     .unwrap()
-    .then(() => {
-      console.log("✅ Token refreshed");
+    .then((result) => {
+      console.log("✅ Token refreshed successfully", { hasUser: !!result?.user, hasToken: !!result?.accessToken });
     })
-    .catch(() => {
-      console.log("❌ Refresh failed");
+    .catch((error) => {
+      console.log("❌ Refresh failed", { error, pathname: location.pathname });
       dispatch(logout());
-      // Only redirect to signin if not on public pages
-      if (!isPublicPage) {
-        navigate('/signin');
+      // 🔧 FIX: Only redirect to signin if not on public pages AND not already on signin
+      // This prevents redirect loops
+      if (!isPublicPage && location.pathname !== '/signin') {
+        console.log("🔄 Redirecting to signin from:", location.pathname);
+        navigate('/signin', { replace: true });
+      } else {
+        console.log("⏸️ Skipping redirect - already on public page");
       }
     })
     .finally(() => {

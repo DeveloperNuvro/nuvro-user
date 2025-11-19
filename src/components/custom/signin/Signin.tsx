@@ -46,16 +46,22 @@ const Signin = () => {
             const result: any = await dispatch(loginUser(payload)).unwrap();
             toast.success(result?.message || t('signinPage.toast.loginSuccess'));
 
+            // 🔧 FIX: Instead of reloading, navigate to the appropriate route
+            // This prevents the redirect loop issue
             if (result?.data?.user?.onboardingCompleted === true) {
-                console.log("CONDITION MET: Onboarding is complete. Preparing to reload...");
+                console.log("✅ Onboarding is complete. Navigating to dashboard...");
+                // Determine the default route based on user role
+                const defaultRoute = result?.data?.user?.role === 'agent' 
+                    ? '/main-menu/agent/inbox' 
+                    : '/main-menu/overview';
+                
+                // Use navigate instead of reload to prevent redirect loop
                 setTimeout(() => {
-                    console.log("EXECUTING RELOAD NOW.");
-                    window.location.reload();
-                }, 500); 
-
+                    navigate(defaultRoute, { replace: true });
+                }, 500);
             } else {
-                console.log("CONDITION NOT MET: Onboarding is incomplete. Navigating to /onboarding...");
-                navigate('/onboarding');
+                console.log("📝 Onboarding is incomplete. Navigating to /onboarding...");
+                navigate('/onboarding', { replace: true });
             }
 
             
