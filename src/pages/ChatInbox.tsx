@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Sparkles, ZapOff } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Sparkles, ZapOff, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -25,6 +25,9 @@ import {
   resetConversations,
   closeConversation,
   updateConversationStatus,
+  updateConversationEnhanced,
+  addNewCustomer,
+  ConversationInList,
 } from "@/features/chatInbox/chatInboxSlice";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
@@ -214,11 +217,99 @@ export default function ChatInbox() {
   const prevScrollHeightRef = useRef<number>(0);
   const [isInitialMessageLoad, setIsInitialMessageLoad] = useState(true);
   const [selectedImage, setSelectedImage] = useState<{ src: string; alt: string } | null>(null);
+  const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
+  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  
+  // 🔧 NEW: Helper function to get priority color
+  const getPriorityColor = (priority: string = 'normal') => {
+    switch (priority) {
+      case 'urgent': return 'text-red-500 fill-red-500';
+      case 'high': return 'text-orange-500 fill-orange-500';
+      case 'normal': return 'text-blue-500 fill-blue-500';
+      case 'low': return 'text-gray-400 fill-gray-400';
+      default: return 'text-blue-500 fill-blue-500';
+    }
+  };
 
   const { user }: any = useSelector((state: RootState) => state.auth);
   const { channels } = useSelector((state: RootState) => state.channel);
   const { agents } = useSelector((state: RootState) => state.humanAgent);
   const { conversations, status: chatListStatus, currentPage, totalPages } = useSelector((state: RootState) => state.chatInbox);
+  
+  // 🔧 NEW: Mark conversation as read
+  const handleMarkAsRead = useCallback(async (conversationId: string) => {
+    try {
+      await api.post(`/api/v1/customer/conversations/${conversationId}/mark-read`);
+      // Update local state - unread count will be updated via socket
+    } catch (error: any) {
+      console.error('Failed to mark as read:', error);
+    }
+  }, []);
+  
+  // 🔧 NEW: Update priority
+  const handleUpdatePriority = useCallback(async (priority: 'low' | 'normal' | 'high' | 'urgent') => {
+    if (!selectedCustomer) return;
+    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+    if (!conversation?.id) return;
+    try {
+      await api.patch(`/api/v1/customer/conversations/${conversation.id}/priority`, { priority });
+      dispatch(updateConversationEnhanced({ conversationId: conversation.id, priority }));
+      toast.success(`Priority set to ${priority}`);
+      setPriorityDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update priority');
+    }
+  }, [selectedCustomer, conversations, dispatch]);
+  
+  // 🔧 NEW: Update tags
+  const handleUpdateTags = useCallback(async (tags: string[]) => {
+    if (!selectedCustomer) return;
+    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+    if (!conversation?.id) return;
+    try {
+      await api.patch(`/api/v1/customer/conversations/${conversation.id}/tags`, { tags });
+      dispatch(updateConversationEnhanced({ conversationId: conversation.id, tags }));
+      toast.success('Tags updated');
+      setTagsDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update tags');
+    }
+  }, [selectedCustomer, conversations, dispatch]);
+  
+  // 🔧 NEW: Update notes
+  const handleUpdateNotes = useCallback(async (notes: string) => {
+    if (!selectedCustomer) return;
+    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+    if (!conversation?.id) return;
+    try {
+      await api.patch(`/api/v1/customer/conversations/${conversation.id}/notes`, { notes });
+      dispatch(updateConversationEnhanced({ conversationId: conversation.id, notes }));
+      toast.success('Notes updated');
+      setNotesDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update notes');
+    }
+  }, [selectedCustomer, conversations, dispatch]);
+  
+  // 🔧 NEW: Assign conversation
+  const handleAssignConversation = useCallback(async (agentId: string) => {
+    if (!selectedCustomer) return;
+    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+    if (!conversation?.id) return;
+    try {
+      await api.post(`/api/v1/customer/conversations/${conversation.id}/assign`, { agentId });
+      dispatch(updateConversationEnhanced({ 
+        conversationId: conversation.id, 
+        assignedAgentId: agentId,
+        status: 'live',
+        unreadCount: 0
+      }));
+      toast.success('Conversation assigned');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to assign conversation');
+    }
+  }, [selectedCustomer, conversations, dispatch]);
   const messagesData = useSelector((state: RootState) => selectedCustomer ? state.chatInbox.chatData[selectedCustomer] : null);
 
   const businessId = user?.businessId;
@@ -244,7 +335,18 @@ export default function ChatInbox() {
     }
   }, [theme]);
   
-  const currentConversation = useMemo(() => conversations.find((c) => c.customer.id === selectedCustomer), [conversations, selectedCustomer]);
+  // 🔧 FIX: Filter conversations by platform on frontend for real-time updates
+  const filteredConversations = useMemo(() => {
+    if (activePlatform === 'all') {
+      return conversations;
+    }
+    return conversations.filter(convo => {
+      const platform = convo.platformInfo?.platform || 'website';
+      return platform === activePlatform;
+    });
+  }, [conversations, activePlatform]);
+
+  const currentConversation = useMemo(() => filteredConversations.find((c) => c.customer.id === selectedCustomer), [filteredConversations, selectedCustomer]);
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== user?._id) : [], [agents, user?._id]);
   const offlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'offline' && agent._id !== user?._id) : [], [agents, user?._id]);
   const groupedMessages = useMemo(() => { const allMessages = messagesData?.list || []; return allMessages.reduce((acc: { [key: string]: any[] }, msg: any) => { const dateLabel = dayjs(msg.time).isToday() ? t('chatInbox.dateToday') : dayjs(msg.time).isYesterday() ? t('chatInbox.dateYesterday') : dayjs(msg.time).format("MMMM D, YYYY"); if (!acc[dateLabel]) acc[dateLabel] = []; acc[dateLabel].push(msg); return acc; }, {}); }, [messagesData?.list, t]);
@@ -265,6 +367,119 @@ export default function ChatInbox() {
 
   useEffect(() => { if (businessId) { dispatch(resetConversations()); dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); } }, [businessId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
+  
+  // 🔧 NEW: Mark conversation as read when opened
+  useEffect(() => {
+    if (selectedCustomer) {
+      const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+      if (conversation?.id && (conversation?.unreadCount || 0) > 0) {
+        handleMarkAsRead(conversation.id);
+      }
+    }
+  }, [selectedCustomer, conversations, handleMarkAsRead]);
+  
+  // 🔧 NEW: Real-time event listeners for conversation updates
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !businessId) return;
+
+    // 🔧 FIX: Handle new conversation event (for new chats arriving in real-time)
+    const handleNewConversation = (data: ConversationInList) => {
+      console.log('🔔 ChatInbox: Received newConversation event:', data);
+      console.log('🔍 ChatInbox: PlatformInfo in event:', data.platformInfo);
+      
+      // 🔧 FIX: Ensure platformInfo is properly structured
+      if (!data.platformInfo && data.source) {
+        // Fallback: if platformInfo is missing but source exists, create it
+        data.platformInfo = {
+          platform: data.source as any,
+          connectionId: '',
+          platformUserId: '',
+        };
+        console.log('🔧 ChatInbox: Created platformInfo from source:', data.platformInfo);
+      }
+      
+      // Check if conversation already exists
+      const exists = conversations.some(c => c.id === data.id);
+      if (!exists) {
+        // Add new conversation to the list
+        console.log('✅ ChatInbox: Adding new conversation with platformInfo:', data.platformInfo);
+        dispatch(addNewCustomer(data));
+        console.log('✅ ChatInbox: Added new conversation:', data.id, 'Platform:', data.platformInfo?.platform);
+        
+        // 🔧 FIX: If platform filter is set, check if it matches
+        // If "All" is selected, show it. If specific platform is selected, only show if it matches
+        if (activePlatform === 'all' || data.platformInfo?.platform === activePlatform) {
+          // Conversation will be visible in the current filter
+          console.log('✅ ChatInbox: Conversation matches current platform filter');
+        } else {
+          // Conversation is for a different platform, but we still added it to state
+          // User can switch to that platform tab to see it
+          console.log('ℹ️ ChatInbox: Conversation is for different platform, user can switch tab to see it');
+        }
+      } else {
+        console.log('⚠️ ChatInbox: Conversation already exists, skipping');
+      }
+    };
+
+    // 🔧 FIX: Handle new chat assigned event (for transfers)
+    const handleNewChatAssigned = (data: ConversationInList) => {
+      console.log('🔔 ChatInbox: Received newChatAssigned event:', data);
+      // Check if conversation already exists
+      const exists = conversations.some(c => c.id === data.id);
+      if (!exists) {
+        // Add new conversation to the list (transferred from agent inbox)
+        dispatch(addNewCustomer(data));
+        console.log('✅ ChatInbox: Added transferred conversation:', data.id);
+      } else {
+        // Update existing conversation
+        dispatch(updateConversationEnhanced({
+          conversationId: data.id,
+          assignedAgentId: data.assignedAgentId,
+          status: data.status,
+        }));
+        console.log('✅ ChatInbox: Updated existing conversation with transfer info');
+      }
+    };
+
+    const handleConversationUpdated = (data: any) => {
+      const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
+      dispatch(updateConversationEnhanced({
+        conversationId,
+        unreadCount,
+        priority,
+        tags,
+        notes,
+        assignedAgentId,
+        status,
+      }));
+    };
+
+    const handleConversationAssigned = (data: any) => {
+      const { conversationId, assignedAgentId } = data;
+      const conversation = conversations.find(c => c.id === conversationId);
+      if (conversation) {
+        dispatch(updateConversationStatus({
+          customerId: conversation.customer.id,
+          status: 'live',
+          assignedAgentId: assignedAgentId,
+        }));
+      }
+    };
+
+    // 🔧 FIX: Listen to all relevant events
+    socket.on('newConversation', handleNewConversation);
+    socket.on('newChatAssigned', handleNewChatAssigned);
+    socket.on('conversationUpdated', handleConversationUpdated);
+    socket.on('conversationAssigned', handleConversationAssigned);
+
+    return () => {
+      socket.off('newConversation', handleNewConversation);
+      socket.off('newChatAssigned', handleNewChatAssigned);
+      socket.off('conversationUpdated', handleConversationUpdated);
+      socket.off('conversationAssigned', handleConversationAssigned);
+    };
+  }, [businessId, conversations, dispatch, activePlatform]);
 
   useLayoutEffect(() => { 
     if (!messageListRef.current) return; 
@@ -427,7 +642,7 @@ export default function ChatInbox() {
   const handleLoadMoreMessages = () => { if (selectedCustomer && messagesData?.hasMore && messagesData.status !== 'loading' && messageListRef.current) { prevScrollHeightRef.current = messageListRef.current.scrollHeight; dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 })); } };
 
   // 2. Render the skeleton on initial load
-  if (chatListStatus === 'loading' && conversations.length === 0) {
+  if (chatListStatus === 'loading' && filteredConversations.length === 0) {
     return <ChatInboxSkeleton />;
   }
   
@@ -515,10 +730,10 @@ export default function ChatInbox() {
             <Input placeholder={t('chatInbox.searchPlaceholder')} className="bg-muted border-none" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
           </div>
           <div className="flex-1 overflow-y-auto space-y-2 scrollbar-hide pr-2">
-            {chatListStatus === 'loading' && conversations.length > 0 ? ( // This handles subsequent loads
+            {chatListStatus === 'loading' && filteredConversations.length > 0 ? ( // This handles subsequent loads
               <div className="flex justify-center items-center py-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-            ) : conversations.length > 0 ? (
-              conversations.map((convo) => {
+            ) : filteredConversations.length > 0 ? (
+              filteredConversations.map((convo) => {
                 const platform = convo.platformInfo?.platform || 'website';
                 const isSelected = selectedCustomer === convo.customer.id;
                 return (
@@ -534,26 +749,80 @@ export default function ChatInbox() {
                     !platform && (isSelected ? "bg-primary/10" : "hover:bg-muted/50")
                   )}
                 >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary shrink-0 text-xs sm:text-sm">{convo.customer.name?.charAt(0).toUpperCase()}</div>
+                  <div className="relative shrink-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary text-xs sm:text-sm">{convo.customer.name?.charAt(0).toUpperCase()}</div>
+                    {/* 🔧 NEW: Unread count badge - positioned on avatar */}
+                    {(convo.unreadCount || 0) > 0 && (
+                      <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center z-10 border-2 border-background shadow-sm">
+                        {(convo.unreadCount || 0) > 99 ? '99+' : (convo.unreadCount || 0)}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0 overflow-hidden">
+                    
                     <div className="flex justify-between items-center gap-2">
                       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                        {/* 🔧 NEW: Priority indicator */}
+                        {convo.priority && convo.priority !== 'normal' && (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Circle className={cn("h-2.5 w-2.5 shrink-0", getPriorityColor(convo.priority))} />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Priority: {convo.priority}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         <p className="font-semibold truncate text-sm sm:text-base">{convo.customer.name}</p>
-                        {convo.platformInfo?.platform && (
+                        {/* 🔧 FIX: Always show platform badge if platformInfo exists */}
+                        {convo.platformInfo?.platform ? (
                           <PlatformBadge platform={convo.platformInfo.platform} />
+                        ) : convo.source ? (
+                          // Fallback: use source if platformInfo is missing
+                          <PlatformBadge platform={convo.source} />
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* 🔧 NEW: Notes icon if notes exist */}
+                        {convo.notes && (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <FileText className="h-3 w-3 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs break-words">{convo.notes}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {convo.latestMessageTimestamp && (
+                          <p className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                            {dayjs(convo.latestMessageTimestamp).isToday() 
+                              ? dayjs(convo.latestMessageTimestamp).format("h:mm A")
+                              : dayjs(convo.latestMessageTimestamp).isYesterday()
+                              ? "Yesterday"
+                              : dayjs(convo.latestMessageTimestamp).format("MMM D")
+                            }
+                          </p>
                         )}
                       </div>
-                      {convo.latestMessageTimestamp && (
-                        <p className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
-                          {dayjs(convo.latestMessageTimestamp).isToday() 
-                            ? dayjs(convo.latestMessageTimestamp).format("h:mm A")
-                            : dayjs(convo.latestMessageTimestamp).isYesterday()
-                            ? "Yesterday"
-                            : dayjs(convo.latestMessageTimestamp).format("MMM D")
-                          }
-                        </p>
-                      )}
                     </div>
+                    
+                    {/* 🔧 NEW: Tags display */}
+                    {convo.tags && convo.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1 mb-0.5">
+                        {convo.tags.slice(0, 2).map((tag, i) => (
+                          <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                            {tag}
+                          </span>
+                        ))}
+                        {convo.tags.length > 2 && (
+                          <span className="text-xs px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
+                            +{convo.tags.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    
                     <div className="flex justify-between items-center mt-0.5 gap-2">
                       <p className="text-xs sm:text-sm text-muted-foreground truncate min-w-0 flex-1">
                         {isTyping[convo.customer.id] ? (
@@ -619,6 +888,58 @@ export default function ChatInbox() {
                   {currentConversation?.platformInfo?.platform && (
                     <PlatformBadge platform={currentConversation.platformInfo.platform} />
                   )}
+                  {/* 🔧 NEW: Priority indicator in header */}
+                  {currentConversation?.priority && currentConversation.priority !== 'normal' && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Circle className={cn("h-3 w-3", getPriorityColor(currentConversation.priority))} />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Priority: {currentConversation.priority}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {/* 🔧 NEW: Response time display */}
+                  {currentConversation?.firstResponseAt && currentConversation?.createdAt && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>Responded in {dayjs(currentConversation.firstResponseAt).from(dayjs(currentConversation.createdAt), true)}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>First response: {dayjs(currentConversation.firstResponseAt).format('MMM D, YYYY h:mm A')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {/* 🔧 NEW: Show overdue indicator if no response and time > 5 minutes */}
+                  {!currentConversation?.firstResponseAt && currentConversation?.createdAt && dayjs().diff(dayjs(currentConversation.createdAt), 'minute') > 5 && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <div className="flex items-center gap-1 text-xs text-orange-500">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>Overdue {dayjs().from(dayjs(currentConversation.createdAt), true)}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>No response yet. Created {dayjs(currentConversation.createdAt).fromNow()}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {/* 🔧 NEW: Tags in header */}
+                  {currentConversation?.tags && currentConversation.tags.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {currentConversation.tags.slice(0, 2).map((tag, i) => (
+                        <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                          {tag}
+                        </span>
+                      ))}
+                      {currentConversation.tags.length > 2 && (
+                        <span className="text-xs text-muted-foreground">+{currentConversation.tags.length - 2}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {/* AI Reply Toggle - Only for Instagram, WhatsApp, Telegram */}
@@ -655,9 +976,45 @@ export default function ChatInbox() {
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>{t('chatInbox.transferTitle')}</DropdownMenuLabel>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {/* 🔧 NEW: Quick Actions */}
+                      <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                      <DropdownMenuItem onSelect={() => setPriorityDialogOpen(true)}>
+                        <AlertCircle className="mr-2 h-4 w-4" />
+                        Set Priority
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setTagsDialogOpen(true)}>
+                        <Tag className="mr-2 h-4 w-4" />
+                        Manage Tags
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => setNotesDialogOpen(true)}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        {currentConversation?.notes ? 'Edit Notes' : 'Add Notes'}
+                      </DropdownMenuItem>
+                      {!currentConversation?.assignedAgentId && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel>Assign To</DropdownMenuLabel>
+                          {onlineAgents.length > 0 ? (
+                            onlineAgents.map(agent => (
+                              <DropdownMenuItem key={agent._id} onSelect={() => handleAssignConversation(agent._id)}>
+                                <div className="flex items-center">
+                                  <span className="relative flex h-2 w-2 mr-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                  </span>
+                                  {agent.name}
+                                </div>
+                              </DropdownMenuItem>
+                            ))
+                          ) : (
+                            <DropdownMenuItem disabled>No agents online</DropdownMenuItem>
+                          )}
+                        </>
+                      )}
+                      
                       <DropdownMenuSeparator />
+                      <DropdownMenuLabel>{t('chatInbox.transferTitle')}</DropdownMenuLabel>
                       {Array.isArray(channels) && channels.length > 0 && channels.map((channel) => (<DropdownMenuItem key={channel._id} onSelect={() => handleTransfer({ type: 'channel', id: channel._id })}><ChevronsRight className="mr-2 h-4 w-4" /> {t('chatInbox.transferToChannel', { channelName: channel.name })}</DropdownMenuItem>))}
                       <DropdownMenuSeparator />
                       
@@ -686,6 +1043,49 @@ export default function ChatInbox() {
 
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  
+                  {/* 🔧 NEW: Priority Dialog */}
+                  <Dialog open={priorityDialogOpen} onOpenChange={setPriorityDialogOpen}>
+                    <DialogContent>
+                      <h3 className="text-lg font-semibold mb-4">Set Priority</h3>
+                      <div className="space-y-2">
+                        {(['low', 'normal', 'high', 'urgent'] as const).map((priority) => (
+                          <Button
+                            key={priority}
+                            variant={currentConversation?.priority === priority ? 'default' : 'outline'}
+                            className="w-full justify-start"
+                            onClick={() => handleUpdatePriority(priority)}
+                          >
+                            <Circle className={cn("mr-2 h-4 w-4", getPriorityColor(priority))} />
+                            {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                          </Button>
+                        ))}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  {/* 🔧 NEW: Tags Dialog */}
+                  <Dialog open={tagsDialogOpen} onOpenChange={setTagsDialogOpen}>
+                    <DialogContent>
+                      <h3 className="text-lg font-semibold mb-4">Manage Tags</h3>
+                      <TagsEditor 
+                        currentTags={currentConversation?.tags || []} 
+                        onSave={handleUpdateTags}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                  
+                  {/* 🔧 NEW: Notes Dialog */}
+                  <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+                    <DialogContent>
+                      <h3 className="text-lg font-semibold mb-4">Conversation Notes</h3>
+                      <NotesEditor 
+                        currentNotes={currentConversation?.notes || ''} 
+                        onSave={handleUpdateNotes}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                  
                   <Tooltip><TooltipTrigger asChild><Button className="cursor-pointer" variant="ghost" size="icon" onClick={handleCloseConversation}><XCircle className="h-5 w-5 text-red-500" /></Button></TooltipTrigger><TooltipContent><p>{t('chatInbox.closeConversationTooltip')}</p></TooltipContent></Tooltip>
                 </div>
               </div>
@@ -924,9 +1324,35 @@ export default function ChatInbox() {
                               )
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1.5 px-1 whitespace-nowrap">
-                            {msg.time ? dayjs(msg.time).format("h:mm A") : dayjs().format("h:mm A")}
-                          </p>
+                          <div className="flex items-center gap-1.5 mt-1.5 px-1">
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">
+                              {msg.time ? dayjs(msg.time).format("h:mm A") : dayjs().format("h:mm A")}
+                            </p>
+                            {/* 🔧 NEW: Message status indicators (delivered/read) */}
+                            {isAgentSide && (
+                              <div className="flex items-center">
+                                {msg.status === 'delivered' || msg.status === 'completed' ? (
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <CheckCircle2 className="h-3 w-3 text-blue-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Delivered</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : msg.readAt ? (
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Read {dayjs(msg.readAt).fromNow()}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ); 
                     })}
@@ -991,3 +1417,69 @@ export default function ChatInbox() {
     </TooltipProvider>
   );
 }
+
+// 🔧 NEW: Tags Editor Component
+const TagsEditor = ({ currentTags, onSave }: { currentTags: string[]; onSave: (tags: string[]) => void }) => {
+  const [tags, setTags] = useState<string[]>(currentTags);
+  const [newTag, setNewTag] = useState('');
+  
+  const addTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      setTags([...tags, newTag.trim()]);
+      setNewTag('');
+    }
+  };
+  
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Input
+          placeholder="Add a tag"
+          value={newTag}
+          onChange={(e) => setNewTag(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+        />
+        <Button onClick={addTag}>Add</Button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {tags.map((tag, i) => (
+          <div key={i} className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded">
+            <span>{tag}</span>
+            <button onClick={() => removeTag(tag)} className="ml-1 hover:text-red-500">
+              <XCircle className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setTags(currentTags)}>Cancel</Button>
+        <Button onClick={() => onSave(tags)}>Save</Button>
+      </div>
+    </div>
+  );
+};
+
+// 🔧 NEW: Notes Editor Component
+const NotesEditor = ({ currentNotes, onSave }: { currentNotes: string; onSave: (notes: string) => void }) => {
+  const [notes, setNotes] = useState(currentNotes);
+  
+  return (
+    <div className="space-y-4">
+      <Textarea
+        placeholder="Add internal notes for this conversation..."
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        rows={6}
+        className="resize-none"
+      />
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setNotes(currentNotes)}>Cancel</Button>
+        <Button onClick={() => onSave(notes)}>Save</Button>
+      </div>
+    </div>
+  );
+};

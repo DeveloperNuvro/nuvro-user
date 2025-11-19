@@ -5,6 +5,8 @@ import { Toaster } from "sonner";
 // Your Pages and Components
 import Signin from "./components/custom/signin/Signin";
 import Signup from "./components/custom/signup/Signup";
+import ForgotPassword from "./components/custom/forgotPassword/ForgotPassword";
+import ResetPassword from "./components/custom/resetPassword/ResetPassword";
 import OnboardingStep from "./components/custom/onboard/Onboarding";
 import DashboardLayout from "./components/custom/dashboard/layout/DashboardLayout";
 
@@ -43,6 +45,8 @@ function App() {
         <Route element={<PublicLayout />}>
           <Route path="/signin" element={<Signin />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
 
         {/* Group 2: Authenticated Routes */}

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Sparkles, ZapOff } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Sparkles, ZapOff, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -18,7 +18,8 @@ import toast from 'react-hot-toast';
 
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from "@/api/axios";
-import { fetchAgentConversations, resetAgentConversations } from "../features/humanAgent/humanAgentInboxSlice";
+import { fetchAgentConversations, resetAgentConversations, updateConversationEnhanced, addAssignedConversation, removeConversation } from "../features/humanAgent/humanAgentInboxSlice";
+import { ConversationInList } from "../features/chatInbox/chatInboxSlice";
 import { fetchMessagesByCustomer, sendHumanMessage, closeConversation, updateConversationStatus } from "../features/chatInbox/chatInboxSlice";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
@@ -203,6 +204,10 @@ export default function AgentInbox() {
   const [activeFilter, setActiveFilter] = useState<'open' | 'closed'>('open');
   const [activePlatform, setActivePlatform] = useState<'all' | 'whatsapp' | 'instagram' | 'telegram' | 'website'>('all');
   const [isTyping] = useState<{ [key: string]: boolean }>({});
+  // 🔧 NEW: Dialog states for enhanced features
+  const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
+  const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
+  const [notesDialogOpen, setNotesDialogOpen] = useState(false);
 
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
@@ -260,6 +265,196 @@ export default function AgentInbox() {
   
   useEffect(() => { if (agentId) { dispatch(resetAgentConversations()); dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); } }, [dispatch, agentId, debouncedSearchQuery, activeFilter, activePlatform]);
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
+  
+  // 🔧 NEW: Helper function for priority colors
+  const getPriorityColor = (priority: string = 'normal') => {
+    switch (priority) {
+      case 'urgent': return 'text-red-500 fill-red-500';
+      case 'high': return 'text-orange-500 fill-orange-500';
+      case 'low': return 'text-gray-500 fill-gray-500';
+      default: return 'text-blue-500 fill-blue-500';
+    }
+  };
+  
+  // 🔧 NEW: Mark conversation as read
+  const handleMarkAsRead = useCallback(async (conversationId: string) => {
+    try {
+      await api.post(`/api/v1/customer/conversations/${conversationId}/mark-read`);
+    } catch (error: any) {
+      console.error('Failed to mark as read:', error);
+    }
+  }, []);
+  
+  // 🔧 NEW: Update priority
+  const handleUpdatePriority = useCallback(async (priority: 'low' | 'normal' | 'high' | 'urgent') => {
+    if (!selectedCustomer) return;
+    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+    if (!conversation?.id) return;
+    try {
+      await api.patch(`/api/v1/customer/conversations/${conversation.id}/priority`, { priority });
+      dispatch(updateConversationEnhanced({ conversationId: conversation.id, priority }));
+      toast.success(`Priority set to ${priority}`);
+      setPriorityDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update priority');
+    }
+  }, [selectedCustomer, conversations, dispatch]);
+  
+  // 🔧 NEW: Update tags
+  const handleUpdateTags = useCallback(async (tags: string[]) => {
+    if (!selectedCustomer) return;
+    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+    if (!conversation?.id) return;
+    try {
+      await api.patch(`/api/v1/customer/conversations/${conversation.id}/tags`, { tags });
+      dispatch(updateConversationEnhanced({ conversationId: conversation.id, tags }));
+      toast.success('Tags updated');
+      setTagsDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update tags');
+    }
+  }, [selectedCustomer, conversations, dispatch]);
+  
+  // 🔧 NEW: Update notes
+  const handleUpdateNotes = useCallback(async (notes: string) => {
+    if (!selectedCustomer) return;
+    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+    if (!conversation?.id) return;
+    try {
+      await api.patch(`/api/v1/customer/conversations/${conversation.id}/notes`, { notes });
+      dispatch(updateConversationEnhanced({ conversationId: conversation.id, notes }));
+      toast.success('Notes updated');
+      setNotesDialogOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to update notes');
+    }
+  }, [selectedCustomer, conversations, dispatch]);
+  
+  // 🔧 NEW: Assign conversation
+  const handleAssignConversation = useCallback(async (agentId: string) => {
+    if (!selectedCustomer) return;
+    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+    if (!conversation?.id) return;
+    try {
+      await api.post(`/api/v1/customer/conversations/${conversation.id}/assign`, { agentId });
+      dispatch(updateConversationEnhanced({ 
+        conversationId: conversation.id, 
+        assignedAgentId: agentId,
+        status: 'live',
+        unreadCount: 0
+      }));
+      toast.success('Conversation assigned');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to assign conversation');
+    }
+  }, [selectedCustomer, conversations, dispatch]);
+  
+  // 🔧 NEW: Mark conversation as read when opened
+  useEffect(() => {
+    if (selectedCustomer) {
+      const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+      if (conversation?.id && (conversation?.unreadCount || 0) > 0) {
+        handleMarkAsRead(conversation.id);
+      }
+    }
+  }, [selectedCustomer, conversations, handleMarkAsRead]);
+  
+  // 🔧 NEW: Real-time event listeners for conversation updates and transfers
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !agentId) return;
+
+    // Handle new chat assignment (when conversation is transferred to this agent)
+    const handleNewChatAssigned = (data: ConversationInList) => {
+      console.log('🔔 AgentInbox: Received newChatAssigned event:', data);
+      
+      // Only add if this conversation is assigned to this agent
+      if (data.assignedAgentId === agentId) {
+        console.log('✅ AgentInbox: Conversation assigned to this agent, adding to list');
+        dispatch(addAssignedConversation(data));
+        toast.success(`New conversation assigned: ${data.customer.name}`);
+      } else {
+        console.log('⚠️ AgentInbox: Conversation not assigned to this agent, ignoring');
+      }
+    };
+
+    // Handle conversation updates (unreadCount, priority, tags, notes, etc.)
+    const handleConversationUpdated = (data: any) => {
+      const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
+      console.log('🔔 AgentInbox: Received conversationUpdated event:', data);
+      console.log('Current agentId:', agentId);
+      console.log('Event assignedAgentId:', assignedAgentId);
+      
+      // Check if this conversation is in the agent's list OR if it's assigned to this agent
+      const conversation = conversations.find(c => c.id === conversationId);
+      
+      // Update if conversation is in list OR if it's assigned to this agent (might not be in list yet)
+      if (conversation || assignedAgentId === agentId) {
+        console.log('✅ AgentInbox: Conversation found or assigned to this agent, updating...');
+        dispatch(updateConversationEnhanced({
+          conversationId,
+          unreadCount,
+          priority,
+          tags,
+          notes,
+          assignedAgentId,
+          status,
+        }));
+      } else {
+        console.log('⚠️ AgentInbox: Conversation not found in list and not assigned to this agent');
+        console.log('Conversation ID:', conversationId);
+        console.log('Current conversations:', conversations.map(c => ({ id: c.id, assignedAgentId: c.assignedAgentId })));
+      }
+    };
+
+    // Handle conversation assignment
+    const handleConversationAssigned = (data: any) => {
+      const { conversationId, assignedAgentId, previousAgentId } = data;
+      console.log('🔔 AgentInbox: Received conversationAssigned event:', data);
+      console.log('Current agentId:', agentId);
+      
+      // If this conversation was transferred away from this agent, remove it
+      if (previousAgentId === agentId && assignedAgentId !== agentId) {
+        console.log('❌ AgentInbox: Conversation transferred away, removing from list');
+        dispatch(removeConversation({ conversationId }));
+      }
+      // If this conversation was assigned to this agent, update it or add it
+      if (assignedAgentId === agentId) {
+        console.log('✅ AgentInbox: Conversation assigned to this agent');
+        const conversation = conversations.find(c => c.id === conversationId);
+        if (conversation) {
+          // Update existing conversation
+          dispatch(updateConversationEnhanced({
+            conversationId,
+            assignedAgentId,
+            status: 'live',
+            unreadCount: 0
+          }));
+        } else {
+          // Conversation not in list yet, need to fetch it
+          console.log('⚠️ AgentInbox: Conversation assigned but not in list, need to fetch');
+          // The newChatAssigned event should handle adding it, but if it doesn't arrive, we might need to refetch
+        }
+      }
+    };
+
+    // Handle conversation removal (when transferred away)
+    const handleConversationRemoved = (data: { conversationId: string }) => {
+      dispatch(removeConversation(data));
+    };
+
+    socket.on('newChatAssigned', handleNewChatAssigned);
+    socket.on('conversationUpdated', handleConversationUpdated);
+    socket.on('conversationAssigned', handleConversationAssigned);
+    socket.on('conversationRemoved', handleConversationRemoved);
+
+    return () => {
+      socket.off('newChatAssigned', handleNewChatAssigned);
+      socket.off('conversationUpdated', handleConversationUpdated);
+      socket.off('conversationAssigned', handleConversationAssigned);
+      socket.off('conversationRemoved', handleConversationRemoved);
+    };
+  }, [agentId, dispatch]);
   
   useLayoutEffect(() => { 
     if (!messageListRef.current) return; 
@@ -529,35 +724,93 @@ export default function AgentInbox() {
                     !platform && (isSelected ? "bg-primary/10" : "hover:bg-muted/50")
                   )}
                 >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary shrink-0 text-xs sm:text-sm">{convo.customer.name?.charAt(0).toUpperCase()}</div>
+                  <div className="relative shrink-0">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary text-xs sm:text-sm">{convo.customer.name?.charAt(0).toUpperCase()}</div>
+                    {/* 🔧 NEW: Unread count badge - positioned on avatar */}
+                    {(convo.unreadCount || 0) > 0 && (
+                      <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center z-10 border-2 border-background shadow-sm">
+                        {(convo.unreadCount || 0) > 99 ? '99+' : (convo.unreadCount || 0)}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="flex justify-between items-center gap-2">
                       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+                        {/* 🔧 NEW: Priority indicator */}
+                        {convo.priority && convo.priority !== 'normal' && (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Circle className={cn("h-2.5 w-2.5 shrink-0", getPriorityColor(convo.priority))} />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Priority: {convo.priority}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         <p className="font-semibold truncate text-sm sm:text-base">{convo.customer.name}</p>
                         {convo.platformInfo?.platform && (
                           <PlatformBadge platform={convo.platformInfo.platform} />
                         )}
                       </div>
-                      {convo.latestMessageTimestamp && (
-                        <p className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
-                          {dayjs(convo.latestMessageTimestamp).isToday() 
-                            ? dayjs(convo.latestMessageTimestamp).format("h:mm A")
-                            : dayjs(convo.latestMessageTimestamp).isYesterday()
-                            ? "Yesterday"
-                            : dayjs(convo.latestMessageTimestamp).format("MMM D")
-                          }
-                        </p>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* 🔧 NEW: Notes icon if notes exist */}
+                        {convo.notes && (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <FileText className="h-3 w-3 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs break-words">{convo.notes}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {convo.latestMessageTimestamp && (
+                          <p className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
+                            {dayjs(convo.latestMessageTimestamp).isToday() 
+                              ? dayjs(convo.latestMessageTimestamp).format("h:mm A")
+                              : dayjs(convo.latestMessageTimestamp).isYesterday()
+                              ? "Yesterday"
+                              : dayjs(convo.latestMessageTimestamp).format("MMM D")
+                            }
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex justify-between items-center mt-0.5 gap-2">
-                      <p className="text-xs sm:text-sm text-muted-foreground truncate min-w-0 flex-1">
-                        {isTyping[convo.customer.id] ? (
-                          <span className="text-primary italic">{t('chatInbox.typing')}</span>
-                        ) : (
-                          convo.preview || t('chatInbox.noMessages')
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate min-w-0">
+                          {isTyping[convo.customer.id] ? (
+                            <span className="text-primary italic">{t('chatInbox.typing')}</span>
+                          ) : (
+                            convo.preview || t('chatInbox.noMessages')
+                          )}
+                        </p>
+                        {/* 🔧 NEW: Tags display */}
+                        {convo.tags && convo.tags.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            {convo.tags.slice(0, 2).map((tag, i) => (
+                              <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                                {tag}
+                              </span>
+                            ))}
+                            {convo.tags.length > 2 && (
+                              <span className="text-xs text-muted-foreground">+{convo.tags.length - 2}</span>
+                            )}
+                          </div>
                         )}
-                      </p>
+                      </div>
                       <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                        {/* 🔧 NEW: Notes icon if notes exist */}
+                        {convo.notes && (
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <FileText className="h-3 w-3 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="max-w-xs break-words">{convo.notes}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         {convo.status === 'live' && <Tooltip><TooltipTrigger><User className="h-3 w-3 text-green-500" /></TooltipTrigger><TooltipContent><p>{t('chatInbox.tooltipAssignedTo', { agentName: agents.find(a => a._id === convo.assignedAgentId)?.name || t('chatInbox.anAgent') })}</p></TooltipContent></Tooltip>}
                         {convo.status === 'ticket' && <Tooltip><TooltipTrigger><Ticket className="h-3 w-3 text-orange-500" /></TooltipTrigger><TooltipContent><p>{t('chatInbox.tooltipTicketCreated')}</p></TooltipContent></Tooltip>}
                         {convo.status === 'ai_only' && <Tooltip><TooltipTrigger><Bot className="h-3 w-3 text-blue-500" /></TooltipTrigger><TooltipContent><p>{t('chatInbox.tooltipHandledByAI')}</p></TooltipContent></Tooltip>}
@@ -614,6 +867,58 @@ export default function AgentInbox() {
                   {currentConversation?.platformInfo?.platform && (
                     <PlatformBadge platform={currentConversation.platformInfo.platform} />
                   )}
+                  {/* 🔧 NEW: Priority indicator in header */}
+                  {currentConversation?.priority && currentConversation.priority !== 'normal' && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Circle className={cn("h-3 w-3", getPriorityColor(currentConversation.priority))} />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Priority: {currentConversation.priority}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {/* 🔧 NEW: Response time display */}
+                  {currentConversation?.firstResponseAt && currentConversation?.createdAt && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>Responded in {dayjs(currentConversation.firstResponseAt).from(dayjs(currentConversation.createdAt), true)}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>First response: {dayjs(currentConversation.firstResponseAt).format('MMM D, YYYY h:mm A')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {/* 🔧 NEW: Show overdue indicator if no response and time > 5 minutes */}
+                  {!currentConversation?.firstResponseAt && currentConversation?.createdAt && dayjs().diff(dayjs(currentConversation.createdAt), 'minute') > 5 && (
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <div className="flex items-center gap-1 text-xs text-orange-500">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>Overdue {dayjs().from(dayjs(currentConversation.createdAt), true)}</span>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>No response yet. Created {dayjs(currentConversation.createdAt).fromNow()}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                  {/* 🔧 NEW: Tags in header */}
+                  {currentConversation?.tags && currentConversation.tags.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      {currentConversation.tags.slice(0, 2).map((tag, i) => (
+                        <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                          {tag}
+                        </span>
+                      ))}
+                      {currentConversation.tags.length > 2 && (
+                        <span className="text-xs text-muted-foreground">+{currentConversation.tags.length - 2}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {/* AI Reply Toggle - Only for Instagram, WhatsApp, Telegram */}
@@ -650,9 +955,45 @@ export default function AgentInbox() {
                   )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>{t('agentInbox.transfer.title')}</DropdownMenuLabel>
+                  <DropdownMenuContent align="end" className="w-56">
+                    {/* 🔧 NEW: Quick Actions */}
+                    <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onSelect={() => setPriorityDialogOpen(true)}>
+                      <AlertCircle className="mr-2 h-4 w-4" />
+                      Set Priority
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setTagsDialogOpen(true)}>
+                      <Tag className="mr-2 h-4 w-4" />
+                      Manage Tags
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setNotesDialogOpen(true)}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      {currentConversation?.notes ? 'Edit Notes' : 'Add Notes'}
+                    </DropdownMenuItem>
+                    {!currentConversation?.assignedAgentId && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel>Assign To</DropdownMenuLabel>
+                        {onlineAgents.length > 0 ? (
+                          onlineAgents.map(agent => (
+                            <DropdownMenuItem key={agent._id} onSelect={() => handleAssignConversation(agent._id)}>
+                              <div className="flex items-center">
+                                <span className="relative flex h-2 w-2 mr-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </span>
+                                {agent.name}
+                              </div>
+                            </DropdownMenuItem>
+                          ))
+                        ) : (
+                          <DropdownMenuItem disabled>No agents online</DropdownMenuItem>
+                        )}
+                      </>
+                    )}
+                    
                     <DropdownMenuSeparator />
+                    <DropdownMenuLabel>{t('agentInbox.transfer.title')}</DropdownMenuLabel>
                     {Array.isArray(channels) && channels.length > 0 && channels.map((channel) => (<DropdownMenuItem key={channel._id} onSelect={() => handleTransfer({ type: 'channel', id: channel._id })}><ChevronsRight className="mr-2 h-4 w-4" /> {t('agentInbox.transfer.toChannel', { channelName: channel.name })}</DropdownMenuItem>))}
                     <DropdownMenuSeparator />
                     
@@ -681,6 +1022,49 @@ export default function AgentInbox() {
 
                   </DropdownMenuContent>
                 </DropdownMenu>
+                
+                {/* 🔧 NEW: Priority Dialog */}
+                <Dialog open={priorityDialogOpen} onOpenChange={setPriorityDialogOpen}>
+                  <DialogContent>
+                    <h3 className="text-lg font-semibold mb-4">Set Priority</h3>
+                    <div className="space-y-2">
+                      {(['low', 'normal', 'high', 'urgent'] as const).map((priority) => (
+                        <Button
+                          key={priority}
+                          variant={currentConversation?.priority === priority ? 'default' : 'outline'}
+                          className="w-full justify-start"
+                          onClick={() => handleUpdatePriority(priority)}
+                        >
+                          <Circle className={cn("mr-2 h-4 w-4", getPriorityColor(priority))} />
+                          {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                        </Button>
+                      ))}
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                {/* 🔧 NEW: Tags Dialog */}
+                <Dialog open={tagsDialogOpen} onOpenChange={setTagsDialogOpen}>
+                  <DialogContent>
+                    <h3 className="text-lg font-semibold mb-4">Manage Tags</h3>
+                    <TagsEditor 
+                      currentTags={currentConversation?.tags || []} 
+                      onSave={handleUpdateTags}
+                    />
+                  </DialogContent>
+                </Dialog>
+                
+                {/* 🔧 NEW: Notes Dialog */}
+                <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
+                  <DialogContent>
+                    <h3 className="text-lg font-semibold mb-4">Conversation Notes</h3>
+                    <NotesEditor 
+                      currentNotes={currentConversation?.notes || ''} 
+                      onSave={handleUpdateNotes}
+                    />
+                  </DialogContent>
+                </Dialog>
+                
                 <Tooltip><TooltipTrigger asChild><Button className="cursor-pointer" variant="ghost" size="icon" onClick={handleCloseConversation}><XCircle className="h-5 w-5 text-red-500" /></Button></TooltipTrigger><TooltipContent><p>{t('agentInbox.transfer.closeConversation')}</p></TooltipContent></Tooltip>
               </div>
             </div>
@@ -919,9 +1303,35 @@ export default function AgentInbox() {
                               )
                             )}
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1.5 px-1 whitespace-nowrap">
-                            {msg.time ? dayjs(msg.time).format("h:mm A") : dayjs().format("h:mm A")}
-                          </p>
+                          <div className="flex items-center gap-1.5 mt-1.5 px-1">
+                            <p className="text-xs text-muted-foreground whitespace-nowrap">
+                              {msg.time ? dayjs(msg.time).format("h:mm A") : dayjs().format("h:mm A")}
+                            </p>
+                            {/* 🔧 NEW: Message status indicators (delivered/read) */}
+                            {isAgentSide && (
+                              <div className="flex items-center">
+                                {msg.status === 'delivered' || msg.status === 'completed' ? (
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <CheckCircle2 className="h-3 w-3 text-blue-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Delivered</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : msg.readAt ? (
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Read {dayjs(msg.readAt).fromNow()}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : null}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       ); 
                     })}
@@ -986,3 +1396,69 @@ export default function AgentInbox() {
     </TooltipProvider>
   );
 }
+
+// 🔧 NEW: Tags Editor Component
+const TagsEditor = ({ currentTags, onSave }: { currentTags: string[]; onSave: (tags: string[]) => void }) => {
+  const [tags, setTags] = useState<string[]>(currentTags);
+  const [newTag, setNewTag] = useState('');
+  
+  const addTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      setTags([...tags, newTag.trim()]);
+      setNewTag('');
+    }
+  };
+  
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Input
+          placeholder="Add a tag"
+          value={newTag}
+          onChange={(e) => setNewTag(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+        />
+        <Button onClick={addTag}>Add</Button>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {tags.map((tag, i) => (
+          <div key={i} className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded">
+            <span>{tag}</span>
+            <button onClick={() => removeTag(tag)} className="ml-1 hover:text-red-500">
+              <XCircle className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setTags(currentTags)}>Cancel</Button>
+        <Button onClick={() => onSave(tags)}>Save</Button>
+      </div>
+    </div>
+  );
+};
+
+// 🔧 NEW: Notes Editor Component
+const NotesEditor = ({ currentNotes, onSave }: { currentNotes: string; onSave: (notes: string) => void }) => {
+  const [notes, setNotes] = useState(currentNotes);
+  
+  return (
+    <div className="space-y-4">
+      <Textarea
+        placeholder="Add internal notes for this conversation..."
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        rows={6}
+        className="resize-none"
+      />
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setNotes(currentNotes)}>Cancel</Button>
+        <Button onClick={() => onSave(notes)}>Save</Button>
+      </div>
+    </div>
+  );
+};

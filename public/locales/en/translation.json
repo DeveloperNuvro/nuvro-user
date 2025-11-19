@@ -636,13 +636,14 @@
   },
   "signinPage": {
     "heading": "Welcome Back!",
-    "paragraph": "Let’s power up your AI-Chatbot and grow your business effortlessly.",
+    "paragraph": "Let's power up your AI-Chatbot and grow your business effortlessly.",
     "form": {
       "emailLabel": "Email",
       "passwordLabel": "Password",
+      "forgotPasswordLink": "Forgot Password?",
       "signInButton": "Sign In",
       "signingInButton": "Signing in...",
-      "noAccountPrompt": "Don’t have an account?",
+      "noAccountPrompt": "Don't have an account?",
       "signUpLink": "Sign Up"
     },
     "validation": {
@@ -651,6 +652,59 @@
     },
     "toast": {
       "loginSuccess": "Logged in successfully!"
+    }
+  },
+  "forgotPassword": {
+    "heading": "Forgot Password",
+    "paragraph": "Enter your email address and we'll send you a link to reset your password.",
+    "form": {
+      "emailLabel": "Email Address",
+      "sendResetLinkButton": "Send Reset Link",
+      "sendingButton": "Sending...",
+      "rememberPassword": "Remember your password?",
+      "signInLink": "Sign In"
+    },
+    "validation": {
+      "invalidEmail": "Invalid email address"
+    },
+    "toast": {
+      "emailSent": "Password reset email sent!",
+      "error": "Failed to send reset email"
+    },
+    "emailSent": {
+      "heading": "Check Your Email",
+      "paragraph": "We've sent a password reset link to your email address. Please check your inbox and follow the instructions.",
+      "message": "If that email exists, a password reset link has been sent. Please check your inbox and spam folder.",
+      "backToLogin": "Back to Login"
+    }
+  },
+  "resetPassword": {
+    "heading": "Reset Your Password",
+    "paragraph": "Enter your new password below.",
+    "form": {
+      "newPasswordLabel": "New Password",
+      "confirmPasswordLabel": "Confirm New Password",
+      "resetPasswordButton": "Reset Password",
+      "resettingButton": "Resetting...",
+      "backToLogin": "Back to Login"
+    },
+    "validation": {
+      "passwordLength": "Password must be at least 6 characters",
+      "confirmPasswordLength": "Please confirm your password",
+      "passwordsDoNotMatch": "Passwords do not match"
+    },
+    "toast": {
+      "success": "Password reset successfully!",
+      "error": "Failed to reset password"
+    },
+    "error": {
+      "noToken": "Invalid reset link. Please request a new password reset."
+    },
+    "success": {
+      "heading": "Password Reset Successful",
+      "paragraph": "Your password has been reset successfully. You can now sign in with your new password.",
+      "message": "Your password has been reset successfully. Redirecting to login...",
+      "goToLogin": "Go to Login"
     }
   },
   "signupPage": {

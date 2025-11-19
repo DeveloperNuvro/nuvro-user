@@ -640,6 +640,7 @@
     "form": {
       "emailLabel": "Correo Electrónico",
       "passwordLabel": "Contraseña",
+      "forgotPasswordLink": "¿Olvidaste tu contraseña?",
       "signInButton": "Iniciar Sesión",
       "signingInButton": "Iniciando sesión...",
       "noAccountPrompt": "¿No tienes una cuenta?",
@@ -651,6 +652,59 @@
     },
     "toast": {
       "loginSuccess": "¡Sesión iniciada con éxito!"
+    }
+  },
+  "forgotPassword": {
+    "heading": "Olvidé mi Contraseña",
+    "paragraph": "Ingresa tu dirección de correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",
+    "form": {
+      "emailLabel": "Dirección de Correo Electrónico",
+      "sendResetLinkButton": "Enviar Enlace de Restablecimiento",
+      "sendingButton": "Enviando...",
+      "rememberPassword": "¿Recuerdas tu contraseña?",
+      "signInLink": "Iniciar Sesión"
+    },
+    "validation": {
+      "invalidEmail": "Dirección de correo electrónico inválida"
+    },
+    "toast": {
+      "emailSent": "¡Correo de restablecimiento de contraseña enviado!",
+      "error": "Error al enviar el correo de restablecimiento"
+    },
+    "emailSent": {
+      "heading": "Revisa tu Correo",
+      "paragraph": "Hemos enviado un enlace para restablecer tu contraseña a tu dirección de correo electrónico. Por favor, revisa tu bandeja de entrada y sigue las instrucciones.",
+      "message": "Si ese correo existe, se ha enviado un enlace para restablecer la contraseña. Por favor, revisa tu bandeja de entrada y carpeta de spam.",
+      "backToLogin": "Volver al Inicio de Sesión"
+    }
+  },
+  "resetPassword": {
+    "heading": "Restablecer tu Contraseña",
+    "paragraph": "Ingresa tu nueva contraseña a continuación.",
+    "form": {
+      "newPasswordLabel": "Nueva Contraseña",
+      "confirmPasswordLabel": "Confirmar Nueva Contraseña",
+      "resetPasswordButton": "Restablecer Contraseña",
+      "resettingButton": "Restableciendo...",
+      "backToLogin": "Volver al Inicio de Sesión"
+    },
+    "validation": {
+      "passwordLength": "La contraseña debe tener al menos 6 caracteres",
+      "confirmPasswordLength": "Por favor confirma tu contraseña",
+      "passwordsDoNotMatch": "Las contraseñas no coinciden"
+    },
+    "toast": {
+      "success": "¡Contraseña restablecida exitosamente!",
+      "error": "Error al restablecer la contraseña"
+    },
+    "error": {
+      "noToken": "Enlace de restablecimiento inválido. Por favor, solicita un nuevo restablecimiento de contraseña."
+    },
+    "success": {
+      "heading": "Contraseña Restablecida Exitosamente",
+      "paragraph": "Tu contraseña ha sido restablecida exitosamente. Ahora puedes iniciar sesión con tu nueva contraseña.",
+      "message": "Tu contraseña ha sido restablecida exitosamente. Redirigiendo al inicio de sesión...",
+      "goToLogin": "Ir al Inicio de Sesión"
     }
   },
   "signupPage": {

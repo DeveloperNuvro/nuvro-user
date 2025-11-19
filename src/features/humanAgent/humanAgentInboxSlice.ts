@@ -88,6 +88,14 @@ const agentInboxSlice = createSlice({
                 state.conversations = [conversationToUpdate, ...filteredConversations];
             }
         },
+        // 🔧 NEW: Update conversation with enhanced features (unreadCount, priority, tags, notes, etc.)
+        updateConversationEnhanced: (state, action: PayloadAction<{ conversationId: string; [key: string]: any }>) => {
+            const { conversationId, ...updates } = action.payload;
+            const convoIndex = state.conversations.findIndex(c => c.id === conversationId);
+            if (convoIndex !== -1) {
+                state.conversations[convoIndex] = { ...state.conversations[convoIndex], ...updates };
+            }
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -114,6 +122,7 @@ export const {
     removeConversation,
     resetAgentConversations,
     updateConversationPreview, // <-- Exported
+    updateConversationEnhanced, // 🔧 NEW: Exported
 } = agentInboxSlice.actions;
 
 export default agentInboxSlice.reducer;

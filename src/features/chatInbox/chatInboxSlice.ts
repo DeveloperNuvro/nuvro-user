@@ -23,6 +23,16 @@ export interface ConversationInList {
         platformUserName?: string;
         platformUserAvatar?: string;
     };
+    source?: string; // 🔧 FIX: Fallback for platform if platformInfo is missing
+    // 🔧 NEW: Enhanced features
+    unreadCount?: number;
+    priority?: 'low' | 'normal' | 'high' | 'urgent';
+    tags?: string[];
+    notes?: string;
+    firstResponseAt?: string | null;
+    lastAgentResponseAt?: string | null;
+    customerLastSeenAt?: string | null;
+    createdAt?: string; // Conversation creation date for response time calculation
 }
 
 export interface CustomerTableRow {
@@ -268,7 +278,18 @@ const chatInboxSlice = createSlice({
             const conversation = action.payload;
             const exists = state.conversations.some((c) => c.id === conversation.id);
             if (!exists) {
+                // 🔧 FIX: Ensure platformInfo is properly preserved
+                console.log('🔍 Redux: Adding conversation with platformInfo:', conversation.platformInfo);
                 state.conversations.unshift(conversation);
+                console.log('✅ Redux: Conversation added. First conversation platformInfo:', state.conversations[0]?.platformInfo);
+            } else {
+                // If exists, update it (might have new platformInfo)
+                const index = state.conversations.findIndex((c) => c.id === conversation.id);
+                if (index !== -1) {
+                    // Merge the new data with existing, preserving platformInfo
+                    state.conversations[index] = { ...state.conversations[index], ...conversation };
+                    console.log('✅ Redux: Updated existing conversation with platformInfo:', state.conversations[index]?.platformInfo);
+                }
             }
         },
         updateConversationStatus: (state, action: PayloadAction<{ customerId: string; status: ConversationInList['status']; assignedAgentId?: string; aiReplyDisabled?: boolean }>) => {
@@ -282,6 +303,19 @@ const chatInboxSlice = createSlice({
                 if (aiReplyDisabled !== undefined) {
                     state.conversations[convoIndex].aiReplyDisabled = aiReplyDisabled;
                 }
+            }
+        },
+        // 🔧 NEW: Update enhanced conversation fields
+        updateConversationEnhanced: (state, action: PayloadAction<{ conversationId: string; unreadCount?: number; priority?: string; tags?: string[]; notes?: string; assignedAgentId?: string; status?: ConversationInList['status'] }>) => {
+            const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = action.payload;
+            const convoIndex = state.conversations.findIndex(c => c.id === conversationId);
+            if (convoIndex !== -1) {
+                if (unreadCount !== undefined) state.conversations[convoIndex].unreadCount = unreadCount;
+                if (priority) state.conversations[convoIndex].priority = priority as any;
+                if (tags) state.conversations[convoIndex].tags = tags;
+                if (notes !== undefined) state.conversations[convoIndex].notes = notes;
+                if (assignedAgentId !== undefined) state.conversations[convoIndex].assignedAgentId = assignedAgentId;
+                if (status) state.conversations[convoIndex].status = status;
             }
         }
     },
@@ -425,5 +459,5 @@ const chatInboxSlice = createSlice({
     },
 });
 
-export const { addRealtimeMessage, addNewCustomer, updateConversationStatus, removeConversation, resetConversations } = chatInboxSlice.actions;
+export const { addRealtimeMessage, addNewCustomer, updateConversationStatus, updateConversationEnhanced, removeConversation, resetConversations } = chatInboxSlice.actions;
 export default chatInboxSlice.reducer;

@@ -89,6 +89,14 @@ const Signin = () => {
     {...register('password') }
     error = { errors.password?.message }
         />
+        <div className="w-full text-right">
+          <Link 
+            to="/forgot-password" 
+            className="text-sm text-[#ff21b0] hover:underline"
+          >
+            {t('signinPage.form.forgotPasswordLink') || 'Forgot Password?'}
+          </Link>
+        </div>
         <div className="text-sm text-[#101214] dark:text-white text-center w-full" >
             <Button 
                             value={ status === 'loading' ? t('signinPage.form.signingInButton') : t('signinPage.form.signInButton') }
