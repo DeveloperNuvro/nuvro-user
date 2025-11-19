@@ -10,8 +10,12 @@ export const useAuthBootstrap = () => {
   const location = useLocation();
 
 useEffect(() => {
-  // 🔧 FIX: Don't redirect if user is on password reset pages
-  const isPasswordResetPage = location.pathname === '/reset-password' || location.pathname === '/forgot-password';
+  // 🔧 FIX: Don't redirect if user is on public pages (signin, signup, password reset)
+  const isPublicPage = 
+    location.pathname === '/reset-password' || 
+    location.pathname === '/forgot-password' ||
+    location.pathname === '/signup' ||
+    location.pathname === '/signin';
   
   console.log("🔁 Bootstrapping session...");
   dispatch(refreshAccessToken())
@@ -22,8 +26,8 @@ useEffect(() => {
     .catch(() => {
       console.log("❌ Refresh failed");
       dispatch(logout());
-      // Only redirect to signin if not on password reset pages
-      if (!isPasswordResetPage) {
+      // Only redirect to signin if not on public pages
+      if (!isPublicPage) {
         navigate('/signin');
       }
     })
