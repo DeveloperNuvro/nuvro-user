@@ -87,13 +87,44 @@ const AccountSettingsPage: React.FC = () => {
     const handleLanguageChange = async (lang: string) => {
         if (!lang || lang === i18n.language) return;
 
-        i18n.changeLanguage(lang);
-
         try {
-            await dispatch(updateUserLanguage({ language: lang })).unwrap();
+            // 🔧 FIX: Validate language code before proceeding
+            const supportedLanguages = ['en', 'es', 'bn'];
+            if (!supportedLanguages.includes(lang)) {
+                toast.error(`Unsupported language: ${lang}. Supported: ${supportedLanguages.join(', ')}`);
+                return;
+            }
+
+            // Change language in i18n first
+            await i18n.changeLanguage(lang);
+            
+            // Save to backend
+            const result = await dispatch(updateUserLanguage({ language: lang })).unwrap();
+            console.log('Language updated successfully:', result);
             toast.success(t('settingsPage.language.updateSuccess'));
-        } catch (error) {
-            toast.error(t('settingsPage.language.updateError'));
+        } catch (error: any) {
+            // 🔧 FIX: Show actual error message for debugging
+            console.error('Language change error details:', {
+                error,
+                message: error?.message,
+                response: error?.response?.data,
+                payload: error?.payload
+            });
+            
+            const errorMessage = error?.payload || 
+                                error?.message || 
+                                error?.response?.data?.message || 
+                                t('settingsPage.language.updateError');
+            
+            toast.error(`Failed to update language: ${errorMessage}`);
+            
+            // Revert language change if backend save failed
+            const currentLang = i18n.language;
+            if (currentLang === lang) {
+                // If language was changed but backend failed, revert to previous
+                const previousLang = user?.language || 'es';
+                await i18n.changeLanguage(previousLang);
+            }
         }
     };
 
@@ -211,7 +242,7 @@ const AccountSettingsPage: React.FC = () => {
                                                     <SelectContent>
                                                         <SelectItem value="en" className="cursor-pointer">{t('settingsPage.language.english', 'English')}</SelectItem>
                                                         <SelectItem value="es" className="cursor-pointer">{t('settingsPage.language.spanish', 'Español (Spanish)')}</SelectItem>
-                                                        <SelectItem value="fr" className="cursor-pointer">{t('settingsPage.language.french', 'Français (French)')}</SelectItem>
+                                                        <SelectItem value="bn" className="cursor-pointer">{t('settingsPage.language.bangla', 'বাংলা (Bangla)')}</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </div>

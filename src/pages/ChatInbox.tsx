@@ -37,6 +37,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { getSocket } from "../lib/useSocket"; 
 import ChatInboxSkeleton from "@/components/skeleton/ChatInboxSkeleton"; // 1. Import the skeleton
 import PlatformBadge from "@/components/custom/unipile/PlatformBadge";
+import CountryBadge from "@/components/custom/unipile/CountryBadge";
 import { useTheme } from "@/components/theme-provider";
 import FormattedText from "@/components/custom/FormattedText";
 
@@ -368,106 +369,110 @@ export default function ChatInbox() {
   useEffect(() => { if (businessId) { dispatch(resetConversations()); dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); } }, [businessId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
   
+  // 🔧 OPTIMIZED: Memoize conversation lookup to avoid repeated finds
+  const selectedConversation = useMemo(() => {
+    return conversations.find((c) => c.customer.id === selectedCustomer);
+  }, [conversations, selectedCustomer]);
+
   // 🔧 NEW: Mark conversation as read when opened
   useEffect(() => {
-    if (selectedCustomer) {
-      const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
-      if (conversation?.id && (conversation?.unreadCount || 0) > 0) {
-        handleMarkAsRead(conversation.id);
-      }
+    if (selectedCustomer && selectedConversation?.id && (selectedConversation?.unreadCount || 0) > 0) {
+      handleMarkAsRead(selectedConversation.id);
     }
-  }, [selectedCustomer, conversations, handleMarkAsRead]);
+  }, [selectedCustomer, selectedConversation, handleMarkAsRead]);
   
-  // 🔧 NEW: Real-time event listeners for conversation updates
+  // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
+  const handleNewConversation = useCallback((data: ConversationInList) => {
+    console.log('🔔 ChatInbox: Received newConversation event:', data);
+    console.log('🔍 ChatInbox: PlatformInfo in event:', data.platformInfo);
+    
+    // 🔧 FIX: Ensure platformInfo is properly structured
+    if (!data.platformInfo && data.source) {
+      // Fallback: if platformInfo is missing but source exists, create it
+      data.platformInfo = {
+        platform: data.source as any,
+        connectionId: '',
+        platformUserId: '',
+      };
+      console.log('🔧 ChatInbox: Created platformInfo from source:', data.platformInfo);
+    }
+    
+    // Check if conversation already exists
+    const exists = conversations.some(c => c.id === data.id);
+    if (!exists) {
+      // Add new conversation to the list
+      console.log('✅ ChatInbox: Adding new conversation with platformInfo:', data.platformInfo);
+      dispatch(addNewCustomer(data));
+      console.log('✅ ChatInbox: Added new conversation:', data.id, 'Platform:', data.platformInfo?.platform);
+      
+      // 🔧 FIX: If platform filter is set, check if it matches
+      // If "All" is selected, show it. If specific platform is selected, only show if it matches
+      if (activePlatform === 'all' || data.platformInfo?.platform === activePlatform) {
+        // Conversation will be visible in the current filter
+        console.log('✅ ChatInbox: Conversation matches current platform filter');
+      } else {
+        // Conversation is for a different platform, but we still added it to state
+        // User can switch to that platform tab to see it
+        console.log('ℹ️ ChatInbox: Conversation is for different platform, user can switch tab to see it');
+      }
+    } else {
+      console.log('⚠️ ChatInbox: Conversation already exists, skipping');
+    }
+  }, [conversations, activePlatform, dispatch]);
+
+  // 🔧 OPTIMIZED: Handle new chat assigned event (for transfers)
+  const handleNewChatAssigned = useCallback((data: ConversationInList) => {
+    console.log('🔔 ChatInbox: Received newChatAssigned event:', data);
+    // Check if conversation already exists
+    const exists = conversations.some(c => c.id === data.id);
+    if (!exists) {
+      // Add new conversation to the list (transferred from agent inbox)
+      dispatch(addNewCustomer(data));
+      console.log('✅ ChatInbox: Added transferred conversation:', data.id);
+    } else {
+      // Update existing conversation
+      dispatch(updateConversationEnhanced({
+        conversationId: data.id,
+        assignedAgentId: data.assignedAgentId,
+        status: data.status,
+      }));
+      console.log('✅ ChatInbox: Updated existing conversation with transfer info');
+    }
+  }, [conversations, dispatch]);
+
+  // 🔧 OPTIMIZED: Handle conversation updates
+  const handleConversationUpdated = useCallback((data: any) => {
+    const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
+    dispatch(updateConversationEnhanced({
+      conversationId,
+      unreadCount,
+      priority,
+      tags,
+      notes,
+      assignedAgentId,
+      status,
+    }));
+  }, [dispatch]);
+
+  // 🔧 OPTIMIZED: Handle conversation assignment
+  const handleConversationAssigned = useCallback((data: any) => {
+    const { conversationId, assignedAgentId } = data;
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (conversation) {
+      dispatch(updateConversationStatus({
+        customerId: conversation.customer.id,
+        status: 'live',
+        assignedAgentId: assignedAgentId,
+      }));
+    }
+  }, [conversations, dispatch]);
+
+  // 🔧 OPTIMIZED: Real-time event listeners for conversation updates
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !businessId) return;
 
-    // 🔧 FIX: Handle new conversation event (for new chats arriving in real-time)
-    const handleNewConversation = (data: ConversationInList) => {
-      console.log('🔔 ChatInbox: Received newConversation event:', data);
-      console.log('🔍 ChatInbox: PlatformInfo in event:', data.platformInfo);
-      
-      // 🔧 FIX: Ensure platformInfo is properly structured
-      if (!data.platformInfo && data.source) {
-        // Fallback: if platformInfo is missing but source exists, create it
-        data.platformInfo = {
-          platform: data.source as any,
-          connectionId: '',
-          platformUserId: '',
-        };
-        console.log('🔧 ChatInbox: Created platformInfo from source:', data.platformInfo);
-      }
-      
-      // Check if conversation already exists
-      const exists = conversations.some(c => c.id === data.id);
-      if (!exists) {
-        // Add new conversation to the list
-        console.log('✅ ChatInbox: Adding new conversation with platformInfo:', data.platformInfo);
-        dispatch(addNewCustomer(data));
-        console.log('✅ ChatInbox: Added new conversation:', data.id, 'Platform:', data.platformInfo?.platform);
-        
-        // 🔧 FIX: If platform filter is set, check if it matches
-        // If "All" is selected, show it. If specific platform is selected, only show if it matches
-        if (activePlatform === 'all' || data.platformInfo?.platform === activePlatform) {
-          // Conversation will be visible in the current filter
-          console.log('✅ ChatInbox: Conversation matches current platform filter');
-        } else {
-          // Conversation is for a different platform, but we still added it to state
-          // User can switch to that platform tab to see it
-          console.log('ℹ️ ChatInbox: Conversation is for different platform, user can switch tab to see it');
-        }
-      } else {
-        console.log('⚠️ ChatInbox: Conversation already exists, skipping');
-      }
-    };
-
-    // 🔧 FIX: Handle new chat assigned event (for transfers)
-    const handleNewChatAssigned = (data: ConversationInList) => {
-      console.log('🔔 ChatInbox: Received newChatAssigned event:', data);
-      // Check if conversation already exists
-      const exists = conversations.some(c => c.id === data.id);
-      if (!exists) {
-        // Add new conversation to the list (transferred from agent inbox)
-        dispatch(addNewCustomer(data));
-        console.log('✅ ChatInbox: Added transferred conversation:', data.id);
-      } else {
-        // Update existing conversation
-        dispatch(updateConversationEnhanced({
-          conversationId: data.id,
-          assignedAgentId: data.assignedAgentId,
-          status: data.status,
-        }));
-        console.log('✅ ChatInbox: Updated existing conversation with transfer info');
-      }
-    };
-
-    const handleConversationUpdated = (data: any) => {
-      const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
-      dispatch(updateConversationEnhanced({
-        conversationId,
-        unreadCount,
-        priority,
-        tags,
-        notes,
-        assignedAgentId,
-        status,
-      }));
-    };
-
-    const handleConversationAssigned = (data: any) => {
-      const { conversationId, assignedAgentId } = data;
-      const conversation = conversations.find(c => c.id === conversationId);
-      if (conversation) {
-        dispatch(updateConversationStatus({
-          customerId: conversation.customer.id,
-          status: 'live',
-          assignedAgentId: assignedAgentId,
-        }));
-      }
-    };
-
-    // 🔧 FIX: Listen to all relevant events
+    // 🔧 OPTIMIZED: Listen to all relevant events
     socket.on('newConversation', handleNewConversation);
     socket.on('newChatAssigned', handleNewChatAssigned);
     socket.on('conversationUpdated', handleConversationUpdated);
@@ -479,7 +484,7 @@ export default function ChatInbox() {
       socket.off('conversationUpdated', handleConversationUpdated);
       socket.off('conversationAssigned', handleConversationAssigned);
     };
-  }, [businessId, conversations, dispatch, activePlatform]);
+  }, [businessId, handleNewConversation, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned]);
 
   useLayoutEffect(() => { 
     if (!messageListRef.current) return; 
@@ -637,9 +642,25 @@ export default function ChatInbox() {
       toast.error(errorMessage);
     }
   };
-  const handleNextPage = () => { if (currentPage < totalPages && businessId) dispatch(fetchCustomersByBusiness({ businessId, page: currentPage + 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); };
-  const handlePrevPage = () => { if (currentPage > 1 && businessId) dispatch(fetchCustomersByBusiness({ businessId, page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); };
-  const handleLoadMoreMessages = () => { if (selectedCustomer && messagesData?.hasMore && messagesData.status !== 'loading' && messageListRef.current) { prevScrollHeightRef.current = messageListRef.current.scrollHeight; dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 })); } };
+  // 🔧 OPTIMIZED: Memoize pagination handlers
+  const handleNextPage = useCallback(() => {
+    if (currentPage < totalPages && businessId) {
+      dispatch(fetchCustomersByBusiness({ businessId, page: currentPage + 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+    }
+  }, [currentPage, totalPages, businessId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
+
+  const handlePrevPage = useCallback(() => {
+    if (currentPage > 1 && businessId) {
+      dispatch(fetchCustomersByBusiness({ businessId, page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+    }
+  }, [currentPage, businessId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
+
+  const handleLoadMoreMessages = useCallback(() => {
+    if (selectedCustomer && messagesData?.hasMore && messagesData.status !== 'loading' && messageListRef.current) {
+      prevScrollHeightRef.current = messageListRef.current.scrollHeight;
+      dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 }));
+    }
+  }, [selectedCustomer, messagesData, dispatch]);
 
   // 2. Render the skeleton on initial load
   if (chatListStatus === 'loading' && filteredConversations.length === 0) {
@@ -887,6 +908,10 @@ export default function ChatInbox() {
                   <h2 className="font-semibold text-sm sm:text-base truncate">{currentConversation?.customer?.name}</h2>
                   {currentConversation?.platformInfo?.platform && (
                     <PlatformBadge platform={currentConversation.platformInfo.platform} />
+                  )}
+                  {/* 🔧 NEW: Country badge in header */}
+                  {currentConversation?.country && (
+                    <CountryBadge country={currentConversation.country} />
                   )}
                   {/* 🔧 NEW: Priority indicator in header */}
                   {currentConversation?.priority && currentConversation.priority !== 'normal' && (

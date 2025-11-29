@@ -33,6 +33,10 @@ export interface ConversationInList {
     lastAgentResponseAt?: string | null;
     customerLastSeenAt?: string | null;
     createdAt?: string; // Conversation creation date for response time calculation
+    country?: {
+        code: string;
+        name: string;
+    } | null; // Customer country for display
 }
 
 export interface CustomerTableRow {

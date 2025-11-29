@@ -109,6 +109,8 @@
   "trainedAiModels": "Trained AI Models",
   "trainedAiModelsDesc": "Custom knowledge bases",
   "performanceAnalyticsTitle": "Performance Analytics",
+  "filterByAgent": "Filter by AI Agent",
+  "allAgents": "All Agents",
   "avgScore7Day": "7-Day Avg Score",
   "avgScore7DayDesc": "Agent performance this week",
   "avgScore30Day": "30-Day Avg Score",
@@ -884,6 +886,19 @@
     "subtitle": "Build a custom AI agent tailored to your business needs. Configure its personality, responses, and behavior.",
     "form": {
       "agentConfiguration": "Agent Configuration",
+      "nameLabel": "Agent Name",
+      "namePlaceholder": "e.g., Customer Support Bot",
+      "aiModelLabel": "AI Model",
+      "selectModel": "Select a model",
+      "toneLabel": "Communication Tone",
+      "selectTone": "Select a tone",
+      "instructionLabel": "Instructions",
+      "instructionPlaceholder": "Enter specific instructions for your AI agent (e.g., Always be helpful, provide accurate information, etc.)",
+      "tones": {
+        "friendly": "Friendly",
+        "formal": "Formal",
+        "neutral": "Neutral"
+      },
       "defaultQaResponses": "Default Q&A Responses",
       "templatesCount": "{{count}} / {{max}}",
       "templatesDescription": "Add common questions and answers to help your agent respond quickly to frequent inquiries.",

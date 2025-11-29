@@ -1,10 +1,18 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
 import { fetchBusinessOverview } from '@/features/overview/overviewSlice';
+import { fetchAiAgentsByBusinessId } from '@/features/aiAgent/aiAgentSlice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Users,
     Bot,
@@ -16,6 +24,7 @@ import {
     Calendar,
     ServerCrash,
     UserPlus,
+    Filter,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow } from 'date-fns';
@@ -64,15 +73,26 @@ const DashboardOverviewPage: React.FC = () => {
     
     const { user } = useSelector((state: RootState) => state.auth);
     const { data: overviewData, status, error } = useSelector((state: RootState) => state.overview);
+    const { aiAgents } = useSelector((state: RootState) => state.aiAgent);
     
     const businessId = user?.businessId;
     const dateLocale = i18n.language === 'es' ? es : undefined;
+    const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
 
     useEffect(() => {
         if (businessId) {
-            dispatch(fetchBusinessOverview(businessId));
+            dispatch(fetchAiAgentsByBusinessId());
         }
     }, [dispatch, businessId]);
+
+    useEffect(() => {
+        if (businessId) {
+            dispatch(fetchBusinessOverview({ 
+                businessId, 
+                agentId: selectedAgentId && selectedAgentId !== 'all' ? selectedAgentId : undefined 
+            }));
+        }
+    }, [dispatch, businessId, selectedAgentId]);
 
     // 2. Replace the old loader with the new skeleton component
     if (status === 'loading') {
@@ -168,13 +188,31 @@ const DashboardOverviewPage: React.FC = () => {
 
             {/* Performance Analytics Section */}
             <div className="space-y-6">
-                <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
-                        <BarChart className="h-5 w-5 text-white"/>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+                            <BarChart className="h-5 w-5 text-white"/>
+                        </div>
+                        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-800 dark:text-gray-100">
+                            {t('performanceAnalyticsTitle')}
+                        </h2>
                     </div>
-                    <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-800 dark:text-gray-100">
-                        {t('performanceAnalyticsTitle')}
-                    </h2>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400 shrink-0" />
+                        <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                            <SelectTrigger className="w-full sm:w-[200px]">
+                                <SelectValue placeholder={t('filterByAgent', 'Filter by AI Agent')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">{t('allAgents', 'All Agents')}</SelectItem>
+                                {aiAgents.map((agent) => (
+                                    <SelectItem key={agent._id} value={agent._id}>
+                                        {agent.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     <StatCard 

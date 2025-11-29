@@ -52,16 +52,17 @@ const initialState: OverviewState = {
 
 export const fetchBusinessOverview = createAsyncThunk<
   BusinessOverview,
-  string,
+  { businessId: string; agentId?: string },
   { rejectValue: string }
 >(
   "overview/fetchBusinessOverview",
-  async (businessId, thunkAPI) => {
+  async ({ businessId, agentId }, thunkAPI) => {
     if (!businessId) {
       return thunkAPI.rejectWithValue("A Business ID is required to fetch the overview.");
     }
     try {
-      const response = await api.get(`/api/v1/overview/${businessId}`);
+      const params = agentId ? { agentId } : {};
+      const response = await api.get(`/api/v1/overview/${businessId}`, { params });
       return response.data.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || "Failed to fetch business overview";

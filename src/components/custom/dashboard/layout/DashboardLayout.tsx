@@ -1,6 +1,6 @@
 // src/layouts/DashboardLayout.tsx
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Menu, CircleUser, ChevronDown, Circle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -49,7 +49,7 @@ export default function DashboardLayout() {
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
-  const { user }: any = useSelector((state: RootState) => state.auth as { user: AuthUser | null });
+  const { user, accessToken }: any = useSelector((state: RootState) => state.auth as { user: AuthUser | null; accessToken: string | null });
   const { selectedBusiness } = useSelector((state: RootState) => state.business);
   
   const [isConnected, setIsConnected] = useState(getSocket()?.connected || false);
@@ -63,6 +63,89 @@ export default function DashboardLayout() {
     return () => window.removeEventListener('click', initAudio);
   }, []);
 
+  // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
+  const handleNewMessage = useCallback((data: any) => {
+    const { customerId, sender, message, customerName, conversationId, assignment, senderSocketId } = data;
+    
+    if (!customerId || !sender) return;
+    const socket = getSocket();
+    if (senderSocketId && senderSocketId === socket?.id) return;
+
+    const formattedMessage: Message = { 
+      _id: data._id, 
+      text: message, 
+      sentBy: sender, 
+      time: data.createdAt || new Date().toISOString(),
+      messageType: data.messageType || data.metadata?.messageType || 'text',
+      mediaUrl: data.mediaUrl || data.metadata?.mediaUrl || data.metadata?.cloudinaryUrl || null,
+      cloudinaryUrl: data.cloudinaryUrl || data.metadata?.cloudinaryUrl || null,
+      originalMediaUrl: data.originalMediaUrl || data.metadata?.originalMediaUrl || null,
+      proxyUrl: data.proxyUrl || data.metadata?.proxyUrl || null,
+      attachmentId: data.attachmentId || data.metadata?.attachmentId || null,
+      metadata: data.metadata || {}
+    };
+
+    const currentState = store.getState();
+    const allCurrentConversations = [
+        ...currentState.chatInbox.conversations,
+        ...currentState.agentInbox.conversations
+    ];
+    const uniqueConversations = allCurrentConversations.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
+    const isNewConversation = !uniqueConversations.some(c => c.id === conversationId);
+
+    dispatch(addRealtimeMessage({ customerId, message: formattedMessage }));
+
+    if (isNewConversation && (sender === 'customer' || sender === 'system' || sender === 'ai')) {
+      if (user.role === 'business') {
+          dispatch(addNewCustomer({ id: conversationId, customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') }, preview: message, latestMessageTimestamp: new Date().toISOString(), status: 'ai_only' }));
+      }
+    }
+
+    if (!isNewConversation) {
+        dispatch(updateConversationPreview({ conversationId, preview: message, latestMessageTimestamp: data.createdAt || new Date().toISOString() }));
+    }
+    
+    if (sender === 'customer') {
+      const isUnassigned = assignment && (assignment.status === 'ai_only' || assignment.type === 'unassigned');
+      const isAssignedToMe = user.role === 'agent' && assignment && assignment.type === 'agent' && assignment.id === user._id;
+
+      if (isUnassigned && user.role === 'business') {
+        toast.custom(tToast => <NotificationToast t={tToast} name={customerName} msg={message} />);
+        playNotificationSound(notificationRef);
+      } else if (isAssignedToMe) {
+        toast.custom(tToast => <NotificationToast t={tToast} name={customerName} msg={message} />);
+        playNotificationSound(notificationRef);
+      }
+    }
+  }, [user, dispatch, t]);
+
+  const handleNewAssignment = useCallback((data: ConversationInList) => {
+    if (user.role === 'agent') {
+      dispatch(addAssignedConversation(data));
+      toast.success(t('chatInbox.toastNewChat', { customerName: data.customer.name }));
+      playNotificationSound(notificationRef);
+    } else if (user.role === 'business') {
+      dispatch(updateConversationStatus({ customerId: data.customer.id, status: data.status, assignedAgentId: data.assignedAgentId }));
+    }
+  }, [user, dispatch, t]);
+
+  const handleInitialAgentStatuses = useCallback((allAgentsWithStatus: HumanAgent[]) => {
+    allAgentsWithStatus.forEach(agent => dispatch(setAgentStatus({ userId: agent._id, status: agent.status, lastSeen: agent.lastSeen })));
+  }, [dispatch]);
+
+  const handleAgentStatusUpdate = useCallback((data: { userId: string; status: 'online' | 'offline'; lastSeen?: string }) => {
+    dispatch(setAgentStatus(data));
+  }, [dispatch]);
+
+  const handleConversationRemoved = useCallback((data: { conversationId: string }) => {
+    dispatch(removeConversation(data));
+    dispatch(removeAgentConversation(data));
+  }, [dispatch]);
+
+  const handleConversationUpdate = useCallback((data: any) => {
+    dispatch(updateConversationStatus({ customerId: data.customerId, status: data.status, assignedAgentId: data.agentId || (data.to?.type === 'agent' ? data.to.id : undefined) }));
+  }, [dispatch]);
+
   useEffect(() => {
     if (!user?._id || !user?.businessId) {
       disconnectSocket();
@@ -70,7 +153,7 @@ export default function DashboardLayout() {
       return;
     }
 
-    const socket = initSocket(user);
+    const socket = initSocket(user, accessToken || undefined);
 
     const onConnect = () => {
       setIsConnected(true);
@@ -81,83 +164,6 @@ export default function DashboardLayout() {
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     if (socket.connected) onConnect();
-
-
-    const handleNewMessage = (data: any) => {
-      const { customerId, sender, message, customerName, conversationId, assignment, senderSocketId } = data;
-      
-      if (!customerId || !sender) return;
-      if (senderSocketId && senderSocketId === socket.id) return;
-
-      const formattedMessage: Message = { 
-        _id: data._id, 
-        text: message, 
-        sentBy: sender, 
-        time: data.createdAt || new Date().toISOString(),
-        // 🔧 NEW: Include media metadata from socket payload
-        messageType: data.messageType || data.metadata?.messageType || 'text',
-        mediaUrl: data.mediaUrl || data.metadata?.mediaUrl || data.metadata?.cloudinaryUrl || null,
-        cloudinaryUrl: data.cloudinaryUrl || data.metadata?.cloudinaryUrl || null,
-        originalMediaUrl: data.originalMediaUrl || data.metadata?.originalMediaUrl || null,
-        proxyUrl: data.proxyUrl || data.metadata?.proxyUrl || null,
-        attachmentId: data.attachmentId || data.metadata?.attachmentId || null,
-        metadata: data.metadata || {}
-      };
-
-   
-      const currentState = store.getState();
-      const allCurrentConversations = [
-          ...currentState.chatInbox.conversations,
-          ...currentState.agentInbox.conversations
-      ];
-      const uniqueConversations = allCurrentConversations.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
-      const isNewConversation = !uniqueConversations.some(c => c.id === conversationId);
-
-      dispatch(addRealtimeMessage({ customerId, message: formattedMessage }));
-
-
-      if (isNewConversation && (sender === 'customer' || sender === 'system' || sender === 'ai')) {
-        if (user.role === 'business') {
-            dispatch(addNewCustomer({ id: conversationId, customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') }, preview: message, latestMessageTimestamp: new Date().toISOString(), status: 'ai_only' }));
-        }
-      }
-
- 
-      if (!isNewConversation) {
-          dispatch(updateConversationPreview({ conversationId, preview: message, latestMessageTimestamp: data.createdAt || new Date().toISOString() }));
-      }
-      
-    
-      if (sender === 'customer') {
-        const isUnassigned = assignment && (assignment.status === 'ai_only' || assignment.type === 'unassigned');
-        const isAssignedToMe = user.role === 'agent' && assignment && assignment.type === 'agent' && assignment.id === user._id;
-
-        if (isUnassigned && user.role === 'business') {
-          toast.custom(tToast => <NotificationToast t={tToast} name={customerName} msg={message} />);
-          playNotificationSound(notificationRef);
-        } else if (isAssignedToMe) {
-          toast.custom(tToast => <NotificationToast t={tToast} name={customerName} msg={message} />);
-          playNotificationSound(notificationRef);
-        }
-      }
-    };
-
-    
-    const handleNewAssignment = (data: ConversationInList) => {
-      if (user.role === 'agent') {
-        dispatch(addAssignedConversation(data));
-        toast.success(t('chatInbox.toastNewChat', { customerName: data.customer.name }));
-        playNotificationSound(notificationRef);
-      } else if (user.role === 'business') {
-        dispatch(updateConversationStatus({ customerId: data.customer.id, status: data.status, assignedAgentId: data.assignedAgentId }));
-      }
-    };
-
-
-    const handleInitialAgentStatuses = (allAgentsWithStatus: HumanAgent[]) => allAgentsWithStatus.forEach(agent => dispatch(setAgentStatus({ userId: agent._id, status: agent.status, lastSeen: agent.lastSeen })));
-    const handleAgentStatusUpdate = (data: { userId: string; status: 'online' | 'offline'; lastSeen?: string }) => dispatch(setAgentStatus(data));
-    const handleConversationRemoved = (data: { conversationId: string }) => { dispatch(removeConversation(data)); dispatch(removeAgentConversation(data)); };
-    const handleConversationUpdate = (data: any) => dispatch(updateConversationStatus({ customerId: data.customerId, status: data.status, assignedAgentId: data.agentId || (data.to?.type === 'agent' ? data.to.id : undefined) }));
 
     socket.on("initialAgentStatuses", handleInitialAgentStatuses);
     socket.on("agentStatusUpdate", handleAgentStatusUpdate);
@@ -178,7 +184,7 @@ export default function DashboardLayout() {
       socket.off("conversationTransferred", handleNewAssignment);
       socket.off("newTicketCreated", handleConversationUpdate);
     };
-  }, [user, dispatch, t]);
+  }, [user, accessToken, handleNewMessage, handleNewAssignment, handleInitialAgentStatuses, handleAgentStatusUpdate, handleConversationRemoved, handleConversationUpdate]);
 
   const menuItems = useMemo(() => {
     if (!user) return [];
@@ -259,7 +265,7 @@ export default function DashboardLayout() {
         <nav className="flex flex-col gap-6">
           {menuItems.map((section) => (
             <div key={section.title}>
-              <p className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase mb-3 tracking-wider px-2">
+              <p className="text-[11px] font-semibold text-gray-600 dark:text-gray-400 uppercase mb-3 tracking-wider px-2">
                 {section.title}
               </p>
               <ul className="space-y-1">
@@ -268,7 +274,7 @@ export default function DashboardLayout() {
                     {link.action === 'logout' ? (
                       <button 
                         onClick={() => handleMenuClick(link)} 
-                        className="w-full cursor-pointer text-left block rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-[#A3ABB8] hover:text-[#ff21b0] hover:bg-muted/40 group"
+                        className="w-full cursor-pointer text-left block rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 text-gray-700 dark:text-[#A3ABB8] hover:text-[#ff21b0] hover:bg-muted/40 group"
                       >
                         <div className="flex items-center gap-3">
                           <span className="group-hover:scale-110 transition-transform duration-200">
@@ -285,7 +291,7 @@ export default function DashboardLayout() {
                           "block rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 group",
                           isActive 
                             ? "bg-[#f7deee] dark:bg-[#ff21b0] text-[#ff21b0] dark:text-[#FFFFFF]" 
-                            : "hover:text-[#ff21b0] text-[#A3ABB8] hover:bg-muted/40"
+                            : "hover:text-[#ff21b0] text-gray-700 dark:text-[#A3ABB8] hover:bg-muted/40"
                         )}
                       >
                         <div className="flex items-center gap-3">

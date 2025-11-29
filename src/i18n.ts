@@ -17,18 +17,34 @@ i18n
 
     backend: {
       loadPath: '/locales/{{lng}}/{{ns}}.json',
+      // 🔧 FIX: Add error handling for missing translation files
+      allowMultiLoading: false,
+      crossDomain: false,
     },
 
     fallbackLng: 'es',
+    
+    // 🔧 FIX: Explicitly define supported languages
+    supportedLngs: ['en', 'es', 'bn'],
+    
+    // 🔧 FIX: Don't fail if translation file is missing, use fallback
+    load: 'languageOnly', // Only load language code, not region (e.g., 'en' not 'en-US')
+    nonExplicitSupportedLngs: false, // Only load explicitly supported languages
  
     ns: ['translation'],
     defaultNS: 'translation',
 
-
-    debug: true, 
+    // 🔧 FIX: Better error handling
+    debug: false, // Set to false in production, true for debugging
+    saveMissing: false, // Don't save missing translations
 
     interpolation: {
       escapeValue: false, 
+    },
+    
+    // 🔧 FIX: Handle missing translations gracefully
+    react: {
+      useSuspense: false, // Don't use suspense for loading translations
     },
   });
 

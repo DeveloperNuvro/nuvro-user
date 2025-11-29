@@ -415,11 +415,11 @@ export default function AiAgentPage() {
 
       <Dialog open={modalState.isOpen} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className={`
-          sm:max-w-[600px]
+          sm:max-w-[600px] max-h-[90vh] flex flex-col
           ${isDarkMode ? 'bg-card border-border/60' : 'bg-card border-border/80'}
         `}>
           <DialogHeader className={`
-            pb-4 border-b
+            pb-4 border-b shrink-0
             ${isDarkMode ? 'border-border/40' : 'border-border/60'}
           `}>
             <DialogTitle className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -455,7 +455,7 @@ export default function AiAgentPage() {
           </DialogHeader>
 
           {modalState.mode === 'edit' && (
-            <div className="grid gap-6 py-6">
+            <div className="grid gap-6 py-6 overflow-y-auto flex-1 min-h-0">
               <div className="space-y-2">
                 <label htmlFor="name" className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Bot className="h-4 w-4 text-primary" />
@@ -526,7 +526,7 @@ export default function AiAgentPage() {
           )}
 
           {modalState.mode === 'delete' && (
-            <div className="py-6">
+            <div className="py-6 overflow-y-auto flex-1 min-h-0">
               <div className={`
                 p-4 rounded-lg
                 ${isDarkMode ? 'bg-red-950/20 border border-red-900/50' : 'bg-red-50 border border-red-200'}
@@ -541,7 +541,7 @@ export default function AiAgentPage() {
           )}
 
           <DialogFooter className={`
-            pt-4 border-t gap-2
+            pt-4 border-t gap-2 shrink-0
             ${isDarkMode ? 'border-border/40' : 'border-border/60'}
           `}>
             <Button 

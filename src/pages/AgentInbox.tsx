@@ -29,6 +29,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { getSocket } from "../lib/useSocket"; 
 import ChatInboxSkeleton from "@/components/skeleton/ChatInboxSkeleton";
 import PlatformBadge from "@/components/custom/unipile/PlatformBadge";
+import CountryBadge from "@/components/custom/unipile/CountryBadge";
 import { useTheme } from "@/components/theme-provider";
 import FormattedText from "@/components/custom/FormattedText";
 
@@ -244,10 +245,23 @@ export default function AgentInbox() {
     }
   }, [theme]);
 
-  const currentConversation = useMemo(() => { if (!Array.isArray(conversations)) return null; return conversations.find((c) => c.customer?.id === selectedCustomer); }, [conversations, selectedCustomer]);
+  // 🔧 OPTIMIZED: Memoize conversation lookup to avoid repeated finds
+  const currentConversation = useMemo(() => { 
+    if (!Array.isArray(conversations)) return null; 
+    return conversations.find((c) => c.customer?.id === selectedCustomer); 
+  }, [conversations, selectedCustomer]);
+  
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== agentId) : [], [agents, agentId]);
   const offlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'offline' && agent._id !== agentId) : [], [agents, agentId]);
-  const groupedMessages = useMemo(() => { const allMessages = messagesData?.list || []; return allMessages.reduce((acc: { [key: string]: any[] }, msg: any) => { const dateLabel = dayjs(msg.time).isToday() ? t('chatInbox.dateToday') : dayjs(msg.time).isYesterday() ? t('chatInbox.dateYesterday') : dayjs(msg.time).format("MMMM D, YYYY"); if (!acc[dateLabel]) acc[dateLabel] = []; acc[dateLabel].push(msg); return acc; }, {}); }, [messagesData?.list, t]);
+  const groupedMessages = useMemo(() => { 
+    const allMessages = messagesData?.list || []; 
+    return allMessages.reduce((acc: { [key: string]: any[] }, msg: any) => { 
+      const dateLabel = dayjs(msg.time).isToday() ? t('chatInbox.dateToday') : dayjs(msg.time).isYesterday() ? t('chatInbox.dateYesterday') : dayjs(msg.time).format("MMMM D, YYYY"); 
+      if (!acc[dateLabel]) acc[dateLabel] = []; 
+      acc[dateLabel].push(msg); 
+      return acc; 
+    }, {}); 
+  }, [messagesData?.list, t]);
 
   useEffect(() => { dayjs.locale(i18n.language); }, [i18n.language]);
   
@@ -285,60 +299,52 @@ export default function AgentInbox() {
     }
   }, []);
   
-  // 🔧 NEW: Update priority
+  // 🔧 OPTIMIZED: Update priority (using memoized currentConversation)
   const handleUpdatePriority = useCallback(async (priority: 'low' | 'normal' | 'high' | 'urgent') => {
-    if (!selectedCustomer) return;
-    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
-    if (!conversation?.id) return;
+    if (!currentConversation?.id) return;
     try {
-      await api.patch(`/api/v1/customer/conversations/${conversation.id}/priority`, { priority });
-      dispatch(updateConversationEnhanced({ conversationId: conversation.id, priority }));
+      await api.patch(`/api/v1/customer/conversations/${currentConversation.id}/priority`, { priority });
+      dispatch(updateConversationEnhanced({ conversationId: currentConversation.id, priority }));
       toast.success(`Priority set to ${priority}`);
       setPriorityDialogOpen(false);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to update priority');
     }
-  }, [selectedCustomer, conversations, dispatch]);
+  }, [currentConversation, dispatch]);
   
-  // 🔧 NEW: Update tags
+  // 🔧 OPTIMIZED: Update tags (using memoized currentConversation)
   const handleUpdateTags = useCallback(async (tags: string[]) => {
-    if (!selectedCustomer) return;
-    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
-    if (!conversation?.id) return;
+    if (!currentConversation?.id) return;
     try {
-      await api.patch(`/api/v1/customer/conversations/${conversation.id}/tags`, { tags });
-      dispatch(updateConversationEnhanced({ conversationId: conversation.id, tags }));
+      await api.patch(`/api/v1/customer/conversations/${currentConversation.id}/tags`, { tags });
+      dispatch(updateConversationEnhanced({ conversationId: currentConversation.id, tags }));
       toast.success('Tags updated');
       setTagsDialogOpen(false);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to update tags');
     }
-  }, [selectedCustomer, conversations, dispatch]);
+  }, [currentConversation, dispatch]);
   
-  // 🔧 NEW: Update notes
+  // 🔧 OPTIMIZED: Update notes (using memoized currentConversation)
   const handleUpdateNotes = useCallback(async (notes: string) => {
-    if (!selectedCustomer) return;
-    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
-    if (!conversation?.id) return;
+    if (!currentConversation?.id) return;
     try {
-      await api.patch(`/api/v1/customer/conversations/${conversation.id}/notes`, { notes });
-      dispatch(updateConversationEnhanced({ conversationId: conversation.id, notes }));
+      await api.patch(`/api/v1/customer/conversations/${currentConversation.id}/notes`, { notes });
+      dispatch(updateConversationEnhanced({ conversationId: currentConversation.id, notes }));
       toast.success('Notes updated');
       setNotesDialogOpen(false);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to update notes');
     }
-  }, [selectedCustomer, conversations, dispatch]);
+  }, [currentConversation, dispatch]);
   
-  // 🔧 NEW: Assign conversation
+  // 🔧 OPTIMIZED: Assign conversation (using memoized currentConversation)
   const handleAssignConversation = useCallback(async (agentId: string) => {
-    if (!selectedCustomer) return;
-    const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
-    if (!conversation?.id) return;
+    if (!currentConversation?.id) return;
     try {
-      await api.post(`/api/v1/customer/conversations/${conversation.id}/assign`, { agentId });
+      await api.post(`/api/v1/customer/conversations/${currentConversation.id}/assign`, { agentId });
       dispatch(updateConversationEnhanced({ 
-        conversationId: conversation.id, 
+        conversationId: currentConversation.id, 
         assignedAgentId: agentId,
         status: 'live',
         unreadCount: 0
@@ -347,7 +353,7 @@ export default function AgentInbox() {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to assign conversation');
     }
-  }, [selectedCustomer, conversations, dispatch]);
+  }, [currentConversation, dispatch]);
   
   // 🔧 NEW: Mark conversation as read when opened
   useEffect(() => {
@@ -359,89 +365,97 @@ export default function AgentInbox() {
     }
   }, [selectedCustomer, conversations, handleMarkAsRead]);
   
-  // 🔧 NEW: Real-time event listeners for conversation updates and transfers
-  useEffect(() => {
-    const socket = getSocket();
-    if (!socket || !agentId) return;
-
-    // Handle new chat assignment (when conversation is transferred to this agent)
-    const handleNewChatAssigned = (data: ConversationInList) => {
-      console.log('🔔 AgentInbox: Received newChatAssigned event:', data);
+  // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
+  const handleNewChatAssigned = useCallback((data: ConversationInList) => {
+    console.log('🔔 AgentInbox: Received newChatAssigned event:', data);
+    
+    // Only add if this conversation is assigned to this agent
+    if (data.assignedAgentId === agentId) {
+      console.log('✅ AgentInbox: Conversation assigned to this agent, adding to list');
       
-      // Only add if this conversation is assigned to this agent
-      if (data.assignedAgentId === agentId) {
-        console.log('✅ AgentInbox: Conversation assigned to this agent, adding to list');
+      // Check if conversation already exists to avoid duplicate toasts
+      const existingConversation = conversations.find(c => c.id === data.id);
+      if (!existingConversation) {
         dispatch(addAssignedConversation(data));
         toast.success(`New conversation assigned: ${data.customer.name}`);
       } else {
-        console.log('⚠️ AgentInbox: Conversation not assigned to this agent, ignoring');
+        // Conversation already exists, just update it silently
+        dispatch(addAssignedConversation(data));
       }
-    };
+    } else {
+      console.log('⚠️ AgentInbox: Conversation not assigned to this agent, ignoring');
+    }
+  }, [agentId, conversations, dispatch]);
 
-    // Handle conversation updates (unreadCount, priority, tags, notes, etc.)
-    const handleConversationUpdated = (data: any) => {
-      const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
-      console.log('🔔 AgentInbox: Received conversationUpdated event:', data);
-      console.log('Current agentId:', agentId);
-      console.log('Event assignedAgentId:', assignedAgentId);
-      
-      // Check if this conversation is in the agent's list OR if it's assigned to this agent
+  // 🔧 OPTIMIZED: Handle conversation updates
+  const handleConversationUpdated = useCallback((data: any) => {
+    const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
+    console.log('🔔 AgentInbox: Received conversationUpdated event:', data);
+    console.log('Current agentId:', agentId);
+    console.log('Event assignedAgentId:', assignedAgentId);
+    
+    // Check if this conversation is in the agent's list OR if it's assigned to this agent
+    const conversation = conversations.find(c => c.id === conversationId);
+    
+    // Update if conversation is in list OR if it's assigned to this agent (might not be in list yet)
+    if (conversation || assignedAgentId === agentId) {
+      console.log('✅ AgentInbox: Conversation found or assigned to this agent, updating...');
+      dispatch(updateConversationEnhanced({
+        conversationId,
+        unreadCount,
+        priority,
+        tags,
+        notes,
+        assignedAgentId,
+        status,
+      }));
+    } else {
+      console.log('⚠️ AgentInbox: Conversation not found in list and not assigned to this agent');
+      console.log('Conversation ID:', conversationId);
+      console.log('Current conversations:', conversations.map(c => ({ id: c.id, assignedAgentId: c.assignedAgentId })));
+    }
+  }, [agentId, conversations, dispatch]);
+
+  // 🔧 OPTIMIZED: Handle conversation assignment
+  const handleConversationAssigned = useCallback((data: any) => {
+    const { conversationId, assignedAgentId, previousAgentId } = data;
+    console.log('🔔 AgentInbox: Received conversationAssigned event:', data);
+    console.log('Current agentId:', agentId);
+    
+    // If this conversation was transferred away from this agent, remove it
+    if (previousAgentId === agentId && assignedAgentId !== agentId) {
+      console.log('❌ AgentInbox: Conversation transferred away, removing from list');
+      dispatch(removeConversation({ conversationId }));
+    }
+    // If this conversation was assigned to this agent, update it or add it
+    if (assignedAgentId === agentId) {
+      console.log('✅ AgentInbox: Conversation assigned to this agent');
       const conversation = conversations.find(c => c.id === conversationId);
-      
-      // Update if conversation is in list OR if it's assigned to this agent (might not be in list yet)
-      if (conversation || assignedAgentId === agentId) {
-        console.log('✅ AgentInbox: Conversation found or assigned to this agent, updating...');
+      if (conversation) {
+        // Update existing conversation silently (no toast, newChatAssigned will handle it)
         dispatch(updateConversationEnhanced({
           conversationId,
-          unreadCount,
-          priority,
-          tags,
-          notes,
           assignedAgentId,
-          status,
+          status: 'live',
+          unreadCount: 0
         }));
       } else {
-        console.log('⚠️ AgentInbox: Conversation not found in list and not assigned to this agent');
-        console.log('Conversation ID:', conversationId);
-        console.log('Current conversations:', conversations.map(c => ({ id: c.id, assignedAgentId: c.assignedAgentId })));
+        // Conversation not in list yet, newChatAssigned event should handle adding it
+        // Don't show toast here to avoid duplicate - newChatAssigned will show it
+        console.log('⚠️ AgentInbox: Conversation assigned but not in list, waiting for newChatAssigned event');
       }
-    };
+    }
+  }, [agentId, conversations, dispatch]);
 
-    // Handle conversation assignment
-    const handleConversationAssigned = (data: any) => {
-      const { conversationId, assignedAgentId, previousAgentId } = data;
-      console.log('🔔 AgentInbox: Received conversationAssigned event:', data);
-      console.log('Current agentId:', agentId);
-      
-      // If this conversation was transferred away from this agent, remove it
-      if (previousAgentId === agentId && assignedAgentId !== agentId) {
-        console.log('❌ AgentInbox: Conversation transferred away, removing from list');
-        dispatch(removeConversation({ conversationId }));
-      }
-      // If this conversation was assigned to this agent, update it or add it
-      if (assignedAgentId === agentId) {
-        console.log('✅ AgentInbox: Conversation assigned to this agent');
-        const conversation = conversations.find(c => c.id === conversationId);
-        if (conversation) {
-          // Update existing conversation
-          dispatch(updateConversationEnhanced({
-            conversationId,
-            assignedAgentId,
-            status: 'live',
-            unreadCount: 0
-          }));
-        } else {
-          // Conversation not in list yet, need to fetch it
-          console.log('⚠️ AgentInbox: Conversation assigned but not in list, need to fetch');
-          // The newChatAssigned event should handle adding it, but if it doesn't arrive, we might need to refetch
-        }
-      }
-    };
+  // 🔧 OPTIMIZED: Handle conversation removal
+  const handleConversationRemoved = useCallback((data: { conversationId: string }) => {
+    dispatch(removeConversation(data));
+  }, [dispatch]);
 
-    // Handle conversation removal (when transferred away)
-    const handleConversationRemoved = (data: { conversationId: string }) => {
-      dispatch(removeConversation(data));
-    };
+  // 🔧 OPTIMIZED: Real-time event listeners for conversation updates and transfers
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !agentId) return;
 
     socket.on('newChatAssigned', handleNewChatAssigned);
     socket.on('conversationUpdated', handleConversationUpdated);
@@ -454,7 +468,7 @@ export default function AgentInbox() {
       socket.off('conversationAssigned', handleConversationAssigned);
       socket.off('conversationRemoved', handleConversationRemoved);
     };
-  }, [agentId, dispatch]);
+  }, [agentId, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned, handleConversationRemoved]);
   
   useLayoutEffect(() => { 
     if (!messageListRef.current) return; 
@@ -612,9 +626,25 @@ export default function AgentInbox() {
       toast.error(errorMessage);
     }
   };
-  const handleNextPage = () => { if (currentPage < totalPages && agentId) dispatch(fetchAgentConversations({ page: currentPage + 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); };
-  const handlePrevPage = () => { if (currentPage > 1 && agentId) dispatch(fetchAgentConversations({ page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); };
-  const handleLoadMoreMessages = () => { if (selectedCustomer && messagesData?.hasMore && messagesData.status !== 'loading' && messageListRef.current) { prevScrollHeightRef.current = messageListRef.current.scrollHeight; dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 })); } };
+  // 🔧 OPTIMIZED: Memoize pagination handlers
+  const handleNextPage = useCallback(() => {
+    if (currentPage < totalPages && agentId) {
+      dispatch(fetchAgentConversations({ page: currentPage + 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+    }
+  }, [currentPage, totalPages, agentId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
+
+  const handlePrevPage = useCallback(() => {
+    if (currentPage > 1 && agentId) {
+      dispatch(fetchAgentConversations({ page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+    }
+  }, [currentPage, agentId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
+
+  const handleLoadMoreMessages = useCallback(() => {
+    if (selectedCustomer && messagesData?.hasMore && messagesData.status !== 'loading' && messageListRef.current) {
+      prevScrollHeightRef.current = messageListRef.current.scrollHeight;
+      dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: messagesData.currentPage + 1 }));
+    }
+  }, [selectedCustomer, messagesData, dispatch]);
 
   // 2. Render the skeleton on initial load
   if (agentInboxStatus === 'loading' && conversations.length === 0) {
@@ -751,6 +781,10 @@ export default function AgentInbox() {
                         {convo.platformInfo?.platform && (
                           <PlatformBadge platform={convo.platformInfo.platform} />
                         )}
+                        {/* 🔧 NEW: Country badge in conversation list */}
+                        {convo.country && (
+                          <CountryBadge country={convo.country} />
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {/* 🔧 NEW: Notes icon if notes exist */}
@@ -866,6 +900,10 @@ export default function AgentInbox() {
                   <h2 className="font-semibold text-sm sm:text-base truncate">{currentConversation?.customer?.name}</h2>
                   {currentConversation?.platformInfo?.platform && (
                     <PlatformBadge platform={currentConversation.platformInfo.platform} />
+                  )}
+                  {/* 🔧 NEW: Country badge in header */}
+                  {currentConversation?.country && (
+                    <CountryBadge country={currentConversation.country} />
                   )}
                   {/* 🔧 NEW: Priority indicator in header */}
                   {currentConversation?.priority && currentConversation.priority !== 'normal' && (

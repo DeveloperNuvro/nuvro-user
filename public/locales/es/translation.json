@@ -109,6 +109,8 @@
   "trainedAiModels": "Modelos de IA Entrenados",
   "trainedAiModelsDesc": "Bases de conocimiento personalizadas",
   "performanceAnalyticsTitle": "Análisis de Rendimiento",
+  "filterByAgent": "Filtrar por Agente de IA",
+  "allAgents": "Todos los Agentes",
   "avgScore7Day": "Puntuación Promedio (7 Días)",
   "avgScore7DayDesc": "Rendimiento del agente esta semana",
   "avgScore30Day": "Puntuación Promedio (30 Días)",
@@ -884,6 +886,19 @@
     "subtitle": "Construye un agente de IA personalizado adaptado a las necesidades de tu negocio. Configura su personalidad, respuestas y comportamiento.",
     "form": {
       "agentConfiguration": "Configuración del Agente",
+      "nameLabel": "Nombre del Agente",
+      "namePlaceholder": "p. ej., Bot de Soporte al Cliente",
+      "aiModelLabel": "Modelo de IA",
+      "selectModel": "Selecciona un modelo",
+      "toneLabel": "Tono de Comunicación",
+      "selectTone": "Selecciona un tono",
+      "instructionLabel": "Instrucciones",
+      "instructionPlaceholder": "Ingresa instrucciones específicas para tu agente de IA (p. ej., Siempre sé útil, proporciona información precisa, etc.)",
+      "tones": {
+        "friendly": "Amigable",
+        "formal": "Formal",
+        "neutral": "Neutral"
+      },
       "defaultQaResponses": "Respuestas Q&A Predeterminadas",
       "templatesCount": "{{count}} / {{max}}",
       "templatesDescription": "Añade preguntas y respuestas comunes para ayudar a tu agente a responder rápidamente a consultas frecuentes.",
