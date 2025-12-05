@@ -325,10 +325,58 @@ export default function ChatInbox() {
     if (activePlatform === 'all') {
       return conversations;
     }
-    return conversations.filter(convo => {
-      const platform = convo.platformInfo?.platform || 'website';
-      return platform === activePlatform;
+    
+    // 🔧 DEBUG: Log all conversations before filtering
+    if (activePlatform === 'website') {
+      console.log('[ChatInbox] All conversations before filter:', {
+        total: conversations.length,
+        conversations: conversations.map(c => ({
+          id: c.id,
+          platformInfo: c.platformInfo,
+          source: c.source,
+          platform: c.platformInfo?.platform || c.source || 'website'
+        }))
+      });
+    }
+    
+    const filtered = conversations.filter(convo => {
+      // 🔧 FIX: More robust platform detection
+      const platform = (
+        convo.platformInfo?.platform || 
+        convo.source || 
+        'website'
+      ).toLowerCase().trim();
+      const targetPlatform = activePlatform.toLowerCase().trim();
+      
+      const matches = platform === targetPlatform;
+      
+      // 🔧 DEBUG: Log filtering for website tab
+      if (activePlatform === 'website') {
+        console.log('[ChatInbox] Filtering conversation:', {
+          id: convo.id,
+          platform: platform,
+          targetPlatform: targetPlatform,
+          platformInfo: convo.platformInfo,
+          source: convo.source,
+          matches: matches
+        });
+      }
+      
+      return matches;
     });
+    
+    // 🔧 DEBUG: Log filtered results
+    if (activePlatform === 'website') {
+      console.log('[ChatInbox] Filtered conversations:', {
+        total: conversations.length,
+        filtered: filtered.length,
+        activePlatform: activePlatform,
+        filteredIds: filtered.map(c => c.id),
+        allIds: conversations.map(c => c.id)
+      });
+    }
+    
+    return filtered;
   }, [conversations, activePlatform]);
 
   const currentConversation = useMemo(() => filteredConversations.find((c) => c.customer.id === selectedCustomer), [filteredConversations, selectedCustomer]);
@@ -350,7 +398,14 @@ export default function ChatInbox() {
     }
   }, [agents, businessId, dispatch]);
 
-  useEffect(() => { if (businessId) { dispatch(resetConversations()); dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); } }, [businessId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
+  // 🔧 FIX: Reset and fetch conversations when filters change
+  // Reset is needed to clear old platform's conversations before fetching new ones
+  useEffect(() => { 
+    if (businessId) { 
+      dispatch(resetConversations());
+      dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); 
+    } 
+  }, [businessId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
   
   // 🔧 OPTIMIZED: Memoize conversation lookup to avoid repeated finds
@@ -367,14 +422,25 @@ export default function ChatInbox() {
   
   // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
   const handleNewConversation = useCallback((data: ConversationInList) => {
-    // Ensure platformInfo is properly structured
-    if (!data.platformInfo && data.source) {
+    // 🔧 FIX: Ensure platformInfo is properly structured for website conversations
+    if (!data.platformInfo) {
+      // If source exists, use it; otherwise default to 'website'
+      const platform = data.source || 'website';
       data.platformInfo = {
-        platform: data.source as any,
+        platform: platform as any,
         connectionId: '',
         platformUserId: '',
+        platformUserAvatar: undefined,
       };
     }
+    
+    // 🔧 DEBUG: Log new conversation data
+    console.log('[ChatInbox] New conversation received:', {
+      id: data.id,
+      platformInfo: data.platformInfo,
+      source: data.source,
+      platform: data.platformInfo?.platform
+    });
     
     // Check if conversation already exists
     const exists = conversations.some(c => c.id === data.id);

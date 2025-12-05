@@ -9,7 +9,6 @@ import ForgotPassword from "./components/custom/forgotPassword/ForgotPassword";
 import ResetPassword from "./components/custom/resetPassword/ResetPassword";
 import OnboardingStep from "./components/custom/onboard/Onboarding";
 import DashboardLayout from "./components/custom/dashboard/layout/DashboardLayout";
-import WidgetPage from "./pages/WidgetPage";
 
 // Routing and State
 import AuthLayout from "./routes/AuthLayout";
@@ -104,21 +103,20 @@ function App() {
           </Route>
         </Route>
 
-        {/* Widget Route - Public, no auth required */}
-        {/* Widget is loaded in iframe with query parameters */}
+        {/* Root Route - Redirect based on auth status */}
         <Route 
           path="/" 
           element={
-            <WidgetPage />
+            <Navigate 
+              to={user ? (user.role === ROLES.AGENT ? "/main-menu/agent/inbox" : "/main-menu/overview") : "/signin"} 
+              replace 
+            />
           } 
         />
 
         {/* Fallback Route */}
-        {/* If no other route matches, redirect to the root. */}
-        {/* The root will then be handled by the layout guards. */}
-        {/* e.g., an unauthenticated user at "/" will be sent to "/signin" */}
-        {/* an authenticated user at "/" will be sent to their dashboard */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* If no other route matches, redirect to signin */}
+        <Route path="*" element={<Navigate to="/signin" replace />} />
       </Routes>
     </>
   );
