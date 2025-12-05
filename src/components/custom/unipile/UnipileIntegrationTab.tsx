@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, CheckCircle, XCircle, MessageSquare, Instagram, Mail, Phone, Linkedin, Globe, Building2, AtSign, RefreshCw } from "lucide-react";
+import { Loader2, Plus, Trash2, CheckCircle, XCircle, MessageSquare, Instagram, Mail, Phone, Linkedin, Globe, Building2, AtSign, RefreshCw, RotateCcw, Info, KeyRound } from "lucide-react";
 import QRCode from 'qrcode';
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
@@ -15,7 +15,13 @@ import {
   createUnipileConnection, 
   deleteUnipileConnection,
   reconnectUnipileConnection,
-  clearError 
+  clearError,
+  restartAccount,
+  resendCheckpoint,
+  solveCheckpoint,
+  syncAccount,
+  getAccountById,
+  UnipileConnection
 } from "@/features/unipile/unipileSlice";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -38,7 +44,60 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
   const dispatch = useDispatch<AppDispatch>();
   const { connections: rawConnections, status, error } = useSelector((state: RootState) => state.unipile);
   
-  const connections = Array.isArray(rawConnections) ? rawConnections : [];
+  // 🔧 SECURITY FIX: Filter connections by agentId on frontend as well (safety measure)
+  // This ensures that even if backend returns wrong data, frontend won't show it
+  const allConnections = Array.isArray(rawConnections) ? rawConnections : [];
+  const agentIdString = agentId ? String(agentId) : undefined;
+  
+  const connections = useMemo(() => {
+    console.log(`🔍 UnipileIntegrationTab: Processing connections`, {
+      totalConnections: allConnections.length,
+      agentIdString,
+      connections: allConnections.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        platform: c.platform,
+        agentId: c.agentId,
+        connectionId: c.connectionId
+      }))
+    });
+    
+    if (!agentIdString) {
+      // If no agentId provided, show all connections (for backward compatibility)
+      console.log(`🔍 UnipileIntegrationTab: No agentId provided, showing all ${allConnections.length} connections`);
+      return allConnections;
+    }
+    
+    // 🔧 SECURITY FIX: Filter connections that belong to this agent
+    // Only show connections that have matching agentId
+    const filtered = allConnections.filter((conn: any) => {
+      const connAgentId = conn.agentId ? String(conn.agentId) : null;
+      const matches = connAgentId === agentIdString;
+      
+      if (!matches) {
+        console.warn(`🚫 SECURITY: Filtered out connection`, {
+          connectionId: conn.connectionId,
+          connectionName: conn.name,
+          connectionAgentId: connAgentId,
+          expectedAgentId: agentIdString,
+          reason: connAgentId ? 'agentId mismatch' : 'no agentId'
+        });
+      }
+      
+      return matches;
+    });
+    
+    console.log(`✅ UnipileIntegrationTab: Filtered ${allConnections.length} connections to ${filtered.length} for agentId: ${agentIdString}`, {
+      filteredConnections: filtered.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        platform: c.platform,
+        agentId: c.agentId
+      }))
+    });
+    
+    return filtered;
+  }, [allConnections, agentIdString]);
   
   // Platform config with translations
   const platformConfig = {
@@ -100,10 +159,19 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
   const [qrCodeData, setQrCodeData] = useState<{qrCode: string, platform: string} | null>(null);
   const [qrCodeImage, setQrCodeImage] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  
+  // 🔧 NEW: Account management state
+  const [checkpointDialogOpen, setCheckpointDialogOpen] = useState(false);
+  const [selectedConnection, setSelectedConnection] = useState<UnipileConnection | null>(null);
+  const [checkpointCode, setCheckpointCode] = useState('');
+  const [accountDetailsDialogOpen, setAccountDetailsDialogOpen] = useState(false);
+  const [accountDetails, setAccountDetails] = useState<any>(null);
 
   useEffect(() => {
-    // 🔧 NEW: Pass agentId when fetching connections
-    dispatch(fetchUnipileConnections(agentId)).catch(() => {});
+    // 🔧 NEW: Pass agentId when fetching connections (convert to string if it's an ObjectId)
+    const agentIdString = agentId ? String(agentId) : undefined;
+    console.log(`🔍 UnipileIntegrationTab: Fetching connections for agentId: ${agentIdString}`);
+    dispatch(fetchUnipileConnections(agentIdString)).catch(() => {});
   }, [dispatch, agentId]);
 
   useEffect(() => {
@@ -344,6 +412,97 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
       }, 500);
       } catch (error: any) {
       const errorMessage = typeof error === 'string' ? error : error?.message || t('singleAiAgentPage.multiPlatform.toast.deleteFailed');
+      toast.error(errorMessage);
+    }
+  };
+
+  // 🔧 NEW: Handle account restart
+  const handleRestartAccount = async (connectionId: string, platform: string) => {
+    if (!window.confirm(`Are you sure you want to restart the ${platform} account? This will restart all sources of the account.`)) {
+      return;
+    }
+    
+    try {
+      await dispatch(restartAccount(connectionId)).unwrap();
+      toast.success(`${platform} account restart initiated. Status will update shortly.`);
+      setTimeout(() => {
+        dispatch(fetchUnipileConnections(agentId));
+      }, 2000);
+    } catch (error: any) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to restart account';
+      toast.error(errorMessage);
+    }
+  };
+
+  // 🔧 NEW: Handle checkpoint resend
+  const handleResendCheckpoint = async (connectionId: string, provider: 'LINKEDIN' | 'INSTAGRAM') => {
+    try {
+      await dispatch(resendCheckpoint({ accountId: connectionId, provider })).unwrap();
+      toast.success(`Checkpoint notification resent for ${provider}. Please check your device.`);
+    } catch (error: any) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to resend checkpoint';
+      toast.error(errorMessage);
+    }
+  };
+
+  // 🔧 NEW: Handle checkpoint solve
+  const handleSolveCheckpoint = async () => {
+    if (!selectedConnection || !checkpointCode) {
+      toast.error('Please enter the verification code');
+      return;
+    }
+
+    const providerMap: Record<string, 'LINKEDIN' | 'INSTAGRAM' | 'TWITTER' | 'MESSENGER'> = {
+      'linkedin': 'LINKEDIN',
+      'instagram': 'INSTAGRAM',
+      'twitter': 'TWITTER',
+      'facebook': 'MESSENGER'
+    };
+
+    const provider = providerMap[selectedConnection.platform.toLowerCase()];
+    if (!provider) {
+      toast.error('Checkpoint solving not supported for this platform');
+      return;
+    }
+
+    try {
+      await dispatch(solveCheckpoint({
+        accountId: selectedConnection.connectionId,
+        code: checkpointCode,
+        provider
+      })).unwrap();
+      toast.success('Checkpoint solved successfully. Connection will be updated shortly.');
+      setCheckpointDialogOpen(false);
+      setCheckpointCode('');
+      setSelectedConnection(null);
+      setTimeout(() => {
+        dispatch(fetchUnipileConnections(agentId));
+      }, 2000);
+    } catch (error: any) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to solve checkpoint';
+      toast.error(errorMessage);
+    }
+  };
+
+  // 🔧 NEW: Handle account sync
+  const handleSyncAccount = async (connectionId: string, platform: string) => {
+    try {
+      await dispatch(syncAccount({ accountId: connectionId })).unwrap();
+      toast.success(`${platform} account synchronization initiated. This may take a few moments.`);
+    } catch (error: any) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to sync account';
+      toast.error(errorMessage);
+    }
+  };
+
+  // 🔧 NEW: Handle get account details
+  const handleGetAccountDetails = async (connectionId: string) => {
+    try {
+      const details = await dispatch(getAccountById(connectionId)).unwrap();
+      setAccountDetails(details);
+      setAccountDetailsDialogOpen(true);
+    } catch (error: any) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to get account details';
       toast.error(errorMessage);
     }
   };
@@ -649,6 +808,65 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                         {t('singleAiAgentPage.multiPlatform.connected')} {formatConnectionDate(connection)}
                       </div>
                       <div className="flex items-center gap-2">
+                        {/* 🔧 NEW: Account details button */}
+                        {connection.connectionId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleGetAccountDetails(connection.connectionId)}
+                            disabled={status === 'loading'}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            title="View account details"
+                          >
+                            <Info className="w-4 h-4" />
+                          </Button>
+                        )}
+                        
+                        {/* 🔧 NEW: Account sync button (for LinkedIn and other platforms that support sync) */}
+                        {connection.connectionId && ['linkedin'].includes(connection.platform.toLowerCase()) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSyncAccount(connection.connectionId, connection.platform)}
+                            disabled={status === 'loading'}
+                            className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                            title="Sync account data"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </Button>
+                        )}
+                        
+                        {/* 🔧 NEW: Checkpoint management button (for platforms that support 2FA/OTP) */}
+                        {connection.connectionId && ['linkedin', 'instagram', 'twitter', 'facebook'].includes(connection.platform.toLowerCase()) && normalizedStatus === 'pending' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedConnection(connection);
+                              setCheckpointDialogOpen(true);
+                            }}
+                            disabled={status === 'loading'}
+                            className="text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
+                            title="Manage 2FA/OTP checkpoint"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </Button>
+                        )}
+                        
+                        {/* 🔧 NEW: Account restart button (for frozen/error accounts) */}
+                        {connection.connectionId && ['error', 'inactive'].includes(normalizedStatus) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRestartAccount(connection.connectionId, connection.platform)}
+                            disabled={status === 'loading'}
+                            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                            title="Restart frozen account"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </Button>
+                        )}
+                        
                         {/* Show Reconnect button for inactive, error, disconnected, or failed status */}
                         {shouldShowReconnect && connection.connectionId && (
                           <Button
@@ -742,6 +960,153 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
             </DialogContent>
           </Dialog>
         )}
+
+      {/* 🔧 NEW: Checkpoint Management Dialog */}
+      <Dialog open={checkpointDialogOpen} onOpenChange={setCheckpointDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">2FA/OTP Checkpoint Management</DialogTitle>
+            <DialogDescription>
+              Manage two-factor authentication or OTP verification for {selectedConnection?.platform}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {selectedConnection && (
+              <>
+                <div className="grid gap-2">
+                  <Label htmlFor="checkpoint-code">Verification Code</Label>
+                  <Input
+                    id="checkpoint-code"
+                    placeholder="Enter 2FA/OTP code"
+                    value={checkpointCode}
+                    onChange={(e) => setCheckpointCode(e.target.value)}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Enter the code sent to your device or email
+                  </p>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const providerMap: Record<string, 'LINKEDIN' | 'INSTAGRAM'> = {
+                        'linkedin': 'LINKEDIN',
+                        'instagram': 'INSTAGRAM'
+                      };
+                      const provider = providerMap[selectedConnection.platform.toLowerCase()];
+                      if (provider) {
+                        handleResendCheckpoint(selectedConnection.connectionId, provider);
+                      }
+                    }}
+                    disabled={status === 'loading' || !['linkedin', 'instagram'].includes(selectedConnection.platform.toLowerCase())}
+                    className="flex-1"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Resend Code
+                  </Button>
+                  <Button
+                    onClick={handleSolveCheckpoint}
+                    disabled={status === 'loading' || !checkpointCode}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {status === 'loading' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Verify Code
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 🔧 NEW: Account Details Dialog */}
+      <Dialog open={accountDetailsDialogOpen} onOpenChange={setAccountDetailsDialogOpen}>
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Account Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about the account connection
+            </DialogDescription>
+          </DialogHeader>
+          {accountDetails && (
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label className="font-semibold">Account ID</Label>
+                <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">{accountDetails.id}</p>
+              </div>
+              
+              {accountDetails.name && (
+                <div className="grid gap-2">
+                  <Label className="font-semibold">Name</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{accountDetails.name}</p>
+                </div>
+              )}
+              
+              {accountDetails.type && (
+                <div className="grid gap-2">
+                  <Label className="font-semibold">Type</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{accountDetails.type}</p>
+                </div>
+              )}
+              
+              {accountDetails.status && (
+                <div className="grid gap-2">
+                  <Label className="font-semibold">Status</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{accountDetails.status}</p>
+                </div>
+              )}
+              
+              {accountDetails.sources && Array.isArray(accountDetails.sources) && accountDetails.sources.length > 0 && (
+                <div className="grid gap-2">
+                  <Label className="font-semibold">Sources ({accountDetails.sources.length})</Label>
+                  <div className="space-y-2">
+                    {accountDetails.sources.map((source: any, index: number) => (
+                      <Card key={index} className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">{source.id || `Source ${index + 1}`}</p>
+                            {source.status && (
+                              <Badge className={`mt-1 ${
+                                source.status === 'OK' ? 'bg-green-100 text-green-800' :
+                                source.status === 'ERROR' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {source.status}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {accountDetails.created_at && (
+                <div className="grid gap-2">
+                  <Label className="font-semibold">Created At</Label>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {new Date(accountDetails.created_at).toLocaleString()}
+                  </p>
+                </div>
+              )}
+              
+              <div className="grid gap-2">
+                <Label className="font-semibold">Raw Data</Label>
+                <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded overflow-auto max-h-60">
+                  {JSON.stringify(accountDetails, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAccountDetailsDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       </div>
     );
 };

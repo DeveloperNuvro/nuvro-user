@@ -282,17 +282,13 @@ const chatInboxSlice = createSlice({
             const conversation = action.payload;
             const exists = state.conversations.some((c) => c.id === conversation.id);
             if (!exists) {
-                // 🔧 FIX: Ensure platformInfo is properly preserved
-                console.log('🔍 Redux: Adding conversation with platformInfo:', conversation.platformInfo);
                 state.conversations.unshift(conversation);
-                console.log('✅ Redux: Conversation added. First conversation platformInfo:', state.conversations[0]?.platformInfo);
             } else {
                 // If exists, update it (might have new platformInfo)
                 const index = state.conversations.findIndex((c) => c.id === conversation.id);
                 if (index !== -1) {
                     // Merge the new data with existing, preserving platformInfo
                     state.conversations[index] = { ...state.conversations[index], ...conversation };
-                    console.log('✅ Redux: Updated existing conversation with platformInfo:', state.conversations[index]?.platformInfo);
                 }
             }
         },

@@ -6,7 +6,7 @@ import { updateBusinessProfile, uploadBusinessLogo } from '@/features/profile/pr
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Upload, Building } from 'lucide-react';
+import { Loader2, Upload, Building, Palette } from 'lucide-react';
 
 export const BusinessForm = () => {
     const dispatch = useDispatch<AppDispatch>();
@@ -14,18 +14,24 @@ export const BusinessForm = () => {
     const { profile, updateStatus } = useSelector((state: RootState) => state.profile);
 
     const [businessName, setBusinessName] = useState('');
+    const [widgetColor, setWidgetColor] = useState('#ff21b0');
     const [logoPreview, setLogoPreview] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (profile) {
             setBusinessName(profile.businessName || '');
+            setWidgetColor(profile.widgetColor || '#ff21b0');
             setLogoPreview(profile.businessLogo || null);
         }
     }, [profile]);
 
     const handleNameSave = () => {
         dispatch(updateBusinessProfile({ businessName }));
+    };
+
+    const handleColorSave = () => {
+        dispatch(updateBusinessProfile({ widgetColor }));
     };
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,6 +44,7 @@ export const BusinessForm = () => {
 
     const isUpdating = updateStatus === 'loading';
     const hasNameChanged = businessName !== profile?.businessName;
+    const hasColorChanged = widgetColor !== (profile?.widgetColor || '#ff21b0');
 
     return (
         <div className="space-y-8">
@@ -72,6 +79,47 @@ export const BusinessForm = () => {
                     </div>
                     <div className="md:col-span-2">
                         <Input id="businessName" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
+                    </div>
+
+                    <div className="md:col-span-3"><hr className="dark:border-gray-800" /></div>
+
+                    <div className="md:col-span-1">
+                        <Label htmlFor="widgetColor" className="flex items-center gap-2">
+                            <Palette className="w-4 h-4" />
+                            Widget Color
+                        </Label>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Customize your chat widget color
+                        </p>
+                    </div>
+                    <div className="md:col-span-2 flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                            <input
+                                type="color"
+                                id="widgetColor"
+                                value={widgetColor}
+                                onChange={(e) => setWidgetColor(e.target.value)}
+                                className="w-16 h-16 rounded-lg border-2 border-gray-300 dark:border-gray-600 cursor-pointer"
+                                style={{ backgroundColor: widgetColor }}
+                            />
+                            <Input
+                                type="text"
+                                value={widgetColor}
+                                onChange={(e) => setWidgetColor(e.target.value)}
+                                placeholder="#ff21b0"
+                                className="w-32"
+                                pattern="^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$"
+                            />
+                        </div>
+                        <Button 
+                            variant="outline" 
+                            onClick={handleColorSave} 
+                            disabled={isUpdating || !hasColorChanged}
+                            size="sm"
+                        >
+                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Color
+                        </Button>
                     </div>
                 </div>
             </div>

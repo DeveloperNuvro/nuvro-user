@@ -18,6 +18,7 @@ interface BusinessProfile {
   _id: string;
   name: string;
   logo?: string;
+  widgetColor?: string;
 }
 
 // The combined profile data we will fetch
@@ -27,6 +28,7 @@ export interface ProfileData {
   phone?: string;
   businessName: string;
   businessLogo?: string;
+  widgetColor?: string;
 }
 
 // The main state for this slice
@@ -88,20 +90,23 @@ export const updateUserProfile = createAsyncThunk<
   }
 );
 
-// Thunk to update the business name
+// Thunk to update the business profile (name and/or widgetColor)
 export const updateBusinessProfile = createAsyncThunk<
   BusinessProfile,
-  { businessName: string },
+  { businessName?: string; widgetColor?: string },
   { rejectValue: string }
 >(
   "profile/updateBusiness",
   async (payload, thunkAPI) => {
     try {
       const response = await api.patch('/api/v1/profile/business', payload);
-      toast.success("Business name updated successfully!");
+      const successMessage = payload.widgetColor 
+        ? "Widget color updated successfully!" 
+        : "Business name updated successfully!";
+      toast.success(successMessage);
       return response.data.data;
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Failed to update business name";
+      const errorMessage = err.response?.data?.message || "Failed to update business profile";
       toast.error(errorMessage);
       return thunkAPI.rejectWithValue(errorMessage);
     }
@@ -207,6 +212,9 @@ const profileSlice = createSlice({
         state.updateStatus = 'succeeded';
         if (state.profile) {
           state.profile.businessName = action.payload.name;
+          if (action.payload.widgetColor !== undefined) {
+            state.profile.widgetColor = action.payload.widgetColor;
+          }
         }
       })
       .addCase(changeUserPassword.fulfilled, (state) => {

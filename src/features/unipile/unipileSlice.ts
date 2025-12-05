@@ -97,7 +97,8 @@ export const fetchUnipileConnections = createAsyncThunk(
           status: normalizedStatus,
           createdAt: conn.createdAt || conn.created_at,
           updatedAt: conn.updatedAt || conn.updated_at,
-          checkpoint: conn.checkpoint
+          checkpoint: conn.checkpoint,
+          agentId: conn.agentId ? String(conn.agentId) : undefined, // 🔧 NEW: Include agentId for filtering
         };
       });
       
@@ -262,7 +263,8 @@ export const fetchPlatformStats = createAsyncThunk(
   'unipile/fetchStats',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/api/v1/integrations/unipile/stats');
+      // 🔧 FIX: Use correct backend endpoint
+      const response = await api.get('/api/v1/unipile/stats');
       return response.data.data;
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch platform stats');
@@ -306,7 +308,8 @@ export const syncUnipileConnectionsToBackend = createAsyncThunk(
   'unipile/syncToBackend',
   async (_, { rejectWithValue }) => {
     try {
-      const backendResponse = await api.get('/api/v1/unipile/connections');
+      // 🔧 FIX: Use dedicated sync endpoint that does comprehensive syncing
+      const backendResponse = await api.post('/api/v1/unipile/connections/sync');
       
       let connections = [];
       if (Array.isArray(backendResponse.data)) {
@@ -332,6 +335,122 @@ export const syncUnipileConnectionsToBackend = createAsyncThunk(
       };
     } catch (error: any) {
       return rejectWithValue(error.response?.data?.message || 'Failed to sync connections');
+    }
+  }
+);
+
+// 🔧 NEW: Get account by ID with full details
+export const getAccountById = createAsyncThunk(
+  'unipile/getAccountById',
+  async (accountId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/api/v1/unipile/accounts/${accountId}`);
+      return response.data.data || response.data;
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get account details');
+    }
+  }
+);
+
+// 🔧 NEW: Restart a frozen account
+export const restartAccount = createAsyncThunk(
+  'unipile/restartAccount',
+  async (accountId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/api/v1/unipile/accounts/${accountId}/restart`);
+      return {
+        accountId,
+        ...(response.data.data || response.data)
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to restart account');
+    }
+  }
+);
+
+// 🔧 NEW: Resend checkpoint notification (2FA/OTP)
+export const resendCheckpoint = createAsyncThunk(
+  'unipile/resendCheckpoint',
+  async ({ accountId, provider }: { accountId: string; provider: 'LINKEDIN' | 'INSTAGRAM' }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/v1/unipile/accounts/checkpoint/resend', {
+        account_id: accountId,
+        provider
+      });
+      return {
+        accountId,
+        provider,
+        ...(response.data.data || response.data)
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to resend checkpoint');
+    }
+  }
+);
+
+// 🔧 NEW: Solve checkpoint (2FA/OTP code)
+export const solveCheckpoint = createAsyncThunk(
+  'unipile/solveCheckpoint',
+  async ({ 
+    accountId, 
+    code, 
+    provider 
+  }: { 
+    accountId: string; 
+    code: string; 
+    provider: 'LINKEDIN' | 'INSTAGRAM' | 'TWITTER' | 'MESSENGER' 
+  }, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/api/v1/unipile/accounts/checkpoint', {
+        account_id: accountId,
+        code,
+        provider
+      });
+      return {
+        accountId,
+        provider,
+        ...(response.data.data || response.data)
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to solve checkpoint');
+    }
+  }
+);
+
+// 🔧 NEW: Synchronize account messaging data
+export const syncAccount = createAsyncThunk(
+  'unipile/syncAccount',
+  async ({ 
+    accountId, 
+    options 
+  }: { 
+    accountId: string; 
+    options?: {
+      chunk_size?: number;
+      partial?: boolean;
+      linkedin_product?: 'MESSAGING' | 'SALES_NAVIGATOR';
+      before?: string;
+      after?: string;
+    }
+  }, { rejectWithValue }) => {
+    try {
+      const params = new URLSearchParams();
+      if (options?.chunk_size) params.append('chunk_size', String(options.chunk_size));
+      if (options?.partial !== undefined) params.append('partial', String(options.partial));
+      if (options?.linkedin_product) params.append('linkedin_product', options.linkedin_product);
+      if (options?.before) params.append('before', options.before);
+      if (options?.after) params.append('after', options.after);
+
+      const queryString = params.toString();
+      const url = `/api/v1/unipile/accounts/${accountId}/sync${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await api.get(url);
+      return {
+        accountId,
+        ...(response.data.data || response.data)
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to sync account');
     }
   }
 );
@@ -473,6 +592,88 @@ const unipileSlice = createSlice({
         state.error = null;
       })
       .addCase(syncUnipileConnectionsToBackend.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      })
+      
+      // Get account by ID
+      .addCase(getAccountById.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(getAccountById.fulfilled, (state) => {
+        state.status = 'succeeded';
+        state.error = null;
+      })
+      .addCase(getAccountById.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      })
+      
+      // Restart account
+      .addCase(restartAccount.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(restartAccount.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        const connection = state.connections.find(conn => 
+          conn.connectionId === action.payload.accountId || conn.id === action.payload.accountId
+        );
+        if (connection) {
+          connection.status = 'pending'; // Restarting puts account in pending state
+        }
+        state.error = null;
+      })
+      .addCase(restartAccount.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      })
+      
+      // Resend checkpoint
+      .addCase(resendCheckpoint.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(resendCheckpoint.fulfilled, (state) => {
+        state.status = 'succeeded';
+        state.error = null;
+      })
+      .addCase(resendCheckpoint.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      })
+      
+      // Solve checkpoint
+      .addCase(solveCheckpoint.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(solveCheckpoint.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        const connection = state.connections.find(conn => 
+          conn.connectionId === action.payload.accountId || conn.id === action.payload.accountId
+        );
+        if (connection) {
+          connection.status = 'pending'; // Will be updated via webhook when connection completes
+        }
+        state.error = null;
+      })
+      .addCase(solveCheckpoint.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload as string;
+      })
+      
+      // Sync account
+      .addCase(syncAccount.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(syncAccount.fulfilled, (state) => {
+        state.status = 'succeeded';
+        state.error = null;
+      })
+      .addCase(syncAccount.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload as string;
       });

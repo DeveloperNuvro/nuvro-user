@@ -73,10 +73,20 @@ export default function AiAgentPage() {
     }
   }, [theme]);
 
+  // 🔧 FIX: Always fetch agents on mount, and refetch if status is idle or if we have no agents
   useEffect(() => {
-    if (agentStatus === 'idle') { dispatch(fetchAiAgentsByBusinessId()); }
-    if (modelStatus === 'idle') { dispatch(fetchAiModelsByBusinessId()); }
-  }, [dispatch, agentStatus, modelStatus]);
+    // Fetch agents if:
+    // 1. Status is idle (initial state)
+    // 2. We have no agents (might have been cleared or failed to load)
+    // 3. Status is failed (retry on mount)
+    if (agentStatus === 'idle' || (agentStatus !== 'loading' && aiAgents.length === 0)) {
+      dispatch(fetchAiAgentsByBusinessId());
+    }
+    // Fetch models if status is idle
+    if (modelStatus === 'idle') {
+      dispatch(fetchAiModelsByBusinessId());
+    }
+  }, [dispatch]); // Only depend on dispatch to run once on mount
 
   const handleAgentClick = (agent: AIAgent) => {
     navigate(`/main-menu/ai-agent/${agent._id}`);

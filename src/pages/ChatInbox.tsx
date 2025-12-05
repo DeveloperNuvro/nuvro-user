@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Sparkles, ZapOff, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Sparkles, ZapOff, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from "@/api/axios";
+import { uploadImage as uploadImageApi } from "@/api/chatApi";
 import {
   fetchCustomersByBusiness,
   fetchMessagesByCustomer,
@@ -38,7 +39,6 @@ import { getSocket } from "../lib/useSocket";
 import ChatInboxSkeleton from "@/components/skeleton/ChatInboxSkeleton"; // 1. Import the skeleton
 import PlatformBadge from "@/components/custom/unipile/PlatformBadge";
 import CountryBadge from "@/components/custom/unipile/CountryBadge";
-import { useTheme } from "@/components/theme-provider";
 import FormattedText from "@/components/custom/FormattedText";
 
 dayjs.extend(isToday);
@@ -205,7 +205,6 @@ const MediaImage = ({ src, alt, proxyUrl, className, onClick }: { src: string | 
 export default function ChatInbox() {
   const dispatch = useDispatch<AppDispatch>();
   const { t, i18n } = useTranslation();
-  const { theme } = useTheme();
   
   const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState("");
@@ -254,7 +253,8 @@ export default function ChatInbox() {
     const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
     if (!conversation?.id) return;
     try {
-      await api.patch(`/api/v1/customer/conversations/${conversation.id}/priority`, { priority });
+      const { updateConversationPriority } = await import('@/api/chatApi');
+      await updateConversationPriority(conversation.id, priority);
       dispatch(updateConversationEnhanced({ conversationId: conversation.id, priority }));
       toast.success(`Priority set to ${priority}`);
       setPriorityDialogOpen(false);
@@ -269,7 +269,8 @@ export default function ChatInbox() {
     const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
     if (!conversation?.id) return;
     try {
-      await api.patch(`/api/v1/customer/conversations/${conversation.id}/tags`, { tags });
+      const { updateConversationTags } = await import('@/api/chatApi');
+      await updateConversationTags(conversation.id, tags);
       dispatch(updateConversationEnhanced({ conversationId: conversation.id, tags }));
       toast.success('Tags updated');
       setTagsDialogOpen(false);
@@ -284,7 +285,8 @@ export default function ChatInbox() {
     const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
     if (!conversation?.id) return;
     try {
-      await api.patch(`/api/v1/customer/conversations/${conversation.id}/notes`, { notes });
+      const { updateConversationNotes } = await import('@/api/chatApi');
+      await updateConversationNotes(conversation.id, notes);
       dispatch(updateConversationEnhanced({ conversationId: conversation.id, notes }));
       toast.success('Notes updated');
       setNotesDialogOpen(false);
@@ -299,7 +301,8 @@ export default function ChatInbox() {
     const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
     if (!conversation?.id) return;
     try {
-      await api.post(`/api/v1/customer/conversations/${conversation.id}/assign`, { agentId });
+      const { assignConversation } = await import('@/api/chatApi');
+      await assignConversation(conversation.id, agentId);
       dispatch(updateConversationEnhanced({ 
         conversationId: conversation.id, 
         assignedAgentId: agentId,
@@ -316,25 +319,6 @@ export default function ChatInbox() {
   const businessId = user?.businessId;
   const debouncedSearchQuery = useDebounce(searchInput, 500);
   
-  // Detect if dark mode is active
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (theme === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    }
-    return theme === 'dark';
-  });
-  
-  useEffect(() => {
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
-      setIsDarkMode(mediaQuery.matches);
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
-    } else {
-      setIsDarkMode(theme === 'dark');
-    }
-  }, [theme]);
   
   // 🔧 FIX: Filter conversations by platform on frontend for real-time updates
   const filteredConversations = useMemo(() => {
@@ -383,52 +367,28 @@ export default function ChatInbox() {
   
   // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
   const handleNewConversation = useCallback((data: ConversationInList) => {
-    console.log('🔔 ChatInbox: Received newConversation event:', data);
-    console.log('🔍 ChatInbox: PlatformInfo in event:', data.platformInfo);
-    
-    // 🔧 FIX: Ensure platformInfo is properly structured
+    // Ensure platformInfo is properly structured
     if (!data.platformInfo && data.source) {
-      // Fallback: if platformInfo is missing but source exists, create it
       data.platformInfo = {
         platform: data.source as any,
         connectionId: '',
         platformUserId: '',
       };
-      console.log('🔧 ChatInbox: Created platformInfo from source:', data.platformInfo);
     }
     
     // Check if conversation already exists
     const exists = conversations.some(c => c.id === data.id);
     if (!exists) {
-      // Add new conversation to the list
-      console.log('✅ ChatInbox: Adding new conversation with platformInfo:', data.platformInfo);
       dispatch(addNewCustomer(data));
-      console.log('✅ ChatInbox: Added new conversation:', data.id, 'Platform:', data.platformInfo?.platform);
-      
-      // 🔧 FIX: If platform filter is set, check if it matches
-      // If "All" is selected, show it. If specific platform is selected, only show if it matches
-      if (activePlatform === 'all' || data.platformInfo?.platform === activePlatform) {
-        // Conversation will be visible in the current filter
-        console.log('✅ ChatInbox: Conversation matches current platform filter');
-      } else {
-        // Conversation is for a different platform, but we still added it to state
-        // User can switch to that platform tab to see it
-        console.log('ℹ️ ChatInbox: Conversation is for different platform, user can switch tab to see it');
-      }
-    } else {
-      console.log('⚠️ ChatInbox: Conversation already exists, skipping');
     }
-  }, [conversations, activePlatform, dispatch]);
+  }, [conversations, dispatch]);
 
   // 🔧 OPTIMIZED: Handle new chat assigned event (for transfers)
   const handleNewChatAssigned = useCallback((data: ConversationInList) => {
-    console.log('🔔 ChatInbox: Received newChatAssigned event:', data);
     // Check if conversation already exists
     const exists = conversations.some(c => c.id === data.id);
     if (!exists) {
-      // Add new conversation to the list (transferred from agent inbox)
       dispatch(addNewCustomer(data));
-      console.log('✅ ChatInbox: Added transferred conversation:', data.id);
     } else {
       // Update existing conversation
       dispatch(updateConversationEnhanced({
@@ -436,7 +396,6 @@ export default function ChatInbox() {
         assignedAgentId: data.assignedAgentId,
         status: data.status,
       }));
-      console.log('✅ ChatInbox: Updated existing conversation with transfer info');
     }
   }, [conversations, dispatch]);
 
@@ -499,12 +458,81 @@ export default function ChatInbox() {
     }
   }, [messagesData?.list, isInitialMessageLoad]);
 
+  // 🔧 NEW: State for image upload
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 🔧 NEW: Handle image file selection
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Image size must be less than 10MB');
+      return;
+    }
+
+    setSelectedImageFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  // 🔧 NEW: Remove selected image
+  const handleRemoveImage = useCallback(() => {
+    setSelectedImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  // 🔧 NEW: Upload image to get URL
+  const uploadImage = useCallback(async (file: File): Promise<string> => {
+    try {
+      const result = await uploadImageApi(file);
+      return result.url;
+    } catch (error: any) {
+      console.error('Failed to upload image:', error);
+      throw error;
+    }
+  }, []);
+
   const handleSendMessage = useCallback(async () => {
-    if (!newMessage.trim() || !selectedCustomer || !businessId || !currentConversation) return;
+    if ((!newMessage.trim() && !selectedImageFile) || !selectedCustomer || !businessId || !currentConversation) return;
     
     const platform = currentConversation.platformInfo?.platform || 'website';
     const messageText = newMessage.trim();
+    let imageUrl: string | null = null;
+    
+    // 🔧 NEW: Upload image if selected
+    if (selectedImageFile) {
+      setIsUploadingImage(true);
+      try {
+        imageUrl = await uploadImage(selectedImageFile);
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Failed to upload image');
+        setIsUploadingImage(false);
+        return;
+      }
+      setIsUploadingImage(false);
+    }
+    
     setNewMessage("");
+    handleRemoveImage();
 
     // For website conversations, use internal messaging
     if (platform === 'website' || !platform) {
@@ -522,14 +550,23 @@ export default function ChatInbox() {
     // For Instagram, WhatsApp, Telegram - use Unipile API
     if (platform === 'instagram' || platform === 'whatsapp' || platform === 'telegram') {
       try {
-        await api.post('/api/v1/unipile/messages/send-via-conversation', {
+        const payload: any = {
           conversationId: currentConversation.id,
-          message: messageText,
-          businessId: businessId
-        });
+          message: messageText || (imageUrl ? '📷 Image' : ''),
+          businessId: businessId,
+        };
+        
+        // 🔧 NEW: Add image URL if available
+        if (imageUrl) {
+          payload.imageUrl = imageUrl;
+          payload.messageType = 'image';
+        }
+        
+        const { sendMessageViaConversation } = await import('@/api/chatApi');
+        await sendMessageViaConversation(payload);
         
         // The message will be updated via socket when it arrives
-        toast.success('Message sent!');
+        toast.success(imageUrl ? 'Image sent!' : 'Message sent!');
       } catch (error: any) {
         const errorData = error.response?.data;
         
@@ -588,7 +625,7 @@ export default function ChatInbox() {
     dispatch(sendHumanMessage({ businessId, customerId: selectedCustomer, message: messageText, senderSocketId: socket.id ?? "" }))
       .unwrap()
       .catch(error => toast.error(error.message || t('chatInbox.toastMessageFailed')));
-  }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t]);
+  }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t, selectedImageFile, uploadImage, handleRemoveImage]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
     if (!currentConversation?.id) { toast.error(t('chatInbox.toastTransferNoId')); return; }
@@ -671,12 +708,12 @@ export default function ChatInbox() {
     <TooltipProvider delayDuration={0}>
       <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] h-screen w-full gap-4 lg:gap-6 p-4 lg:p-6">
         <aside className={cn(
-          "flex flex-col border p-4 rounded-xl max-h-screen transition-colors",
-          activePlatform === 'whatsapp' ? "bg-[#e5ddd5] dark:bg-[#111b21]" :
-          activePlatform === 'instagram' ? "bg-gradient-to-br from-[#faf0f8] to-[#f5e8f1] dark:from-[#1a1a1a] dark:to-[#2d1a2e]" :
-          activePlatform === 'telegram' ? "bg-[#e5e7e8] dark:bg-[#0e1621]" :
-          activePlatform === 'website' ? "bg-card" :
-          "bg-card"
+          "flex flex-col border p-4 rounded-xl max-h-screen transition-colors shadow-lg",
+          activePlatform === 'whatsapp' ? "chat-bg-whatsapp border-[#d4c5b7] dark:border-[#1e2a32]" :
+          activePlatform === 'instagram' ? "chat-bg-instagram border-[#e8d4e0] dark:border-[#3d2a42]" :
+          activePlatform === 'telegram' ? "chat-bg-telegram border-[#d1d5db] dark:border-[#1a2332]" :
+          activePlatform === 'website' ? "chat-bg-website border-border" :
+          "bg-card border-border"
         )}>
           <h1 className="text-2xl font-bold mb-4 px-2">{t('chatInbox.title')}</h1>
           
@@ -771,7 +808,40 @@ export default function ChatInbox() {
                   )}
                 >
                   <div className="relative shrink-0">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary text-xs sm:text-sm">{convo.customer.name?.charAt(0).toUpperCase()}</div>
+                    {/* 🔧 NEW: Profile picture with fallback to initial */}
+                    {/* Debug: Check if platformUserAvatar exists */}
+                    {(() => {
+                      const avatarUrl = convo.platformInfo?.platformUserAvatar;
+                      if (avatarUrl) {
+                        return (
+                          <img
+                            src={avatarUrl}
+                            alt={convo.customer.name}
+                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-background"
+                            onError={(e) => {
+                              console.warn('Avatar image failed to load:', avatarUrl);
+                              // Fallback to initial letter if image fails to load
+                              const target = e.currentTarget;
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                            onLoad={(e) => {
+                              // Hide fallback when image loads successfully
+                              const fallback = (e.currentTarget.nextElementSibling as HTMLElement);
+                              if (fallback) fallback.style.display = 'none';
+                            }}
+                          />
+                        );
+                      }
+                      return null;
+                    })()}
+                    <div 
+                      className={`w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary text-xs sm:text-sm ${convo.platformInfo?.platformUserAvatar ? 'hidden' : ''}`}
+                    >
+                      {convo.customer.name?.charAt(0).toUpperCase()}
+                    </div>
+                    {/* 🔧 REMOVED: Platform badge on avatar - badge already shown next to name */}
                     {/* 🔧 NEW: Unread count badge - positioned on avatar */}
                     {(convo.unreadCount || 0) > 0 && (
                       <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center z-10 border-2 border-background shadow-sm">
@@ -877,27 +947,16 @@ export default function ChatInbox() {
 
         <main 
           className={cn(
-            "flex flex-col border rounded-xl max-h-screen transition-colors overflow-hidden",
-            // Platform-specific main container backgrounds
+            "flex flex-col border rounded-xl max-h-screen transition-colors overflow-hidden shadow-lg",
+            // Platform-specific main container backgrounds using CSS classes
             currentConversation?.platformInfo?.platform === 'whatsapp' 
-              ? "bg-[#ece5dd] dark:bg-[#0b141a]" 
+              ? "chat-bg-whatsapp border-[#d4c5b7] dark:border-[#1e2a32]" 
               : currentConversation?.platformInfo?.platform === 'instagram' 
-              ? "bg-gradient-to-br from-[#faf0f8] to-[#f5e8f1] dark:from-[#1a1a1a] dark:to-[#2d1a2e]" 
+              ? "chat-bg-instagram border-[#e8d4e0] dark:border-[#3d2a42]" 
               : currentConversation?.platformInfo?.platform === 'telegram' 
-              ? "bg-[#e5e7e8] dark:bg-[#0e1621]" 
-              : "bg-card"
+              ? "chat-bg-telegram border-[#d1d5db] dark:border-[#1a2332]" 
+              : "chat-bg-website border-border"
           )}
-          style={
-            currentConversation?.platformInfo?.platform === 'whatsapp'
-              ? { backgroundColor: isDarkMode ? '#0b141a' : '#ece5dd' }
-              : currentConversation?.platformInfo?.platform === 'instagram'
-              ? { background: isDarkMode 
-                  ? 'linear-gradient(to bottom right, #1a1a1a, #2d1a2e)' 
-                  : 'linear-gradient(to bottom right, #faf0f8, #f5e8f1)' }
-              : currentConversation?.platformInfo?.platform === 'telegram'
-              ? { backgroundColor: isDarkMode ? '#0e1621' : '#e5e7e8' }
-              : undefined
-          }
         >
           {!selectedCustomer ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center"><MessageSquareText className="h-12 w-12 sm:h-16 sm:w-16 mb-4" /><h2 className="text-lg sm:text-xl font-medium">{t('chatInbox.mainEmptyTitle')}</h2><p className="text-sm sm:text-base">{t('chatInbox.mainEmptySubtitle')}</p></div>
@@ -1118,47 +1177,15 @@ export default function ChatInbox() {
                 ref={messageListRef} 
                 className={cn(
                   "flex-1 p-3 sm:p-6 space-y-2 overflow-y-auto scrollbar-hide relative",
-                  // Platform-specific backgrounds with authentic patterns
+                  // Platform-specific backgrounds with authentic patterns using CSS classes
                   currentConversation?.platformInfo?.platform === 'whatsapp' 
-                    ? "bg-[#ece5dd] dark:bg-[#0b141a]"
+                    ? "chat-bg-whatsapp"
                     : currentConversation?.platformInfo?.platform === 'instagram'
-                    ? "bg-gradient-to-br from-[#faf0f8] via-[#f5e8f1] to-[#f0e0ea] dark:from-[#1a1a1a] dark:via-[#2d1a2e] dark:to-[#1a1a1a]"
+                    ? "chat-bg-instagram"
                     : currentConversation?.platformInfo?.platform === 'telegram'
-                    ? "bg-[#e5e7e8] dark:bg-[#0e1621]"
-                    : "bg-background"
+                    ? "chat-bg-telegram"
+                    : "chat-bg-website"
                 )}
-                style={
-                  currentConversation?.platformInfo?.platform === 'whatsapp'
-                    ? {
-                        backgroundColor: isDarkMode ? '#0b141a' : '#ece5dd',
-                        backgroundImage: isDarkMode
-                          ? 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px)'
-                          : 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.08) 10px, rgba(0,0,0,0.08) 20px)',
-                        backgroundSize: '40px 40px',
-                        backgroundAttachment: 'fixed'
-                      }
-                    : currentConversation?.platformInfo?.platform === 'instagram'
-                    ? {
-                        background: isDarkMode
-                          ? 'linear-gradient(to bottom right, #1a1a1a, #2d1a2e, #1a1a1a)'
-                          : 'linear-gradient(to bottom right, #faf0f8, #f5e8f1, #f0e0ea)',
-                        backgroundImage: isDarkMode
-                          ? 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(to bottom right, #1a1a1a, #2d1a2e, #1a1a1a)'
-                          : 'radial-gradient(circle at 50% 50%, rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(to bottom right, #faf0f8, #f5e8f1, #f0e0ea)',
-                        backgroundSize: '20px 20px, 100% 100%',
-                        backgroundAttachment: 'fixed, fixed'
-                      }
-                    : currentConversation?.platformInfo?.platform === 'telegram'
-                    ? {
-                        backgroundColor: isDarkMode ? '#0e1621' : '#e5e7e8',
-                        backgroundImage: isDarkMode
-                          ? 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)'
-                          : 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px)',
-                        backgroundSize: '100% 4px',
-                        backgroundAttachment: 'fixed'
-                      }
-                    : undefined
-                }
               >
                 <div className="text-center">
                   {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
@@ -1255,26 +1282,60 @@ export default function ChatInbox() {
                         msg.text === '📄 Document'
                       );
                       
+                      // 🔧 NEW: Get avatar URL from message metadata or conversation platformInfo
+                      const messageAvatar = msg.metadata?.avatar || currentConversation?.platformInfo?.platformUserAvatar || null;
+                      const senderName = msg.metadata?.name || msg.customerName || currentConversation?.customer?.name || 'User';
+                      
                       return (
-                        <div key={i} className={cn("flex flex-col my-4", isAgentSide ? "items-end" : "items-start", msg.status === 'failed' && 'opacity-50')}>
+                        <div key={i} className={cn("flex items-start gap-2 my-2", isAgentSide ? "flex-row-reverse" : "flex-row", msg.status === 'failed' && 'opacity-50')}>
+                          {/* 🔧 NEW: Avatar for customer messages */}
+                          {!isAgentSide && (
+                            <div className="flex-shrink-0 self-start">
+                              {messageAvatar ? (
+                                <img
+                                  src={messageAvatar}
+                                  alt={senderName}
+                                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-background"
+                                  onError={(e) => {
+                                    // Fallback to initial letter if image fails
+                                    const target = e.currentTarget;
+                                    target.style.display = 'none';
+                                    const fallback = target.nextElementSibling as HTMLElement;
+                                    if (fallback) fallback.style.display = 'flex';
+                                  }}
+                                  onLoad={(e) => {
+                                    // Hide fallback when image loads successfully
+                                    const fallback = (e.currentTarget.nextElementSibling as HTMLElement);
+                                    if (fallback) fallback.style.display = 'none';
+                                  }}
+                                />
+                              ) : null}
+                              <div 
+                                className={`w-6 h-6 sm:w-8 sm:h-8 bg-muted rounded-full flex items-center justify-center font-bold text-primary text-xs ${messageAvatar ? 'hidden' : ''}`}
+                              >
+                                {senderName.charAt(0).toUpperCase()}
+                              </div>
+                            </div>
+                          )}
+                          <div className={cn("flex flex-col min-w-0 flex-1", isAgentSide ? "items-end" : "items-start")}>
                           <div className={cn(
-                            "max-w-[65%] rounded-2xl text-sm leading-snug overflow-hidden",
+                            "max-w-[65%] rounded-2xl text-sm leading-snug overflow-hidden message-bubble-shadow",
                             isAgentSide 
                               ? platform === 'whatsapp' 
-                                ? "bg-[#dcf8c6] text-[#111b21] dark:bg-[#005c4b] dark:text-white rounded-br-none shadow-sm" 
+                                ? "message-bubble-whatsapp-sent text-[#111b21] dark:text-white rounded-br-none" 
                                 : platform === 'instagram'
-                                ? "bg-white text-[#262626] dark:bg-[#262626] dark:text-white rounded-br-none shadow-sm"
+                                ? "message-bubble-instagram text-[#262626] dark:text-white rounded-br-none"
                                 : platform === 'telegram'
-                                ? "bg-[#3390ec] text-white rounded-br-none shadow-sm"
+                                ? "message-bubble-telegram-sent text-white rounded-br-none"
                                 : "bg-primary text-primary-foreground rounded-br-none"
                               : platform === 'whatsapp'
-                              ? "bg-white text-[#111b21] dark:bg-[#202c33] dark:text-white rounded-bl-none shadow-sm"
+                              ? "message-bubble-whatsapp-received text-[#111b21] dark:text-white rounded-bl-none"
                               : platform === 'instagram'
-                              ? "bg-white text-[#262626] dark:bg-[#262626] dark:text-white rounded-bl-none shadow-sm"
+                              ? "message-bubble-instagram text-[#262626] dark:text-white rounded-bl-none"
                               : platform === 'telegram'
-                              ? "bg-white text-[#000000] dark:bg-[#18222d] dark:text-white rounded-bl-none shadow-sm"
+                              ? "message-bubble-telegram-received text-[#000000] dark:text-white rounded-bl-none"
                               : "bg-muted text-muted-foreground rounded-bl-none",
-                            isMediaMessage && displayUrl ? "p-0" : "p-3"
+                            isMediaMessage && displayUrl ? "p-0" : "p-3 sm:p-4"
                           )}>
                             {/* 🔧 NEW: Render media based on messageType */}
                             {isMediaMessage && displayUrl ? (
@@ -1349,7 +1410,7 @@ export default function ChatInbox() {
                               )
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 mt-1.5 px-1">
+                          <div className={cn("flex items-center gap-1.5 mt-1 px-1", isAgentSide ? "flex-row-reverse" : "flex-row")}>
                             <p className="text-xs text-muted-foreground whitespace-nowrap">
                               {msg.time ? dayjs(msg.time).format("h:mm A") : dayjs().format("h:mm A")}
                             </p>
@@ -1378,6 +1439,7 @@ export default function ChatInbox() {
                               </div>
                             )}
                           </div>
+                          </div>
                         </div>
                       ); 
                     })}
@@ -1386,7 +1448,48 @@ export default function ChatInbox() {
                 })}
               </div>
               <div className="p-3 sm:p-6 border-t">
-                <div className="relative">
+                {/* 🔧 NEW: Image preview */}
+                {imagePreview && (
+                  <div className="relative mb-3 inline-block">
+                    <div className="relative rounded-lg overflow-hidden border-2 border-primary/20">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="max-w-[200px] max-h-[200px] object-cover"
+                      />
+                      <button
+                        onClick={handleRemoveImage}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <div className="relative flex items-end gap-2">
+                  {/* 🔧 NEW: Image upload button */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="cursor-pointer h-9 w-9 shrink-0"
+                    disabled={isUploadingImage}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {isUploadingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImageIcon className="h-4 w-4" />
+                    )}
+                  </Button>
                   <Textarea 
                     placeholder={t('chatInbox.messagePlaceholder')} 
                     value={newMessage} 
@@ -1394,13 +1497,19 @@ export default function ChatInbox() {
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                     className="w-full resize-none p-3 sm:p-4 pr-12 sm:pr-14 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
                     rows={1} 
+                    disabled={isUploadingImage}
                   />
                   <Button 
                     onClick={handleSendMessage} 
                     size="icon" 
-                    className="absolute right-2 sm:right-3 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9 bg-primary cursor-pointer hover:bg-primary/90"
+                    className="h-9 w-9 bg-primary cursor-pointer hover:bg-primary/90 shrink-0"
+                    disabled={isUploadingImage || (!newMessage.trim() && !selectedImageFile)}
                   >
-                    <Send className="h-3 w-3 sm:h-4 sm:w-4" />
+                    {isUploadingImage ? (
+                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-3 w-3 sm:h-4 sm:w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
