@@ -456,16 +456,30 @@
       "title": "Generating AI Performance Insights...",
       "subtitle": "This may take a moment as our analyst agent reviews recent conversations."
     },
-    "error": "Error: {{error}}",
+    "error": {
+      "title": "Error Loading Reports",
+      "retry": "Retry"
+    },
     "empty": {
-      "title": "No Analysis Reports Available",
-      "subtitle": "Reports are generated automatically each day based on your chatbot's conversations. Once there is enough data, your first report will appear here."
+      "title": "No Analysis Reports Yet",
+      "subtitle": "Analysis reports are generated automatically every 2 hours. You can also generate a report manually for today's messages."
+    },
+    "trigger": {
+      "button": "Generate Analysis Report",
+      "processing": "Generating...",
+      "success": "Analysis report generation started. Please refresh in a few moments.",
+      "error": {
+        "noBusiness": "Business ID not found",
+        "failed": "Failed to trigger analysis report"
+      }
     },
     "header": {
       "title": "Performance Dashboard",
       "subtitle": "AI Analysis for",
       "showingReportFor": "Showing report for",
-      "selectReport": "Select Report"
+      "selectReport": "Select Report",
+      "selectAgent": "Select Agent",
+      "allAgents": "All Agents"
     },
     "stats": {
       "overallScore": "Overall Score",
@@ -475,22 +489,36 @@
       "agentName": "Agent Name",
       "agentNameDesc": "The AI agent being analyzed",
       "customersInvolved": "Customers Involved",
-      "customersInvolvedDesc": "Unique customers in analysis"
+      "customersInvolvedDesc": "Unique customers in analysis",
+      "unknown": "Unknown",
+      "totalThisPeriod": "Total for this period",
+      "primaryAgent": "Primary AI Agent",
+      "uniqueCustomers": "Unique customers"
     },
     "summary": {
       "workingWell": "What's Working Well",
       "improvementAreas": "Areas for Improvement",
-      "knowledgeSuggestions": "Knowledge Base Suggestions"
+      "knowledgeSuggestions": "Knowledge Base Suggestions",
+      "aiInsights": "AI-Generated Insights",
+      "aiInsightsDesc": "Key takeaways from the analysis"
     },
     "details": {
       "title": "Detailed Conversation Analysis",
       "subtitle": "Performance scores and specific feedback for each conversation.",
       "scoresByConversation": "Scores by Conversation",
       "feedbackBreakdown": "Feedback Breakdown",
+      "conversationBreakdown": "Conversation Breakdown",
+      "breakdownDesc": "Select a conversation to see detailed feedback.",
       "conversationWith": "Conversation with {{name}}",
+      "conversationId": "ID: {{id}}",
       "score": "Score: {{score}}/10",
       "reasoning": "Reasoning for Score",
       "suggestions": "Improvement Suggestions"
+    },
+    "tabs": {
+      "positive": "Positive",
+      "critical": "Critical",
+      "suggestions": "Ideas"
     }
   },
   "customersPage": {

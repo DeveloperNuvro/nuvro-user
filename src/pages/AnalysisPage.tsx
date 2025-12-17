@@ -2,17 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '@/app/store';
-import { fetchAnalysisReports } from '@/features/analysisReport/analysisReportSlice';
+import { fetchAnalysisReports, triggerAnalysisReport } from '@/features/analysisReport/analysisReportSlice';
 import ScoreBarChart from '../components/custom/analysis/ScoreBarChart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, TrendingDown, MessageSquareQuote, FileText, Bot, Users, MessageCircle, Star, Lightbulb, ChevronDown, BarChart3, Calendar } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { TrendingUp, TrendingDown, MessageSquareQuote, FileText, Bot, Users, MessageCircle, Star, Lightbulb, ChevronDown, BarChart3, Calendar, RefreshCw, Play } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from "@/lib/utils";
 import AnalysisPageSkeleton from '@/components/skeleton/AnalysisSkeleton';
 import { useTheme } from "@/components/theme-provider";
+import toast from 'react-hot-toast';
 
 // --- Enhanced Metric Card Component ---
 const MetricCard = ({ title, value, icon, description, colorScheme = 'blue', isDarkMode }: {
@@ -97,6 +99,8 @@ const AnalysisPage: React.FC = () => {
 
     // State to manage the currently selected report ID
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+    const [isTriggering, setIsTriggering] = useState(false);
+    const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null); // 🔧 NEW: Selected agent filter
     
     // Detect if dark mode is active
     const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -118,17 +122,36 @@ const AnalysisPage: React.FC = () => {
         }
     }, [theme]);
 
+    // 🔧 UPDATED: Get unique agents from reports
+    const uniqueAgents = useMemo(() => {
+        if (!reports || reports.length === 0) return [];
+        const agentsMap = new Map<string, { id: string; name: string }>();
+        reports.forEach(report => {
+            if (report.agentId && report.agentInfo) {
+                agentsMap.set(report.agentId, { id: report.agentId, name: report.agentInfo });
+            }
+        });
+        return Array.from(agentsMap.values());
+    }, [reports]);
+
     // Memoize the sorted reports to prevent re-sorting on every render
+    // 🔧 UPDATED: Filter by selectedAgentId if provided
     const sortedReports = useMemo(() => {
         if (!reports) return [];
-        return [...reports].sort((a, b) => new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime());
-    }, [reports]);
+        let filtered = selectedAgentId 
+            ? reports.filter(r => r.agentId === selectedAgentId)
+            : reports;
+        return [...filtered].sort((a, b) => new Date(b.reportDate).getTime() - new Date(a.reportDate).getTime());
+    }, [reports, selectedAgentId]);
 
     useEffect(() => {
         if (user?.businessId) {
-            dispatch(fetchAnalysisReports(user.businessId));
+            dispatch(fetchAnalysisReports({ 
+                businessId: user.businessId,
+                agentId: selectedAgentId || undefined 
+            }));
         }
-    }, [dispatch, user?.businessId]);
+    }, [dispatch, user?.businessId, selectedAgentId]);
 
     // Effect to set the selected report to the latest one by default
     useEffect(() => {
@@ -136,6 +159,33 @@ const AnalysisPage: React.FC = () => {
             setSelectedReportId(sortedReports[0]._id);
         }
     }, [sortedReports, selectedReportId]);
+
+    // Handle manual trigger for analysis report
+    const handleTriggerAnalysis = async () => {
+        if (!user?.businessId) {
+            toast.error(t('analysisPage.trigger.error.noBusiness', 'Business ID not found'));
+            return;
+        }
+
+        const businessId = user.businessId; // Store in local variable for type safety
+        setIsTriggering(true);
+        try {
+            await dispatch(triggerAnalysisReport(businessId)).unwrap();
+            toast.success(t('analysisPage.trigger.success', 'Analysis report generation started. Please refresh in a few moments.'));
+            
+            // Wait a bit then refetch reports
+            setTimeout(() => {
+                dispatch(fetchAnalysisReports({ 
+                    businessId: businessId,
+                    agentId: selectedAgentId || undefined 
+                }));
+            }, 3000);
+        } catch (err: any) {
+            toast.error(err || t('analysisPage.trigger.error.failed', 'Failed to trigger analysis report'));
+        } finally {
+            setIsTriggering(false);
+        }
+    };
 
     // Derive the selected report object from the ID
     const selectedReport = useMemo(() => {
@@ -147,7 +197,8 @@ const AnalysisPage: React.FC = () => {
         return <AnalysisPageSkeleton />;
     }
 
-    if (status === 'failed') {
+    // Only show error if it's a real error (not 404/no reports)
+    if (status === 'failed' && error && !error.includes('No analysis reports found')) {
         return (
             <div className={`
                 flex flex-col items-center justify-center min-h-[60vh] p-8 rounded-2xl
@@ -156,16 +207,34 @@ const AnalysisPage: React.FC = () => {
             `}>
                 <FileText className={`h-16 w-16 mb-6 ${isDarkMode ? 'text-red-300' : 'text-red-600'}`} />
                 <h2 className={`text-2xl font-semibold mb-2 ${isDarkMode ? 'text-red-300' : 'text-red-700'}`}>
-                    {t('analysisPage.error', { error })}
+                    {t('analysisPage.error.title', 'Error Loading Reports')}
                 </h2>
-                <p className={`text-sm ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+                <p className={`text-sm mb-4 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
                     {error || 'Failed to load analysis reports'}
                 </p>
+                {user?.businessId && (
+                    <Button 
+                        onClick={() => {
+                            if (user.businessId) {
+                                dispatch(fetchAnalysisReports({ 
+                                    businessId: user.businessId,
+                                    agentId: selectedAgentId || undefined 
+                                }));
+                            }
+                        }}
+                        variant="outline"
+                        className="mt-4"
+                    >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {t('analysisPage.error.retry', 'Retry')}
+                    </Button>
+                )}
             </div>
         );
     }
 
-    if (!selectedReport) {
+    // Show empty state if no reports (not an error, just no data)
+    if (!selectedReport || sortedReports.length === 0) {
         return (
             <div className={`
                 flex flex-col items-center justify-center text-center rounded-2xl p-12 sm:p-16 min-h-[60vh]
@@ -187,10 +256,38 @@ const AnalysisPage: React.FC = () => {
                         <FileText className="h-20 w-20 text-primary" />
                     </div>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">{t('analysisPage.empty.title')}</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
+                    {t('analysisPage.empty.title', 'No Analysis Reports Yet')}
+                </h2>
                 <p className="text-muted-foreground max-w-md mb-8 text-sm sm:text-base">
-                    {t('analysisPage.empty.subtitle')}
+                    {t('analysisPage.empty.subtitle', 'Analysis reports are generated automatically every 2 hours. You can also generate a report manually for today\'s messages.')}
                 </p>
+                {user?.businessId && (
+                    <Button 
+                        onClick={handleTriggerAnalysis}
+                        disabled={isTriggering}
+                        size="lg"
+                        className={`
+                            gap-2 cursor-pointer
+                            ${isDarkMode 
+                                ? 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70' 
+                                : 'bg-gradient-to-r from-primary to-primary/90 hover:from-primary/95 hover:to-primary/85'
+                            }
+                        `}
+                    >
+                        {isTriggering ? (
+                            <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                {t('analysisPage.trigger.processing', 'Generating...')}
+                            </>
+                        ) : (
+                            <>
+                                <Play className="h-4 w-4 mr-2" />
+                                {t('analysisPage.trigger.button', 'Generate Analysis Report')}
+                            </>
+                        )}
+                    </Button>
+                )}
             </div>
         );
     }
@@ -221,7 +318,31 @@ const AnalysisPage: React.FC = () => {
                                 {t('analysisPage.header.showingReportFor', 'Showing report for')} {new Date(selectedReport.reportDate).toLocaleDateString(i18n.language, { month: 'long', day: 'numeric', year: 'numeric' })}
                             </p>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            {/* 🔧 NEW: Agent Filter Selector */}
+                            {uniqueAgents.length > 1 && (
+                                <Select value={selectedAgentId || 'all'} onValueChange={(value) => setSelectedAgentId(value === 'all' ? null : value)}>
+                                    <SelectTrigger className={`
+                                        w-full md:w-[200px] text-base py-6 cursor-pointer
+                                        ${isDarkMode ? 'bg-muted/50 border-border/60' : 'bg-background border-border'}
+                                    `}>
+                                        <div className="flex items-center gap-2">
+                                            <Bot className="h-4 w-4 text-muted-foreground" />
+                                            <SelectValue placeholder={t('analysisPage.header.selectAgent', 'Select Agent')} />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all" className="cursor-pointer">
+                                            {t('analysisPage.header.allAgents', 'All Agents')}
+                                        </SelectItem>
+                                        {uniqueAgents.map(agent => (
+                                            <SelectItem key={agent.id} value={agent.id} className="cursor-pointer">
+                                                {agent.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
                             <Select value={selectedReportId || ''} onValueChange={setSelectedReportId}>
                                 <SelectTrigger className={`
                                     w-full md:w-[280px] text-base py-6 cursor-pointer
@@ -236,10 +357,39 @@ const AnalysisPage: React.FC = () => {
                                     {sortedReports.map(report => (
                                         <SelectItem key={report._id} value={report._id} className="cursor-pointer">
                                             {new Date(report.reportDate).toLocaleDateString(i18n.language, { month: 'long', day: 'numeric', year: 'numeric' })}
+                                            {uniqueAgents.length > 1 && report.agentInfo && (
+                                                <span className="text-xs text-muted-foreground ml-2">({report.agentInfo})</span>
+                                            )}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
+                            {user?.businessId && (
+                                <Button 
+                                    onClick={handleTriggerAnalysis}
+                                    disabled={isTriggering}
+                                    variant="outline"
+                                    className={`
+                                        gap-2 cursor-pointer
+                                        ${isDarkMode 
+                                            ? 'border-primary/30 hover:bg-primary/10' 
+                                            : 'border-primary/40 hover:bg-primary/5'
+                                        }
+                                    `}
+                                >
+                                    {isTriggering ? (
+                                        <>
+                                            <RefreshCw className="h-4 w-4 animate-spin" />
+                                            {t('analysisPage.trigger.processing', 'Generating...')}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Play className="h-4 w-4" />
+                                            {t('analysisPage.trigger.button', 'Generate Report')}
+                                        </>
+                                    )}
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>

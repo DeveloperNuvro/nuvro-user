@@ -1,6 +1,8 @@
 // src/App.tsx
+import { useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { useTranslation } from "react-i18next";
 
 // Your Pages and Components
 import Signin from "./components/custom/signin/Signin";
@@ -23,6 +25,22 @@ function App() {
   // This hook handles the initial session check (e.g., from localStorage)
   useAuthBootstrap();
   const { user, bootstrapped } = useAppSelector((state) => state.auth);
+  const { i18n } = useTranslation();
+
+  // 🔧 FIX: Sync i18n language with user's language preference when user is loaded
+  useEffect(() => {
+    if (user?.language && bootstrapped) {
+      const supportedLanguages = ['en', 'es', 'bn'];
+      const userLang = user.language.toLowerCase().substring(0, 2);
+      
+      // Only change if it's a supported language and different from current
+      if (supportedLanguages.includes(userLang) && i18n.language !== userLang) {
+        i18n.changeLanguage(userLang).catch((error) => {
+          console.error('Failed to sync user language with i18n:', error);
+        });
+      }
+    }
+  }, [user?.language, bootstrapped, i18n]);
 
   // Show a loading screen until the initial auth state is determined
   if (!bootstrapped) {

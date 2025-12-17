@@ -17,6 +17,7 @@ export interface ConversationFeedback {
 export interface AnalysisReport {
     _id: string;
     businessId: string;
+    agentId?: string; // 🔧 NEW: Agent ID for filtering
     reportDate: string; 
     agentInfo: string; 
     modelInfo: string; 
@@ -49,26 +50,59 @@ const initialState: AnalysisReportState = {
 
 /**
  * Fetches all analysis reports for a given business ID.
- * The businessId will be passed as an argument when dispatching this thunk.
+ * Optionally filters by agentId if provided.
  */
 export const fetchAnalysisReports = createAsyncThunk<
   AnalysisReport[],        // Type of the successful return value
-  string,                  // Type of the argument passed to the thunk (businessId)
+  { businessId: string; agentId?: string }, // 🔧 UPDATED: Accept object with optional agentId
   { rejectValue: string }  // Type for rejection payload
 >(
   "analysisReport/fetchReports",
+  async ({ businessId, agentId }, thunkAPI) => {
+    // Check if businessId is provided before making the call
+    if (!businessId) {
+      return thunkAPI.rejectWithValue("No Business ID provided.");
+    }
+    try {
+      // 🔧 UPDATED: Add agentId as query parameter if provided
+      const url = agentId 
+        ? `/api/v1/analysis-reports/${businessId}?agentId=${agentId}`
+        : `/api/v1/analysis-reports/${businessId}`;
+      const response = await api.get(url);
+      // Assuming your sendSuccess function puts the data in a `data` property
+      return response.data.data || []; 
+    } catch (err: any) {
+      // If 404 (no reports found), return empty array instead of error
+      if (err.response?.status === 404) {
+        return []; // Return empty array for "no reports found" case
+      }
+      const errorMessage = err.response?.data?.message || "Failed to fetch analysis reports";
+      return thunkAPI.rejectWithValue(errorMessage);
+    }
+  }
+);
+
+/**
+ * Manually triggers analysis report generation for the current day
+ */
+export const triggerAnalysisReport = createAsyncThunk<
+  { businessId: string; message: string },  // Type of the successful return value
+  string,                                     // Type of the argument passed to the thunk (businessId)
+  { rejectValue: string }                      // Type for rejection payload
+>(
+  "analysisReport/triggerReport",
   async (businessId, thunkAPI) => {
     // Check if businessId is provided before making the call
     if (!businessId) {
       return thunkAPI.rejectWithValue("No Business ID provided.");
     }
     try {
-      // The endpoint matches your route: /api/v1/analysis-reports/:businessId
-      const response = await api.get(`/api/v1/analysis-reports/${businessId}`);
-      // Assuming your sendSuccess function puts the data in a `data` property
-      return response.data.data; 
+      // The endpoint matches your route: POST /api/v1/analysis-reports/:businessId/trigger
+      const response = await api.post(`/api/v1/analysis-reports/${businessId}/trigger`);
+      // Return the response data
+      return response.data.data || { businessId, message: response.data.message };
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Failed to fetch analysis reports";
+      const errorMessage = err.response?.data?.message || "Failed to trigger analysis report";
       return thunkAPI.rejectWithValue(errorMessage);
     }
   }
@@ -97,10 +131,24 @@ const analysisReportSlice = createSlice({
       .addCase(fetchAnalysisReports.fulfilled, (state, action: PayloadAction<AnalysisReport[]>) => {
         state.status = "succeeded";
         state.reports = action.payload; // Replace existing reports with the new ones
+        state.error = null; // Clear any previous errors
       })
       .addCase(fetchAnalysisReports.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload ?? "An unknown error occurred while fetching reports.";
+      })
+      // Cases for triggering analysis report
+      .addCase(triggerAnalysisReport.pending, (state) => {
+        // Keep existing state, just mark as processing
+        state.error = null;
+      })
+      .addCase(triggerAnalysisReport.fulfilled, (state) => {
+        // Trigger successful, error cleared
+        state.error = null;
+        // Note: Reports will be refetched after trigger completes
+      })
+      .addCase(triggerAnalysisReport.rejected, (state, action) => {
+        state.error = action.payload ?? "Failed to trigger analysis report.";
       });
   },
 });

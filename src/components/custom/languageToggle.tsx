@@ -9,8 +9,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Languages, Check } from "lucide-react"
 import { useTranslation } from "react-i18next"
-import { useSelector } from 'react-redux';
-import {  RootState } from '../../app/store';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../../app/store';
+import { updateUserLanguage } from '../../features/auth/authSlice';
 import toast from 'react-hot-toast';
 
 
@@ -22,26 +23,43 @@ const supportedLanguages = [
 
 export function LanguageToggle() {
   const { i18n, t } = useTranslation();
+  const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
 
   const changeLanguage = async (lng: string) => {
     try {
+      // 🔧 FIX: Validate language code before proceeding
+      const supportedLanguageCodes = ['en', 'es', 'bn'];
+      if (!supportedLanguageCodes.includes(lng)) {
+        toast.error(`Unsupported language: ${lng}. Supported: ${supportedLanguageCodes.join(', ')}`);
+        return;
+      }
+
       // Change language immediately for UI update
       await i18n.changeLanguage(lng);
       
       // Save to backend if user is logged in
       if (user) {
         try {
-          // TODO: Add API call to save language preference to backend
-          // await api.put('/api/v1/user/preferences', { language: lng });
-          console.log('Language changed to:', lng);
-        } catch (error) {
+          // 🔧 FIX: Use the same API call as settings page
+          await dispatch(updateUserLanguage({ language: lng })).unwrap();
+          toast.success(t('languageUpdatedSuccess', { language: supportedLanguages.find(l => l.code === lng)?.name || lng }));
+        } catch (error: any) {
           console.error("Failed to save language preference:", error);
-          // Don't show error toast - language change still works locally
+          const errorMessage = error?.payload || 
+                              error?.message || 
+                              error?.response?.data?.message || 
+                              t('languageUpdatedFailed', 'Failed to save language preference');
+          toast.error(errorMessage);
+          
+          // Revert language change if backend save failed
+          const previousLang = user?.language || 'es';
+          await i18n.changeLanguage(previousLang);
         }
+      } else {
+        // User not logged in, just show success for local change
+        toast.success(t('languageUpdatedSuccess', { language: supportedLanguages.find(l => l.code === lng)?.name || lng }));
       }
-      
-      toast.success(t('languageUpdatedSuccess', { language: supportedLanguages.find(l => l.code === lng)?.name || lng }));
     } catch (error) {
       console.error("Failed to change language:", error);
       toast.error(t('languageUpdatedFailed', 'Failed to change language'));

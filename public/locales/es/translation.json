@@ -456,16 +456,30 @@
       "title": "Generando Perspectivas de Rendimiento de IA...",
       "subtitle": "Esto puede tardar un momento mientras nuestro agente analista revisa las conversaciones recientes."
     },
-    "error": "Error: {{error}}",
+    "error": {
+      "title": "Error al Cargar Informes",
+      "retry": "Reintentar"
+    },
     "empty": {
-      "title": "No Hay Informes de Análisis Disponibles",
-      "subtitle": "Los informes se generan automáticamente cada día en función de las conversaciones de su chatbot. Una vez que haya suficientes datos, su primer informe aparecerá aquí."
+      "title": "Aún No Hay Informes de Análisis",
+      "subtitle": "Los informes de análisis se generan automáticamente cada 2 horas. También puede generar un informe manualmente para los mensajes de hoy."
+    },
+    "trigger": {
+      "button": "Generar Informe de Análisis",
+      "processing": "Generando...",
+      "success": "La generación del informe de análisis ha comenzado. Por favor, actualice en unos momentos.",
+      "error": {
+        "noBusiness": "ID de negocio no encontrado",
+        "failed": "Error al activar el informe de análisis"
+      }
     },
     "header": {
       "title": "Panel de Rendimiento",
       "subtitle": "Análisis de IA para",
       "showingReportFor": "Mostrando informe para",
-      "selectReport": "Seleccionar Informe"
+      "selectReport": "Seleccionar Informe",
+      "selectAgent": "Seleccionar Agente",
+      "allAgents": "Todos los Agentes"
     },
     "stats": {
       "overallScore": "Puntuación General",
@@ -475,22 +489,36 @@
       "agentName": "Nombre del Agente",
       "agentNameDesc": "El agente de IA que se está analizando",
       "customersInvolved": "Clientes Involucrados",
-      "customersInvolvedDesc": "Clientes únicos en el análisis"
+      "customersInvolvedDesc": "Clientes únicos en el análisis",
+      "unknown": "Desconocido",
+      "totalThisPeriod": "Total para este período",
+      "primaryAgent": "Agente de IA Principal",
+      "uniqueCustomers": "Clientes únicos"
     },
     "summary": {
       "workingWell": "Qué Funciona Bien",
       "improvementAreas": "Áreas de Mejora",
-      "knowledgeSuggestions": "Sugerencias para la Base de Conocimiento"
+      "knowledgeSuggestions": "Sugerencias para la Base de Conocimiento",
+      "aiInsights": "Perspectivas Generadas por IA",
+      "aiInsightsDesc": "Conclusiones clave del análisis"
     },
     "details": {
       "title": "Análisis Detallado de Conversaciones",
       "subtitle": "Puntuaciones y comentarios específicos para cada conversación.",
       "scoresByConversation": "Puntuaciones por Conversación",
       "feedbackBreakdown": "Desglose de Comentarios",
+      "conversationBreakdown": "Desglose de Conversaciones",
+      "breakdownDesc": "Seleccione una conversación para ver comentarios detallados.",
       "conversationWith": "Conversación con {{name}}",
+      "conversationId": "ID: {{id}}",
       "score": "Puntuación: {{score}}/10",
       "reasoning": "Razonamiento de la Puntuación",
       "suggestions": "Sugerencias de Mejora"
+    },
+    "tabs": {
+      "positive": "Positivo",
+      "critical": "Crítico",
+      "suggestions": "Ideas"
     }
   },
   "customersPage": {
