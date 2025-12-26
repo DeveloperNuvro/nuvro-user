@@ -18,6 +18,9 @@ import { AppDispatch, RootState } from '@/app/store';
 import { fetchAiModelsByBusinessId, updateAIModel } from '../../../features/aiModel/trainModelSlice';
 import toast from 'react-hot-toast';
 import moment from 'moment-timezone';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Settings, Link2 } from 'lucide-react';
+import WooCommerceIntegrationTab from './WooCommerceIntegrationTab';
 
 export default function UpdateAIModelForm() {
   const { id: modelId } = useParams<{ id: string }>();
@@ -35,6 +38,8 @@ export default function UpdateAIModelForm() {
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
 
   const { status, aiModels } = useSelector((state: RootState) => state.trainModel);
+  const user = useSelector((state: RootState) => state.auth.user);
+  const businessId = user?.businessId;
   const modelToUpdate = aiModels.find(model => model._id === modelId);
 
   const timezones = useMemo(() => moment.tz.names(), []);
@@ -121,10 +126,23 @@ export default function UpdateAIModelForm() {
 
   return (
     <div className="mx-auto max-w-6xl mt-10">
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <h2 className="text-2xl font-semibold text-foreground mb-4">{t('updateAiModelPage.form.mainTitle')}</h2>
+      <Tabs defaultValue="settings" className="w-full">
+        <TabsList className="mb-6">
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            {t('updateAiModelPage.tabs.settings', 'Settings')}
+          </TabsTrigger>
+          <TabsTrigger value="woocommerce" className="flex items-center gap-2">
+            <Link2 className="h-4 w-4" />
+            {t('updateAiModelPage.tabs.woocommerce', 'WooCommerce')}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="settings">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <h2 className="text-2xl font-semibold text-foreground mb-4">{t('updateAiModelPage.form.mainTitle')}</h2>
             <div className="space-y-6 mb-8">
               <Input label={t('updateAiModelPage.form.modelNameLabel')} {...register('name')} />
               {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
@@ -224,6 +242,18 @@ export default function UpdateAIModelForm() {
           </div>
         </div>
       </form>
+        </TabsContent>
+
+        <TabsContent value="woocommerce">
+          {businessId && modelId ? (
+            <WooCommerceIntegrationTab modelId={modelId} businessId={businessId} modelName={modelToUpdate.name} />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              {t('updateAiModelPage.woocommerce.noBusinessId', 'Business ID not found')}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

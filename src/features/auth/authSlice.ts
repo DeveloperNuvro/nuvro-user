@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '@/api/axios';
 import axios from 'axios';
+import i18n from '../../i18n'; // 🔧 FIX: Import i18n directly instead of dynamic import
 
 export interface User {
   id: string;
@@ -164,9 +165,61 @@ const authSlice = createSlice({
       })
       .addCase(refreshAccessToken.fulfilled, (state, action: any) => {
         state.accessToken = action.payload.accessToken;
-        state.user = action.payload.user;
+        
+        // 🔧 FIX: Ensure user object is properly set with all fields
+        const userData = action.payload.user;
+        const userLanguage = userData.language || 'es';
+        
+        state.user = {
+          id: userData.id || userData._id,
+          _id: userData._id || userData.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+          language: userLanguage, // 🔧 FIX: Ensure language is always set
+          businessId: userData.businessId,
+        };
+        
         state.status = 'succeeded';
         state.bootstrapped = true;
+        
+        // 🔧 CRITICAL FIX: Update localStorage and sync i18n immediately when user is loaded
+        const supportedLanguages = ['en', 'es', 'bn'];
+        const userLang = userLanguage.toLowerCase().trim();
+        
+        console.log('🔄 Refresh token - user loaded:', { 
+          userLang, 
+          userLanguage: userData.language,
+          hasLanguage: !!userData.language 
+        });
+        
+        if (supportedLanguages.includes(userLang)) {
+          // 🔧 FIX: Update localStorage FIRST to match user language from database
+          const savedLang = localStorage.getItem('i18nextLng');
+          if (savedLang !== userLang) {
+            localStorage.setItem('i18nextLng', userLang);
+            console.log('🔄 Updated localStorage with user language from DB:', { savedLang, userLang });
+          }
+          
+          // 🔧 FIX: Immediately sync i18n language (i18n is already imported at top)
+          const currentLang = i18n.language?.split('-')[0]?.toLowerCase();
+          if (currentLang !== userLang) {
+            console.log('🔄 Syncing i18n language immediately on refresh:', { currentLang, userLang });
+            i18n.changeLanguage(userLang).then(() => {
+              // 🔧 FIX: Force set to ensure it's applied
+              i18n.language = userLang;
+              console.log('✅ i18n language synced immediately on refresh:', { userLang, i18nLanguage: i18n.language });
+            }).catch((error) => {
+              console.error('❌ Failed to sync i18n on refresh:', error);
+            });
+          } else {
+            // Already in sync, but ensure it's set
+            i18n.language = userLang;
+            console.log('✅ i18n already in sync with user language:', userLang);
+          }
+        } else {
+          console.warn('⚠️ Unsupported user language from refresh token:', userLang);
+        }
       })
 
       .addCase(logoutUser.fulfilled, (state) => {
@@ -185,8 +238,20 @@ const authSlice = createSlice({
       )
       .addCase(updateUserLanguage.fulfilled, (state, action) => {
         state.status = 'succeeded';
-         if (state.user) {
-          state.user.language = action.payload.language;
+        state.error = null;
+        // 🔧 FIX: Update the entire user object with the response from API
+        if (action.payload) {
+          // Merge the updated user data with existing user state
+          state.user = {
+            ...state.user,
+            ...action.payload,
+            // Ensure language is set correctly
+            language: action.payload.language || action.payload.language || state.user?.language
+          };
+          console.log('✅ Redux state updated with new language:', action.payload.language);
+        } else if (state.user) {
+          // Fallback: if payload structure is different
+          console.warn('⚠️ Unexpected payload structure:', action.payload);
         }
       })
       .addCase(updateUserLanguage.rejected, (state, action: any) => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { AppDispatch, RootState } from '@/app/store';
@@ -15,6 +15,7 @@ import { useTheme } from "@/components/theme-provider";
 // A single card component for displaying one AI model
 const AIModelCard = ({ model, isDarkMode }: { model: AIModel; isDarkMode: boolean }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -90,16 +91,22 @@ const AIModelCard = ({ model, isDarkMode }: { model: AIModel; isDarkMode: boolea
   ];
   const colorIndex = model.name.charCodeAt(0) % gradientColors.length;
 
+  const handleCardClick = () => {
+    navigate(`/main-menu/ai-model/update/${model._id}`);
+  };
+
   return (
     <>
-      <Card className={`
-        group border transition-all duration-300 overflow-hidden relative
-        ${isDarkMode 
-          ? 'bg-card border-border/60 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20' 
-          : 'bg-card border-border/80 shadow-md shadow-black/5 hover:shadow-lg hover:shadow-black/10'
-        }
-        hover:scale-[1.02]
-      `}>
+        <Card 
+          onClick={handleCardClick}
+          className={`
+          group border transition-all duration-300 overflow-hidden relative cursor-pointer
+          ${isDarkMode 
+            ? 'bg-card border-border/60 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/20' 
+            : 'bg-card border-border/80 shadow-md shadow-black/5 hover:shadow-lg hover:shadow-black/10'
+          }
+          hover:scale-[1.02]
+        `}>
         <div className={`
           h-[120px] flex items-center justify-center bg-gradient-to-br ${gradientColors[colorIndex]} text-white relative overflow-hidden
         `}>
@@ -118,7 +125,11 @@ const AIModelCard = ({ model, isDarkMode }: { model: AIModel; isDarkMode: boolea
                 {model.modelType}
               </CardDescription>
             </div>
-            <IconDeleteButton onClick={() => setIsModalOpen(true)} />
+            <IconDeleteButton onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsModalOpen(true);
+            }} />
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0 space-y-3">
@@ -132,14 +143,16 @@ const AIModelCard = ({ model, isDarkMode }: { model: AIModel; isDarkMode: boolea
           </div>
         </CardContent>
         <div className="p-4 pt-0">
-          <Link to={`/main-menu/ai-model/update/${model._id}`}>
-            <Button 
-              variant="outline" 
-              className="w-full cursor-pointer"
-            >
-              {t('aiModelListPage.editButton')}
-            </Button>
-          </Link>
+          <Button 
+            variant="outline" 
+            className="w-full cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/main-menu/ai-model/update/${model._id}`);
+            }}
+          >
+            {t('aiModelListPage.editButton')}
+          </Button>
         </div>
       </Card>
       

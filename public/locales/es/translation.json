@@ -382,6 +382,7 @@
     "trainedFiles": "{{count}} Archivos Entrenados",
     "statusLabel": "Estado",
     "editButton": "Editar Modelo",
+    "wooCommerceButton": "WooCommerce",
     "toastDeleteSuccess": "Modelo \"{{modelName}}\" eliminado exitosamente.",
     "toastDeleteError": "❌ {{error}}"
   },
@@ -764,6 +765,13 @@
     }
   },
   "updateAiModelPage": {
+    "tabs": {
+      "settings": "Configuración",
+      "woocommerce": "WooCommerce"
+    },
+    "woocommerce": {
+      "noBusinessId": "ID de negocio no encontrado"
+    },
     "sidebar": {
       "title": "Actualizar Información del Modelo",
       "updateButton": "Actualizar",
@@ -1074,6 +1082,116 @@
         "reconnectNoUrl": "No se recibió URL de autenticación. Por favor, intenta de nuevo.",
         "reconnectFailed": "Error al reconectar conexión",
         "deleteFailed": "Error al eliminar conexión"
+      }
+    }
+  },
+  "wooCommerce": {
+    "modal": {
+      "title": "Integración de WooCommerce",
+      "description": "Conecta tu tienda WooCommerce para habilitar información de productos en tiempo real para este modelo de IA.",
+      "close": "Cerrar"
+    },
+    "status": {
+      "connected": "Conectado",
+      "storeUrl": "URL de la tienda",
+      "lastSync": "Última sincronización",
+      "active": "Tu tienda se está sincronizando activamente",
+      "inactive": "Inactivo",
+      "realTime": "Sincronización en tiempo real habilitada",
+      "secure": "Conexión segura",
+      "activeStatus": "Activo"
+    },
+    "form": {
+      "storeUrl": {
+        "label": "URL de la tienda",
+        "placeholder": "https://tutienda.com",
+        "help": "URL de tu tienda WooCommerce sin barra diagonal final"
+      },
+      "consumerKey": {
+        "label": "Clave de consumidor",
+        "placeholder": "ck_...",
+        "help": "Tu Clave de consumidor de la API REST de WooCommerce"
+      },
+      "consumerSecret": {
+        "label": "Secreto de consumidor",
+        "placeholder": "cs_...",
+        "help": "Tu Secreto de consumidor de la API REST de WooCommerce (manténlo seguro)"
+      },
+      "isActive": {
+        "label": "Integración activa",
+        "description": "Habilitar o deshabilitar esta integración"
+      },
+      "validation": {
+        "required": "Todos los campos son obligatorios"
+      },
+      "show": "Mostrar",
+      "hide": "Ocultar"
+    },
+    "connect": {
+      "button": "Conectar",
+      "connecting": "Conectando...",
+      "success": "Tienda WooCommerce conectada exitosamente",
+      "error": "Error al conectar la tienda WooCommerce"
+    },
+    "update": {
+      "button": "Actualizar",
+      "updating": "Actualizando...",
+      "success": "Integración de WooCommerce actualizada exitosamente",
+      "error": "Error al actualizar la integración de WooCommerce"
+    },
+    "disconnect": {
+      "button": "Desconectar",
+      "confirm": "¿Estás seguro de que quieres desconectar esta tienda WooCommerce?",
+      "success": "Tienda WooCommerce desconectada exitosamente",
+      "error": "Error al desconectar la tienda WooCommerce"
+    },
+    "test": {
+      "button": "Probar conexión",
+      "testing": "Probando...",
+      "connected": "Conexión exitosa",
+      "failed": "Conexión fallida",
+      "productsFound": "Se encontraron {{count}} productos",
+      "success": "¡Conexión exitosa! Se encontraron {{count}} productos.",
+      "error": "Error al probar la conexión"
+    },
+    "tab": {
+      "title": "Integración de WooCommerce",
+      "description": "Conecta tu tienda WooCommerce para habilitar información de productos en tiempo real para este modelo de IA."
+    },
+    "instructions": {
+      "title": "¿Cómo obtener las claves API de WooCommerce?",
+      "subtitle": "Guía paso a paso para conectar tu tienda",
+      "step1": "Inicia sesión en el panel de administración de WordPress",
+      "step2": "Ve a WooCommerce → Configuración → Avanzado → API REST",
+      "step3": "Haz clic en el botón \"Añadir clave\"",
+      "step4": "Completa la descripción (por ejemplo, \"Integración Nuvro AI\")",
+      "step5": "Selecciona permisos \"Lectura\" (o \"Lectura/Escritura\" si quieres actualizar productos)",
+      "step6": "Haz clic en \"Generar clave API\"",
+      "step7": "Copia la Clave de consumidor y el Secreto de consumidor inmediatamente (solo se mostrarán una vez)",
+      "step8": "Pégalos en el formulario a continuación",
+      "important": "Importante:",
+      "warning": "Guarda las claves de forma segura. Si las pierdes, tendrás que generar nuevas claves.",
+      "documentation": "Ver documentación de la API REST de WooCommerce"
+    },
+    "form": {
+      "connectTitle": "Conecta tu tienda",
+      "updateTitle": "Actualizar integración",
+      "connectDescription": "Ingresa tus credenciales de API de WooCommerce para conectar",
+      "updateDescription": "Actualiza la configuración de conexión de tu tienda WooCommerce",
+      "storeUrl": {
+        "label": "URL de la tienda",
+        "placeholder": "https://tutienda.com",
+        "help": "URL de tu tienda WooCommerce sin barra diagonal final"
+      },
+      "consumerKey": {
+        "label": "Clave de consumidor",
+        "placeholder": "ck_...",
+        "help": "Tu Clave de consumidor de la API REST de WooCommerce"
+      },
+      "consumerSecret": {
+        "label": "Secreto de consumidor",
+        "placeholder": "cs_...",
+        "help": "Tu Secreto de consumidor de la API REST de WooCommerce (manténlo seguro)"
       }
     }
   }

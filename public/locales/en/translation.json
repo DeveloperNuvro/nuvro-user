@@ -382,6 +382,7 @@
     "trainedFiles": "{{count}} Trained Files",
     "statusLabel": "Status",
     "editButton": "Edit Model",
+    "wooCommerceButton": "WooCommerce",
     "toastDeleteSuccess": "Model \"{{modelName}}\" deleted successfully.",
     "toastDeleteError": "❌ {{error}}"
   },
@@ -391,6 +392,15 @@
       "totalModels": "Total Models",
       "deployed": "Deployed",
       "training": "Training"
+    }
+  },
+  "updateAiModelPage": {
+    "tabs": {
+      "settings": "Settings",
+      "woocommerce": "WooCommerce"
+    },
+    "woocommerce": {
+      "noBusinessId": "Business ID not found"
     }
   },
   "aiAgentPage": {
@@ -1074,6 +1084,113 @@
         "reconnectNoUrl": "No authentication URL received. Please try again.",
         "reconnectFailed": "Failed to reconnect connection",
         "deleteFailed": "Failed to delete connection"
+      }
+    }
+  },
+  "wooCommerce": {
+    "modal": {
+      "title": "WooCommerce Integration",
+      "description": "Connect your WooCommerce store to enable real-time product information for this AI model.",
+      "close": "Close"
+    },
+    "status": {
+      "connected": "Connected",
+      "storeUrl": "Store URL",
+      "lastSync": "Last sync",
+      "active": "Your store is actively syncing",
+      "inactive": "Inactive",
+      "realTime": "Real-time sync enabled",
+      "secure": "Secure connection",
+      "activeStatus": "Active"
+    },
+    "form": {
+      "storeUrl": {
+        "label": "Store URL",
+        "placeholder": "https://yourstore.com"
+      },
+      "consumerKey": {
+        "label": "Consumer Key",
+        "placeholder": "ck_..."
+      },
+      "consumerSecret": {
+        "label": "Consumer Secret",
+        "placeholder": "cs_..."
+      },
+      "isActive": {
+        "label": "Active",
+        "description": "Enable or disable this integration"
+      },
+      "validation": {
+        "required": "All fields are required"
+      },
+      "show": "Show",
+      "hide": "Hide"
+    },
+    "connect": {
+      "button": "Connect",
+      "connecting": "Connecting...",
+      "success": "WooCommerce store connected successfully",
+      "error": "Failed to connect WooCommerce store"
+    },
+    "update": {
+      "button": "Update",
+      "updating": "Updating...",
+      "success": "WooCommerce integration updated successfully",
+      "error": "Failed to update WooCommerce integration"
+    },
+    "disconnect": {
+      "button": "Disconnect",
+      "confirm": "Are you sure you want to disconnect this WooCommerce store?",
+      "success": "WooCommerce store disconnected successfully",
+      "error": "Failed to disconnect WooCommerce store"
+    },
+    "test": {
+      "button": "Test Connection",
+      "testing": "Testing...",
+      "connected": "Connection Successful",
+      "failed": "Connection Failed",
+      "productsFound": "Found {{count}} products",
+      "success": "Connection successful! Found {{count}} products.",
+      "error": "Connection test failed"
+    },
+    "tab": {
+      "title": "WooCommerce Integration",
+      "description": "Connect your WooCommerce store to enable real-time product information for this AI model."
+    },
+    "instructions": {
+      "title": "How to get WooCommerce API keys?",
+      "subtitle": "Step-by-step guide to connect your store",
+      "step1": "Log in to your WordPress admin dashboard",
+      "step2": "Go to WooCommerce → Settings → Advanced → REST API",
+      "step3": "Click \"Add key\" button",
+      "step4": "Fill in the description (e.g., \"Nuvro AI Integration\")",
+      "step5": "Select \"Read\" permissions (or \"Read/Write\" if you want to update products)",
+      "step6": "Click \"Generate API key\"",
+      "step7": "Copy the Consumer Key and Consumer Secret immediately (they will only be shown once)",
+      "step8": "Paste them in the form below",
+      "important": "Important:",
+      "warning": "Store the keys securely. If you lose them, you will need to generate new keys.",
+      "documentation": "View WooCommerce REST API Documentation"
+    },
+    "form": {
+      "connectTitle": "Connect Your Store",
+      "updateTitle": "Update Integration",
+      "connectDescription": "Enter your WooCommerce API credentials to connect",
+      "updateDescription": "Update your WooCommerce store connection settings",
+      "storeUrl": {
+        "label": "Store URL",
+        "placeholder": "https://yourstore.com",
+        "help": "Your WooCommerce store URL without trailing slash"
+      },
+      "consumerKey": {
+        "label": "Consumer Key",
+        "placeholder": "ck_...",
+        "help": "Your WooCommerce REST API Consumer Key"
+      },
+      "consumerSecret": {
+        "label": "Consumer Secret",
+        "placeholder": "cs_...",
+        "help": "Your WooCommerce REST API Consumer Secret (keep it secure)"
       }
     }
   }

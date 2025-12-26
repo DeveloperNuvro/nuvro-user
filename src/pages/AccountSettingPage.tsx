@@ -95,12 +95,21 @@ const AccountSettingsPage: React.FC = () => {
                 return;
             }
 
-            // Change language in i18n first
+            // 🔧 FIX: Save to backend first, then update UI
+            const result = await dispatch(updateUserLanguage({ language: lang })).unwrap();
+            console.log('✅ Language updated successfully:', { lang, result: result?.language });
+            
+            // 🔧 FIX: Update i18n immediately after successful backend update
             await i18n.changeLanguage(lang);
             
-            // Save to backend
-            const result = await dispatch(updateUserLanguage({ language: lang })).unwrap();
-            console.log('Language updated successfully:', result);
+            // 🔧 FIX: Store in localStorage for persistence (CRITICAL)
+            localStorage.setItem('i18nextLng', lang);
+            
+            // 🔧 FIX: Force i18n to use this language (bypass detection)
+            i18n.language = lang;
+            
+            console.log('✅ Language synced:', { i18nLanguage: i18n.language, localStorage: localStorage.getItem('i18nextLng') });
+            
             toast.success(t('settingsPage.language.updateSuccess'));
         } catch (error: any) {
             // 🔧 FIX: Show actual error message for debugging
@@ -118,13 +127,8 @@ const AccountSettingsPage: React.FC = () => {
             
             toast.error(`Failed to update language: ${errorMessage}`);
             
-            // Revert language change if backend save failed
-            const currentLang = i18n.language;
-            if (currentLang === lang) {
-                // If language was changed but backend failed, revert to previous
-                const previousLang = user?.language || 'es';
-                await i18n.changeLanguage(previousLang);
-            }
+            // Don't change language if backend save failed
+            return;
         }
     };
 

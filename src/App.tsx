@@ -29,18 +29,65 @@ function App() {
 
   // 🔧 FIX: Sync i18n language with user's language preference when user is loaded
   useEffect(() => {
-    if (user?.language && bootstrapped) {
-      const supportedLanguages = ['en', 'es', 'bn'];
-      const userLang = user.language.toLowerCase().substring(0, 2);
+    if (!bootstrapped) {
+      console.log('⏳ Waiting for bootstrap to complete...');
+      return; // Wait for bootstrap to complete
+    }
+    
+    const supportedLanguages = ['en', 'es', 'bn'];
+    
+    if (user?.language) {
+      // User is logged in - prioritize user's language from database
+      const userLang = user.language.toLowerCase().trim();
+      console.log('👤 User language detected:', { userLang, currentI18n: i18n.language, userLanguage: user.language });
       
-      // Only change if it's a supported language and different from current
-      if (supportedLanguages.includes(userLang) && i18n.language !== userLang) {
-        i18n.changeLanguage(userLang).catch((error) => {
-          console.error('Failed to sync user language with i18n:', error);
-        });
+      if (supportedLanguages.includes(userLang)) {
+        // Check if i18n language is different from user language
+        const currentLang = i18n.language?.split('-')[0]?.toLowerCase(); // Handle 'en-US' -> 'en'
+        
+        if (currentLang !== userLang) {
+          console.log('🔄 Syncing i18n with user language:', { currentLang, userLang, userLanguage: user.language });
+          
+          // 🔧 FIX: Update localStorage FIRST
+          localStorage.setItem('i18nextLng', userLang);
+          
+          // 🔧 FIX: Change i18n language
+          i18n.changeLanguage(userLang).then(() => {
+            // 🔧 FIX: Force set i18n language to ensure it's applied
+            i18n.language = userLang;
+            console.log('✅ i18n language synced with user language:', { userLang, i18nLanguage: i18n.language });
+          }).catch((error) => {
+            console.error('❌ Failed to sync user language with i18n:', error);
+          });
+        } else {
+          // Already in sync, but ensure localStorage matches
+          const savedLang = localStorage.getItem('i18nextLng');
+          if (savedLang !== userLang) {
+            localStorage.setItem('i18nextLng', userLang);
+            console.log('🔄 Updated localStorage to match user language:', userLang);
+          }
+        }
+      } else {
+        console.warn('⚠️ Unsupported user language:', userLang);
+      }
+    } else {
+      // No user logged in - use localStorage if available
+      const savedLang = localStorage.getItem('i18nextLng');
+      console.log('👤 No user, checking localStorage:', { savedLang, currentI18n: i18n.language });
+      if (savedLang && supportedLanguages.includes(savedLang)) {
+        const currentLang = i18n.language?.split('-')[0]?.toLowerCase();
+        if (currentLang !== savedLang) {
+          console.log('🔄 Loading saved language from localStorage:', savedLang);
+          i18n.changeLanguage(savedLang).then(() => {
+            i18n.language = savedLang; // Force set
+          }).catch((error) => {
+            console.error('❌ Failed to load saved language:', error);
+          });
+        }
       }
     }
-  }, [user?.language, bootstrapped, i18n]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.language, bootstrapped]); // Remove i18n from dependencies to avoid infinite loop
 
   // Show a loading screen until the initial auth state is determined
   if (!bootstrapped) {

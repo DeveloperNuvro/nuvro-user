@@ -35,29 +35,42 @@ export function LanguageToggle() {
         return;
       }
 
-      // Change language immediately for UI update
-      await i18n.changeLanguage(lng);
-      
-      // Save to backend if user is logged in
+      // Save to backend first if user is logged in
       if (user) {
         try {
-          // 🔧 FIX: Use the same API call as settings page
-          await dispatch(updateUserLanguage({ language: lng })).unwrap();
+          // 🔧 FIX: Save to backend first, then update UI
+          const result = await dispatch(updateUserLanguage({ language: lng })).unwrap();
+          
+          console.log('✅ Language updated in backend:', { lng, result: result?.language });
+          
+          // 🔧 FIX: Update i18n immediately after successful backend update
+          await i18n.changeLanguage(lng);
+          
+          // 🔧 FIX: Store in localStorage for persistence (CRITICAL)
+          localStorage.setItem('i18nextLng', lng);
+          
+          // 🔧 FIX: Force i18n to use this language (bypass detection)
+          i18n.language = lng;
+          
+          console.log('✅ Language synced:', { i18nLanguage: i18n.language, localStorage: localStorage.getItem('i18nextLng') });
+          
           toast.success(t('languageUpdatedSuccess', { language: supportedLanguages.find(l => l.code === lng)?.name || lng }));
         } catch (error: any) {
-          console.error("Failed to save language preference:", error);
+          console.error("❌ Failed to save language preference:", error);
           const errorMessage = error?.payload || 
                               error?.message || 
                               error?.response?.data?.message || 
                               t('languageUpdatedFailed', 'Failed to save language preference');
           toast.error(errorMessage);
           
-          // Revert language change if backend save failed
-          const previousLang = user?.language || 'es';
-          await i18n.changeLanguage(previousLang);
+          // Don't change language if backend save failed
+          return;
         }
       } else {
-        // User not logged in, just show success for local change
+        // User not logged in, just change locally
+        await i18n.changeLanguage(lng);
+        localStorage.setItem('i18nextLng', lng);
+        i18n.language = lng; // Force set
         toast.success(t('languageUpdatedSuccess', { language: supportedLanguages.find(l => l.code === lng)?.name || lng }));
       }
     } catch (error) {

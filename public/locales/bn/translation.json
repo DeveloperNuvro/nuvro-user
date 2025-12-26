@@ -453,6 +453,7 @@
     "trainedFiles": "{{count}} প্রশিক্ষিত ফাইল",
     "statusLabel": "অবস্থা",
     "editButton": "মডেল সম্পাদনা করুন",
+    "wooCommerceButton": "WooCommerce",
     "toastDeleteSuccess": "\"{{modelName}}\" মডেলটি সফলভাবে মুছে ফেলা হয়েছে।",
     "toastDeleteError": "❌ {{error}}"
   },
@@ -835,6 +836,13 @@
     }
   },
   "updateAiModelPage": {
+    "tabs": {
+      "settings": "সেটিংস",
+      "woocommerce": "WooCommerce"
+    },
+    "woocommerce": {
+      "noBusinessId": "ব্যবসার ID পাওয়া যায়নি"
+    },
     "loading": {
       "loadingData": "মডেল ডেটা লোড হচ্ছে...",
       "loadingError": "মডেল লোড করতে ত্রুটি। এটি হয়তো বিদ্যমান নেই।",
@@ -1145,6 +1153,116 @@
         "reconnectNoUrl": "প্রমাণীকরণ URL পাওয়া যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।",
         "reconnectFailed": "সংযোগ পুনঃসংযুক্ত করতে ব্যর্থ হয়েছে",
         "deleteFailed": "সংযোগ মুছতে ব্যর্থ হয়েছে"
+      }
+    }
+  },
+  "wooCommerce": {
+    "modal": {
+      "title": "WooCommerce ইন্টিগ্রেশন",
+      "description": "এই AI মডেলের জন্য রিয়েল-টাইম পণ্যের তথ্য সক্ষম করতে আপনার WooCommerce স্টোর সংযুক্ত করুন।",
+      "close": "বন্ধ করুন"
+    },
+    "status": {
+      "connected": "সংযুক্ত",
+      "storeUrl": "স্টোর URL",
+      "lastSync": "শেষ সিঙ্ক",
+      "active": "আপনার স্টোর সক্রিয়ভাবে সিঙ্ক হচ্ছে",
+      "inactive": "নিষ্ক্রিয়",
+      "realTime": "রিয়েল-টাইম সিঙ্ক সক্ষম",
+      "secure": "নিরাপদ সংযোগ",
+      "activeStatus": "সক্রিয়"
+    },
+    "form": {
+      "storeUrl": {
+        "label": "স্টোর URL",
+        "placeholder": "https://yourstore.com",
+        "help": "ট্রেইলিং স্ল্যাশ ছাড়া আপনার WooCommerce স্টোর URL"
+      },
+      "consumerKey": {
+        "label": "Consumer Key",
+        "placeholder": "ck_...",
+        "help": "আপনার WooCommerce REST API Consumer Key"
+      },
+      "consumerSecret": {
+        "label": "Consumer Secret",
+        "placeholder": "cs_...",
+        "help": "আপনার WooCommerce REST API Consumer Secret (নিরাপদে রাখুন)"
+      },
+      "isActive": {
+        "label": "সক্রিয় ইন্টিগ্রেশন",
+        "description": "এই ইন্টিগ্রেশন সক্ষম বা অক্ষম করুন"
+      },
+      "validation": {
+        "required": "সব ক্ষেত্র প্রয়োজন"
+      },
+      "show": "দেখান",
+      "hide": "লুকান"
+    },
+    "connect": {
+      "button": "সংযুক্ত করুন",
+      "connecting": "সংযুক্ত হচ্ছে...",
+      "success": "WooCommerce স্টোর সফলভাবে সংযুক্ত হয়েছে",
+      "error": "WooCommerce স্টোর সংযুক্ত করতে ব্যর্থ হয়েছে"
+    },
+    "update": {
+      "button": "আপডেট করুন",
+      "updating": "আপডেট হচ্ছে...",
+      "success": "WooCommerce ইন্টিগ্রেশন সফলভাবে আপডেট হয়েছে",
+      "error": "WooCommerce ইন্টিগ্রেশন আপডেট করতে ব্যর্থ হয়েছে"
+    },
+    "disconnect": {
+      "button": "সংযোগ বিচ্ছিন্ন করুন",
+      "confirm": "আপনি কি নিশ্চিত যে আপনি এই WooCommerce স্টোরটি সংযোগ বিচ্ছিন্ন করতে চান?",
+      "success": "WooCommerce স্টোর সফলভাবে সংযোগ বিচ্ছিন্ন হয়েছে",
+      "error": "WooCommerce স্টোর সংযোগ বিচ্ছিন্ন করতে ব্যর্থ হয়েছে"
+    },
+    "test": {
+      "button": "সংযোগ পরীক্ষা করুন",
+      "testing": "পরীক্ষা করা হচ্ছে...",
+      "connected": "সংযোগ সফল",
+      "failed": "সংযোগ ব্যর্থ",
+      "productsFound": "{{count}} টি পণ্য পাওয়া গেছে",
+      "success": "সংযোগ সফল! {{count}} টি পণ্য পাওয়া গেছে।",
+      "error": "সংযোগ পরীক্ষা ব্যর্থ হয়েছে"
+    },
+    "tab": {
+      "title": "WooCommerce ইন্টিগ্রেশন",
+      "description": "এই AI মডেলের জন্য রিয়েল-টাইম পণ্যের তথ্য সক্ষম করতে আপনার WooCommerce স্টোর সংযুক্ত করুন।"
+    },
+    "instructions": {
+      "title": "WooCommerce API কীগুলি কীভাবে পাবেন?",
+      "subtitle": "আপনার স্টোর সংযুক্ত করার ধাপে ধাপে নির্দেশিকা",
+      "step1": "আপনার WordPress admin dashboard-এ লগইন করুন",
+      "step2": "WooCommerce → Settings → Advanced → REST API-এ যান",
+      "step3": "\"Add key\" button-এ ক্লিক করুন",
+      "step4": "Description পূরণ করুন (যেমন, \"Nuvro AI Integration\")",
+      "step5": "\"Read\" permissions নির্বাচন করুন (অথবা \"Read/Write\" যদি আপনি পণ্য আপডেট করতে চান)",
+      "step6": "\"Generate API key\"-এ ক্লিক করুন",
+      "step7": "Consumer Key এবং Consumer Secret অবিলম্বে কপি করুন (এগুলি শুধুমাত্র একবার দেখানো হবে)",
+      "step8": "নীচের ফর্মে paste করুন",
+      "important": "গুরুত্বপূর্ণ:",
+      "warning": "কীগুলি নিরাপদে সংরক্ষণ করুন। যদি আপনি এগুলি হারিয়ে ফেলেন, আপনাকে নতুন কী তৈরি করতে হবে।",
+      "documentation": "WooCommerce REST API ডকুমেন্টেশন দেখুন"
+    },
+    "form": {
+      "connectTitle": "আপনার স্টোর সংযুক্ত করুন",
+      "updateTitle": "ইন্টিগ্রেশন আপডেট করুন",
+      "connectDescription": "সংযুক্ত করতে আপনার WooCommerce API credentials লিখুন",
+      "updateDescription": "আপনার WooCommerce স্টোর সংযোগ সেটিংস আপডেট করুন",
+      "storeUrl": {
+        "label": "স্টোর URL",
+        "placeholder": "https://yourstore.com",
+        "help": "ট্রেইলিং স্ল্যাশ ছাড়া আপনার WooCommerce স্টোর URL"
+      },
+      "consumerKey": {
+        "label": "Consumer Key",
+        "placeholder": "ck_...",
+        "help": "আপনার WooCommerce REST API Consumer Key"
+      },
+      "consumerSecret": {
+        "label": "Consumer Secret",
+        "placeholder": "cs_...",
+        "help": "আপনার WooCommerce REST API Consumer Secret (নিরাপদে রাখুন)"
       }
     }
   }
