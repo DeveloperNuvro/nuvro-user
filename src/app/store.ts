@@ -17,6 +17,7 @@ import humanAgentInbox from '../features/humanAgent/humanAgentInboxSlice';
 import agentTicket from '../features/SupportTicket/agentTicketSlice';
 import unipileReducer from '../features/unipile/unipileSlice';
 import wooCommerceReducer from '../features/wooCommerce/wooCommerceSlice';
+import whatsappBusinessReducer from '../features/whatsappBusiness/whatsappBusinessSlice';
 
 export const store = configureStore({
   reducer: {
@@ -38,6 +39,7 @@ export const store = configureStore({
     agentTickets: agentTicket,
     unipile: unipileReducer,
     wooCommerce: wooCommerceReducer,
+    whatsappBusiness: whatsappBusinessReducer,
   },
 });
 

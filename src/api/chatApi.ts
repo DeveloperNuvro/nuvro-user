@@ -30,10 +30,16 @@ export const sendMessageViaConversation = async (data: {
   message: string;
   businessId: string;
   imageUrl?: string;
+  audioUrl?: string;
   mediaUrl?: string;
   messageType?: 'text' | 'image' | 'video' | 'audio' | 'document';
+  platform?: 'whatsapp' | 'unipile' | 'whatsapp-business';
 }) => {
-  const response = await api.post('/api/v1/unipile/send-message-via-conversation', data);
+  // 🔧 META OFFICIAL: Use chat-inbox endpoint for WhatsApp Business API
+  // This endpoint automatically detects WhatsApp conversations and uses Meta's API
+  const endpoint = '/api/v1/chat-inbox/conversations/send-message';
+  
+  const response = await api.post(endpoint, data);
   return response.data.data;
 };
 
@@ -169,6 +175,19 @@ export const uploadImage = async (file: File): Promise<{ url: string }> => {
   const formData = new FormData();
   formData.append('image', file);
   const response = await api.post('/api/v1/upload/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data.data;
+};
+
+// 🔧 META OFFICIAL: Audio Upload API
+// Supports: AAC, MP4, MPEG, AMR, OGG (max 16MB)
+export const uploadAudio = async (file: File): Promise<{ url: string }> => {
+  const formData = new FormData();
+  formData.append('audio', file);
+  const response = await api.post('/api/v1/upload/audio', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },

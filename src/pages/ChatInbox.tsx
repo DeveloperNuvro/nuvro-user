@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Sparkles, ZapOff, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Sparkles, ZapOff, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, CheckCircle, Image as ImageIcon, X, Mic, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -18,7 +18,7 @@ import toast from 'react-hot-toast';
 
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from "@/api/axios";
-import { uploadImage as uploadImageApi } from "@/api/chatApi";
+import { uploadImage as uploadImageApi, uploadAudio as uploadAudioApi } from "@/api/chatApi";
 import {
   fetchCustomersByBusiness,
   fetchMessagesByCustomer,
@@ -32,9 +32,17 @@ import {
 } from "@/features/chatInbox/chatInboxSlice";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
+import { 
+  check24HourSession, 
+  fetchWhatsAppTemplates,
+  SessionCheckResult 
+} from "@/features/whatsappBusiness/whatsappBusinessSlice";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSocket } from "../lib/useSocket"; 
 import ChatInboxSkeleton from "@/components/skeleton/ChatInboxSkeleton"; // 1. Import the skeleton
 import PlatformBadge from "@/components/custom/unipile/PlatformBadge";
@@ -53,6 +61,150 @@ const SystemMessage = ({ text }: { text: string }) => (
   </div> 
 );
 const useDebounce = (value: string, delay: number) => { const [debouncedValue, setDebouncedValue] = useState(value); useEffect(() => { const handler = setTimeout(() => { setDebouncedValue(value); }, delay); return () => { clearTimeout(handler); }; }, [value, delay]); return debouncedValue; };
+
+// 🔧 META OFFICIAL: 24-Hour Session Countdown Timer Component
+// According to Meta's recommendations, showing a countdown helps agents respond timely
+const SessionCountdownTimer = ({ 
+  sessionInfo, 
+  isChecking, 
+  lastMessageTimestamp 
+}: { 
+  sessionInfo: SessionCheckResult | null; 
+  isChecking: boolean;
+  lastMessageTimestamp: string | null | undefined;
+}) => {
+  const [timeRemaining, setTimeRemaining] = useState<{
+    hours: number;
+    minutes: number;
+    seconds: number;
+    totalSeconds: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!sessionInfo || !lastMessageTimestamp || !sessionInfo.withinWindow) {
+      setTimeRemaining(null);
+      return;
+    }
+
+    // Calculate time remaining from last message timestamp
+    const calculateTimeRemaining = () => {
+      const lastMessageTime = new Date(lastMessageTimestamp).getTime();
+      const now = Date.now();
+      const elapsed = now - lastMessageTime;
+      const totalSecondsRemaining = Math.max(0, 24 * 60 * 60 * 1000 - elapsed);
+      
+      if (totalSecondsRemaining <= 0) {
+        setTimeRemaining(null);
+        return;
+      }
+
+      const hours = Math.floor(totalSecondsRemaining / (1000 * 60 * 60));
+      const minutes = Math.floor((totalSecondsRemaining % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((totalSecondsRemaining % (1000 * 60)) / 1000);
+
+      setTimeRemaining({
+        hours,
+        minutes,
+        seconds,
+        totalSeconds: Math.floor(totalSecondsRemaining / 1000),
+      });
+    };
+
+    // Calculate immediately
+    calculateTimeRemaining();
+
+    // Update every second
+    const interval = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [sessionInfo, lastMessageTimestamp]);
+
+  if (isChecking) {
+    return <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />;
+  }
+
+  // 🔧 META OFFICIAL: Always show countdown for WhatsApp conversations (Meta Recommendation)
+  // Show "Checking..." while loading, then show countdown or "Template Required"
+  if (!sessionInfo) {
+    return (
+      <Tooltip>
+        <TooltipTrigger>
+          <Badge variant="outline" className="text-xs bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400">
+            <Clock className="h-3 w-3 mr-1" />
+            Checking...
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Checking 24-hour session window status...</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  if (!sessionInfo.withinWindow || !timeRemaining) {
+    return (
+      <Tooltip>
+        <TooltipTrigger>
+          <Badge variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-300">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Template Required
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>24-hour session window expired. Template messages only.</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  // Color based on remaining time (Meta recommendation: visual urgency)
+  const isUrgent = timeRemaining.totalSeconds < 3600; // Less than 1 hour
+  const isWarning = timeRemaining.totalSeconds < 7200; // Less than 2 hours
+
+  const badgeClass = isUrgent
+    ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300"
+    : isWarning
+    ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300"
+    : "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300";
+
+  // Format time display
+  const formatTime = () => {
+    if (timeRemaining.hours > 0) {
+      return `${timeRemaining.hours}h ${timeRemaining.minutes}m`;
+    } else if (timeRemaining.minutes > 0) {
+      return `${timeRemaining.minutes}m ${timeRemaining.seconds}s`;
+    } else {
+      return `${timeRemaining.seconds}s`;
+    }
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger>
+        <Badge variant="outline" className={cn("text-xs", badgeClass)}>
+          <Clock className="h-3 w-3 mr-1" />
+          {formatTime()}
+        </Badge>
+      </TooltipTrigger>
+      <TooltipContent>
+        <div className="space-y-1">
+          <p className="font-semibold">24-Hour Session Window</p>
+          <p className="text-xs">
+            {timeRemaining.hours > 0 
+              ? `${timeRemaining.hours} hour${timeRemaining.hours > 1 ? 's' : ''}, ${timeRemaining.minutes} minute${timeRemaining.minutes !== 1 ? 's' : ''} remaining`
+              : timeRemaining.minutes > 0
+              ? `${timeRemaining.minutes} minute${timeRemaining.minutes !== 1 ? 's' : ''}, ${timeRemaining.seconds} second${timeRemaining.seconds !== 1 ? 's' : ''} remaining`
+              : `${timeRemaining.seconds} second${timeRemaining.seconds !== 1 ? 's' : ''} remaining`
+            }
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Free-form messages allowed. After expiration, only template messages can be sent.
+          </p>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+};
 
 // 🔧 Helper function to optimize Cloudinary URLs with transformations
 const optimizeImageUrl = (url: string | null, maxWidth: number = 800, quality: string = 'auto'): string | null => {
@@ -210,7 +362,7 @@ export default function ChatInbox() {
   const [newMessage, setNewMessage] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState<'open' | 'closed'>('open');
-  const [activePlatform, setActivePlatform] = useState<'all' | 'whatsapp' | 'instagram' | 'telegram' | 'website'>('all');
+  const [activePlatform, setActivePlatform] = useState<'website' | 'whatsapp'>('website');
   const [isTyping] = useState<{ [key: string]: boolean }>({});
 
   const messageListRef = useRef<HTMLDivElement | null>(null);
@@ -220,6 +372,12 @@ export default function ChatInbox() {
   const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  
+  // 🔧 NEW: WhatsApp-specific state
+  const [whatsappSessionInfo, setWhatsappSessionInfo] = useState<SessionCheckResult | null>(null);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(false);
   
   // 🔧 NEW: Helper function to get priority color
   const getPriorityColor = (priority: string = 'normal') => {
@@ -236,6 +394,7 @@ export default function ChatInbox() {
   const { channels } = useSelector((state: RootState) => state.channel);
   const { agents } = useSelector((state: RootState) => state.humanAgent);
   const { conversations, status: chatListStatus, currentPage, totalPages } = useSelector((state: RootState) => state.chatInbox);
+  const { templates } = useSelector((state: RootState) => state.whatsappBusiness);
   
   // 🔧 NEW: Mark conversation as read
   const handleMarkAsRead = useCallback(async (conversationId: string) => {
@@ -322,10 +481,6 @@ export default function ChatInbox() {
   
   // 🔧 FIX: Filter conversations by platform on frontend for real-time updates
   const filteredConversations = useMemo(() => {
-    if (activePlatform === 'all') {
-      return conversations;
-    }
-    
     // 🔧 DEBUG: Log all conversations before filtering
     if (activePlatform === 'website') {
       console.log('[ChatInbox] All conversations before filter:', {
@@ -406,7 +561,149 @@ export default function ChatInbox() {
       dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); 
     } 
   }, [businessId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
+
+  // 🔧 META OFFICIAL: Check 24-hour session and show template selector when WhatsApp conversation is selected
+  useEffect(() => {
+    const checkSessionAndShowTemplate = async () => {
+      // Reset template selector when conversation changes
+      setShowTemplateSelector(false);
+      setSelectedTemplate(null);
+      setWhatsappSessionInfo(null);
+      
+      // Only check for WhatsApp conversations
+      if (
+        currentConversation?.platformInfo?.platform === 'whatsapp' &&
+        currentConversation?.platformInfo?.connectionId &&
+        currentConversation?.platformInfo?.platformUserId
+      ) {
+        const connectionId = currentConversation.platformInfo.connectionId;
+        // Use platformUserId (WhatsApp phone number) for WhatsApp conversations
+        const phoneNumber = (currentConversation.platformInfo.platformUserId || '').replace(/\D/g, '');
+        
+        if (phoneNumber) {
+          setIsCheckingSession(true);
+          try {
+            // Check 24-hour session window
+            const sessionResult = await dispatch(
+              check24HourSession({ connectionId, phoneNumber })
+            ).unwrap();
+            
+            setWhatsappSessionInfo(sessionResult);
+            
+            // 🔧 META OFFICIAL: Only show template selector if template is actually required
+            if (sessionResult.requiresTemplate) {
+              await dispatch(fetchWhatsAppTemplates(connectionId));
+              setShowTemplateSelector(true);
+              if (!sessionResult.lastMessageTimestamp) {
+                toast('First message to customer. Please select a template to send.', {
+                  duration: 6000,
+                  icon: 'ℹ️',
+                });
+              } else {
+                toast('24-hour session window expired. Please select a template message.', {
+                  duration: 6000,
+                  icon: 'ℹ️',
+                });
+              }
+            } else {
+              // Within 24-hour window - hide template selector
+              setShowTemplateSelector(false);
+              setSelectedTemplate(null);
+            }
+          } catch (error: any) {
+            console.error('Error checking session:', error);
+            // On error, assume template required (safer)
+            await dispatch(fetchWhatsAppTemplates(connectionId));
+            setShowTemplateSelector(true);
+            toast('Unable to verify session. Template message may be required.', {
+              duration: 5000,
+              icon: '⚠️',
+            });
+          } finally {
+            setIsCheckingSession(false);
+          }
+        }
+      }
+    };
+
+    if (currentConversation) {
+      checkSessionAndShowTemplate();
+    }
+  }, [currentConversation?.id, currentConversation?.platformInfo?.platform, currentConversation?.platformInfo?.connectionId, currentConversation?.platformInfo?.platformUserId, dispatch]);
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
+
+  // 🔧 META OFFICIAL: Check 24-hour session and show template selector when WhatsApp conversation is selected
+  useEffect(() => {
+    const checkSessionAndShowTemplate = async () => {
+      // Reset template selector when conversation changes
+      setShowTemplateSelector(false);
+      setSelectedTemplate(null);
+      setWhatsappSessionInfo(null);
+      
+      // Only check for WhatsApp conversations
+      if (
+        currentConversation?.platformInfo?.platform === 'whatsapp' &&
+        currentConversation?.platformInfo?.connectionId &&
+        currentConversation?.platformInfo?.platformUserId
+      ) {
+        const connectionId = currentConversation.platformInfo.connectionId;
+        // Use platformUserId (WhatsApp phone number) for WhatsApp conversations
+        const phoneNumber = (currentConversation.platformInfo.platformUserId || '').replace(/\D/g, '');
+        
+        if (phoneNumber) {
+          setIsCheckingSession(true);
+          try {
+            // Check 24-hour session window
+            const sessionResult = await dispatch(
+              check24HourSession({ connectionId, phoneNumber })
+            ).unwrap();
+            
+            setWhatsappSessionInfo(sessionResult);
+            
+            // 🔧 META OFFICIAL: Only show template selector if template is actually required
+            if (sessionResult.requiresTemplate) {
+              await dispatch(fetchWhatsAppTemplates(connectionId));
+              setShowTemplateSelector(true);
+              if (!sessionResult.lastMessageTimestamp) {
+                toast('First message to customer. Please select a template to send.', {
+                  duration: 6000,
+                  icon: 'ℹ️',
+                });
+              } else {
+                toast('24-hour session window expired. Please select a template message.', {
+                  duration: 6000,
+                  icon: 'ℹ️',
+                });
+              }
+            } else {
+              // Within 24-hour window - hide template selector
+              setShowTemplateSelector(false);
+              setSelectedTemplate(null);
+            }
+          } catch (error: any) {
+            console.error('Error checking session:', error);
+            // On error, assume template required (safer)
+            try {
+              await dispatch(fetchWhatsAppTemplates(connectionId));
+              setShowTemplateSelector(true);
+              toast('Unable to verify session. Template message may be required.', {
+                duration: 5000,
+                icon: '⚠️',
+              });
+            } catch (templateError) {
+              console.error('Error fetching templates:', templateError);
+            }
+          } finally {
+            setIsCheckingSession(false);
+          }
+        }
+      }
+    };
+
+    if (currentConversation) {
+      checkSessionAndShowTemplate();
+    }
+  }, [currentConversation?.id, currentConversation?.platformInfo?.platform, currentConversation?.platformInfo?.connectionId, currentConversation?.platformInfo?.platformUserId, dispatch]);
   
   // 🔧 OPTIMIZED: Memoize conversation lookup to avoid repeated finds
   const selectedConversation = useMemo(() => {
@@ -492,6 +789,30 @@ export default function ChatInbox() {
     }
   }, [conversations, dispatch]);
 
+  // 🔧 NEW: Handle message status updates (for WhatsApp read receipts, delivery confirmations)
+  const handleMessageStatusUpdate = useCallback((data: {
+    messageId: string;
+    conversationId: string;
+    status: 'sent' | 'delivered' | 'read' | 'failed';
+    timestamp?: string;
+    errorCode?: number;
+    errorMessage?: string;
+  }) => {
+    // Update message in local state if it exists
+    if (messagesData?.list) {
+      const messageIndex = messagesData.list.findIndex(
+        (m: any) => m.id === data.messageId || m.messageId === data.messageId
+      );
+      
+      if (messageIndex !== -1) {
+        // Update message status via dispatch if there's an action for it
+        // For now, we'll rely on socket events to trigger a refresh
+        // In a full implementation, you'd update the Redux store directly
+        console.log('Message status updated:', data);
+      }
+    }
+  }, [messagesData]);
+
   // 🔧 OPTIMIZED: Real-time event listeners for conversation updates
   useEffect(() => {
     const socket = getSocket();
@@ -502,14 +823,17 @@ export default function ChatInbox() {
     socket.on('newChatAssigned', handleNewChatAssigned);
     socket.on('conversationUpdated', handleConversationUpdated);
     socket.on('conversationAssigned', handleConversationAssigned);
+    // 🔧 NEW: Listen for message status updates (WhatsApp read receipts, delivery confirmations)
+    socket.on('messageStatusUpdate', handleMessageStatusUpdate);
 
     return () => {
       socket.off('newConversation', handleNewConversation);
       socket.off('newChatAssigned', handleNewChatAssigned);
       socket.off('conversationUpdated', handleConversationUpdated);
       socket.off('conversationAssigned', handleConversationAssigned);
+      socket.off('messageStatusUpdate', handleMessageStatusUpdate);
     };
-  }, [businessId, handleNewConversation, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned]);
+  }, [businessId, handleNewConversation, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned, handleMessageStatusUpdate]);
 
   useLayoutEffect(() => { 
     if (!messageListRef.current) return; 
@@ -529,6 +853,17 @@ export default function ChatInbox() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 🔧 META OFFICIAL: State for audio upload and recording
+  const [selectedAudioFile, setSelectedAudioFile] = useState<File | null>(null);
+  const [audioPreview, setAudioPreview] = useState<string | null>(null);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // 🔧 NEW: Handle image file selection
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -557,6 +892,33 @@ export default function ChatInbox() {
     reader.readAsDataURL(file);
   }, []);
 
+  // 🔧 META OFFICIAL: Handle audio file selection
+  const handleAudioSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type (Meta supports: AAC, MP4, MPEG, AMR, OGG)
+    const validAudioTypes = ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg', 'audio/ogg; codecs=opus', 'audio/mp3', 'audio/wav'];
+    if (!file.type.startsWith('audio/') && !validAudioTypes.includes(file.type)) {
+      toast.error('Please select an audio file (AAC, MP4, MPEG, AMR, OGG)');
+      return;
+    }
+
+    // Validate file size (max 16MB - Meta's limit)
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error('Audio size must be less than 16MB');
+      return;
+    }
+
+    setSelectedAudioFile(file);
+    setSelectedImageFile(null); // Clear image if audio is selected
+    setImagePreview(null);
+    
+    // Create preview URL
+    const audioUrl = URL.createObjectURL(file);
+    setAudioPreview(audioUrl);
+  }, []);
+
   // 🔧 NEW: Remove selected image
   const handleRemoveImage = useCallback(() => {
     setSelectedImageFile(null);
@@ -565,6 +927,90 @@ export default function ChatInbox() {
       fileInputRef.current.value = '';
     }
   }, []);
+
+  // 🔧 META OFFICIAL: Handle audio recording
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
+        const audioFile = new File([audioBlob], `recording-${Date.now()}.${mediaRecorder.mimeType.includes('webm') ? 'webm' : 'mp4'}`, {
+          type: mediaRecorder.mimeType
+        });
+        
+        setSelectedAudioFile(audioFile);
+        const audioUrl = URL.createObjectURL(audioBlob);
+        setAudioPreview(audioUrl);
+        
+        // Stop all tracks
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      // Start timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+    } catch (error: any) {
+      console.error('Error starting recording:', error);
+      toast.error('Failed to start recording. Please allow microphone access.');
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    }
+  }, [isRecording]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, [isRecording]);
+
+  // 🔧 META OFFICIAL: Handle audio removal
+  const handleRemoveAudio = useCallback(() => {
+    if (audioPreview) {
+      URL.revokeObjectURL(audioPreview);
+    }
+    setSelectedAudioFile(null);
+    setAudioPreview(null);
+    if (audioInputRef.current) {
+      audioInputRef.current.value = '';
+    }
+    if (isRecording) {
+      stopRecording();
+    }
+  }, [audioPreview, isRecording, stopRecording]);
 
   // 🔧 NEW: Upload image to get URL
   const uploadImage = useCallback(async (file: File): Promise<string> => {
@@ -578,17 +1024,19 @@ export default function ChatInbox() {
   }, []);
 
   const handleSendMessage = useCallback(async () => {
-    if ((!newMessage.trim() && !selectedImageFile) || !selectedCustomer || !businessId || !currentConversation) return;
+    if ((!newMessage.trim() && !selectedImageFile && !selectedAudioFile) || !selectedCustomer || !businessId || !currentConversation) return;
     
     const platform = currentConversation.platformInfo?.platform || 'website';
     const messageText = newMessage.trim();
     let imageUrl: string | null = null;
+    let audioUrl: string | null = null;
     
     // 🔧 NEW: Upload image if selected
     if (selectedImageFile) {
       setIsUploadingImage(true);
       try {
-        imageUrl = await uploadImage(selectedImageFile);
+        const result = await uploadImageApi(selectedImageFile);
+        imageUrl = result.url;
       } catch (error: any) {
         toast.error(error.response?.data?.message || 'Failed to upload image');
         setIsUploadingImage(false);
@@ -597,8 +1045,23 @@ export default function ChatInbox() {
       setIsUploadingImage(false);
     }
     
+    // 🔧 META OFFICIAL: Upload audio if selected
+    if (selectedAudioFile) {
+      setIsUploadingAudio(true);
+      try {
+        const result = await uploadAudioApi(selectedAudioFile);
+        audioUrl = result.url;
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Failed to upload audio');
+        setIsUploadingAudio(false);
+        return;
+      }
+      setIsUploadingAudio(false);
+    }
+    
     setNewMessage("");
     handleRemoveImage();
+    handleRemoveAudio();
 
     // For website conversations, use internal messaging
     if (platform === 'website' || !platform) {
@@ -616,25 +1079,114 @@ export default function ChatInbox() {
     // For Instagram, WhatsApp, Telegram - use Unipile API
     if (platform === 'instagram' || platform === 'whatsapp' || platform === 'telegram') {
       try {
+        // 🔧 CRITICAL: For WhatsApp, check 24-hour session window (Meta requirement)
+        if (platform === 'whatsapp' && currentConversation.platformInfo?.connectionId) {
+          const connectionId = currentConversation.platformInfo.connectionId;
+          // Use platformUserId (WhatsApp phone number) for WhatsApp conversations
+          const phoneNumber = (currentConversation.platformInfo.platformUserId || '').replace(/\D/g, '');
+          
+          // Check session if not already checked
+          if (!whatsappSessionInfo && phoneNumber) {
+            setIsCheckingSession(true);
+            const sessionResult = await dispatch(
+              check24HourSession({ connectionId, phoneNumber })
+            ).unwrap();
+            setWhatsappSessionInfo(sessionResult);
+            setIsCheckingSession(false);
+            
+            if (sessionResult.requiresTemplate && !selectedTemplate) {
+              // Load templates and show selector
+              await dispatch(fetchWhatsAppTemplates(connectionId));
+              setShowTemplateSelector(true);
+              toast.error('24-hour session window expired. Please select a template message.', {
+                duration: 5000,
+              });
+              return; // Don't send message, wait for template selection
+            }
+          } else if (whatsappSessionInfo?.requiresTemplate && !selectedTemplate) {
+            // Session already checked and requires template
+            setShowTemplateSelector(true);
+            toast.error('24-hour session window expired. Please select a template message.', {
+              duration: 5000,
+            });
+            return;
+          }
+          
+          // If template is selected, send template message via WhatsApp Business API
+          if (selectedTemplate && whatsappSessionInfo?.requiresTemplate) {
+            const connectionId = currentConversation.platformInfo.connectionId;
+            // Use platformUserId (WhatsApp phone number) for WhatsApp conversations
+            const phoneNumber = (currentConversation.platformInfo.platformUserId || '').replace(/\D/g, '');
+            
+            // Send template message via API endpoint (template parameters handled by backend)
+            await api.post('/api/v1/whatsapp-business/messages/send-template', {
+              connectionId,
+              to: phoneNumber,
+              templateName: selectedTemplate,
+              templateLanguage: 'en',
+              text: messageText, // Template variables if needed
+            });
+            
+            toast.success('Template message sent!');
+            setSelectedTemplate(null);
+            setShowTemplateSelector(false);
+            return;
+          }
+        }
+        
         const payload: any = {
           conversationId: currentConversation.id,
-          message: messageText || (imageUrl ? '📷 Image' : ''),
+          message: messageText || (imageUrl ? '📷 Image' : audioUrl ? '🎵 Audio' : ''),
           businessId: businessId,
         };
         
-        // 🔧 NEW: Add image URL if available
+        // 🔧 NEW: Add media URL if available
         if (imageUrl) {
           payload.imageUrl = imageUrl;
           payload.messageType = 'image';
+        } else if (audioUrl) {
+          payload.audioUrl = audioUrl;
+          payload.messageType = 'audio';
         }
         
         const { sendMessageViaConversation } = await import('@/api/chatApi');
         await sendMessageViaConversation(payload);
         
         // The message will be updated via socket when it arrives
-        toast.success(imageUrl ? 'Image sent!' : 'Message sent!');
+        toast.success(imageUrl ? 'Image sent!' : audioUrl ? 'Audio sent!' : 'Message sent!');
       } catch (error: any) {
         const errorData = error.response?.data;
+        const errorMessage = errorData?.message || error.message || '';
+        
+        // 🔧 META OFFICIAL: Check if error is about requiring template message
+        if (
+          platform === 'whatsapp' &&
+          currentConversation.platformInfo?.connectionId &&
+          (
+            errorMessage.includes('must use an approved message template') ||
+            errorMessage.includes('No previous customer message found') ||
+            errorMessage.includes('24-hour session window expired') ||
+            errorMessage.includes('template message')
+          )
+        ) {
+          const connectionId = currentConversation.platformInfo.connectionId;
+          
+          // Load templates and show selector
+          try {
+            await dispatch(fetchWhatsAppTemplates(connectionId));
+            setShowTemplateSelector(true);
+            setWhatsappSessionInfo({ requiresTemplate: true } as SessionCheckResult);
+            toast.error('Template message required. Please select a template from the dropdown above.', {
+              duration: 6000,
+            });
+          } catch (templateError) {
+            console.error('Error fetching templates:', templateError);
+            toast.error('Template message required, but failed to load templates. Please try again.', {
+              duration: 5000,
+            });
+          }
+          return; // Don't show generic error
+        }
         
         // Check if it's a disconnected account error
         if (error.response?.status === 401 && (errorData?.type === 'disconnected_account' || errorData?.data?.type === 'disconnected_account')) {
@@ -706,10 +1258,9 @@ export default function ChatInbox() {
     if (!currentConversation?.id || !businessId) return;
     
     const platform = currentConversation.platformInfo?.platform;
-    const allowedPlatforms = ['whatsapp', 'instagram', 'telegram'];
     
-    if (!platform || !allowedPlatforms.includes(platform)) {
-      toast.error('AI reply toggle is only available for WhatsApp, Instagram, and Telegram conversations.');
+    if (platform !== 'whatsapp') {
+      toast.error('AI reply toggle is only available for WhatsApp conversations.');
       return;
     }
 
@@ -776,8 +1327,6 @@ export default function ChatInbox() {
         <aside className={cn(
           "flex flex-col border p-4 rounded-xl max-h-screen transition-colors shadow-lg",
           activePlatform === 'whatsapp' ? "chat-bg-whatsapp border-[#d4c5b7] dark:border-[#1e2a32]" :
-          activePlatform === 'instagram' ? "chat-bg-instagram border-[#e8d4e0] dark:border-[#3d2a42]" :
-          activePlatform === 'telegram' ? "chat-bg-telegram border-[#d1d5db] dark:border-[#1a2332]" :
           activePlatform === 'website' ? "chat-bg-website border-border" :
           "bg-card border-border"
         )}>
@@ -785,17 +1334,6 @@ export default function ChatInbox() {
           
           {/* Platform Tabs */}
           <div className="flex items-center gap-1 mb-3 p-1 bg-muted rounded-lg overflow-x-auto scrollbar-hide">
-            <button
-              onClick={() => setActivePlatform('all')}
-              className={cn(
-                "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all whitespace-nowrap",
-                activePlatform === 'all' 
-                  ? "bg-background shadow-sm" 
-                  : "hover:bg-background/50"
-              )}
-            >
-              All
-            </button>
             <button
               onClick={() => setActivePlatform('website')}
               className={cn(
@@ -819,30 +1357,6 @@ export default function ChatInbox() {
             >
               <MessageCircle className="h-3 w-3 flex-shrink-0" />
               <span className="hidden sm:inline">WhatsApp</span>
-            </button>
-            <button
-              onClick={() => setActivePlatform('instagram')}
-              className={cn(
-                "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 bg-gradient-to-r from-[#f09433] via-[#e6683c] to-[#dc2743] text-white whitespace-nowrap",
-                activePlatform === 'instagram' 
-                  ? "opacity-100 shadow-sm" 
-                  : "opacity-70 hover:opacity-90"
-              )}
-            >
-              <MessageCircle className="h-3 w-3 flex-shrink-0" />
-              <span className="hidden sm:inline">Instagram</span>
-            </button>
-            <button
-              onClick={() => setActivePlatform('telegram')}
-              className={cn(
-                "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 whitespace-nowrap",
-                activePlatform === 'telegram' 
-                  ? "bg-[#0088cc] text-white shadow-sm" 
-                  : "hover:bg-[#0088cc]/10 text-[#0088cc]"
-              )}
-            >
-              <MessageCircle className="h-3 w-3 flex-shrink-0" />
-              <span className="hidden sm:inline">Telegram</span>
             </button>
           </div>
 
@@ -905,7 +1419,7 @@ export default function ChatInbox() {
                     <div 
                       className={`w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary text-xs sm:text-sm ${convo.platformInfo?.platformUserAvatar ? 'hidden' : ''}`}
                     >
-                      {convo.customer.name?.charAt(0).toUpperCase()}
+                      {(convo.customer?.name || 'U').charAt(0).toUpperCase()}
                     </div>
                     {/* 🔧 REMOVED: Platform badge on avatar - badge already shown next to name */}
                     {/* 🔧 NEW: Unread count badge - positioned on avatar */}
@@ -1030,7 +1544,17 @@ export default function ChatInbox() {
             <>
               <div className="flex items-center justify-between p-3 sm:p-4 border-b gap-2 min-w-0">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                  <h2 className="font-semibold text-sm sm:text-base truncate">{currentConversation?.customer?.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold text-sm sm:text-base truncate">{currentConversation?.customer?.name}</h2>
+                    {/* 🔧 META OFFICIAL: 24-Hour Session Window Countdown Timer - Always show for WhatsApp (Meta Recommendation) */}
+                    {currentConversation?.platformInfo?.platform === 'whatsapp' && (
+                      <SessionCountdownTimer 
+                        sessionInfo={whatsappSessionInfo}
+                        isChecking={isCheckingSession}
+                        lastMessageTimestamp={whatsappSessionInfo?.lastMessageTimestamp || currentConversation?.latestMessageTimestamp}
+                      />
+                    )}
+                  </div>
                   {currentConversation?.platformInfo?.platform && (
                     <PlatformBadge platform={currentConversation.platformInfo.platform} />
                   )}
@@ -1094,7 +1618,7 @@ export default function ChatInbox() {
                 <div className="flex items-center gap-2">
                   {/* AI Reply Toggle - Only for Instagram, WhatsApp, Telegram */}
                   {currentConversation?.platformInfo?.platform && 
-                   ['whatsapp', 'instagram', 'telegram'].includes(currentConversation.platformInfo.platform) && (
+                   currentConversation.platformInfo.platform === 'whatsapp' && (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -1332,7 +1856,10 @@ export default function ChatInbox() {
                       }
                       
                       // 🔧 CRITICAL: Only use HTTP/HTTPS URLs, never att:// URLs
-                      const displayUrl = (mediaUrl && typeof mediaUrl === 'string' && !mediaUrl.startsWith('att://')) ? mediaUrl : (proxyUrl || null);
+                      // For audio messages, prioritize cloudinaryUrl (most reliable for audio playback)
+                      const displayUrl = messageType === 'audio'
+                        ? (msg.cloudinaryUrl || (mediaUrl && typeof mediaUrl === 'string' && !mediaUrl.startsWith('att://') ? mediaUrl : null) || proxyUrl || null)
+                        : ((mediaUrl && typeof mediaUrl === 'string' && !mediaUrl.startsWith('att://')) ? mediaUrl : (proxyUrl || null));
                       
                       // 🔧 FIX: Detect media message from messageType OR if message text contains "Image:" or "att://"
                       const isMediaMessage = ['image', 'video', 'audio', 'document'].includes(messageType) || 
@@ -1433,19 +1960,69 @@ export default function ChatInbox() {
                                   </video>
                                 )}
                                 {messageType === 'audio' && (
-                                  <div className="p-3">
-                                    <audio 
-                                      src={displayUrl} 
-                                      controls 
-                                      className="w-full"
-                                      onError={(e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
-                                        if (proxyUrl && e.currentTarget.src !== proxyUrl) {
-                                          e.currentTarget.src = proxyUrl;
-                                        }
-                                      }}
-                                    >
-                                      Your browser does not support the audio tag.
-                                    </audio>
+                                  <div className="p-3 sm:p-4">
+                                    <div className="flex items-center gap-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-purple-200/50 dark:border-purple-800/50">
+                                      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.793L4.383 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.383l4-3.617a1 1 0 011.617.793zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
+                                        </svg>
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <audio 
+                                          src={displayUrl || proxyUrl || msg.cloudinaryUrl || null} 
+                                          controls 
+                                          className="w-full h-10"
+                                          preload="metadata"
+                                          crossOrigin="anonymous"
+                                          onError={(e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
+                                            const audioElement = e.currentTarget;
+                                            const currentSrc = audioElement.src;
+                                            console.error('Audio playback error:', {
+                                              currentSrc,
+                                              displayUrl,
+                                              proxyUrl,
+                                              cloudinaryUrl: msg.cloudinaryUrl,
+                                              mediaUrl: msg.mediaUrl,
+                                              error: e
+                                            });
+                                            
+                                            // Try fallback URLs in order
+                                            if (proxyUrl && currentSrc !== proxyUrl) {
+                                              console.log('Trying proxyUrl fallback:', proxyUrl);
+                                              audioElement.src = proxyUrl;
+                                            } else if (msg.cloudinaryUrl && currentSrc !== msg.cloudinaryUrl) {
+                                              console.log('Trying cloudinaryUrl fallback:', msg.cloudinaryUrl);
+                                              audioElement.src = msg.cloudinaryUrl;
+                                            } else if (msg.mediaUrl && currentSrc !== msg.mediaUrl && !msg.mediaUrl.startsWith('att://')) {
+                                              console.log('Trying mediaUrl fallback:', msg.mediaUrl);
+                                              audioElement.src = msg.mediaUrl;
+                                            } else {
+                                              console.error('All audio URL fallbacks failed');
+                                              toast.error('Failed to load audio file. Please check the URL.');
+                                            }
+                                          }}
+                                          onLoadedMetadata={(e) => {
+                                            const audio = e.currentTarget;
+                                            const duration = audio.duration;
+                                            if (duration && !isNaN(duration)) {
+                                              const minutes = Math.floor(duration / 60);
+                                              const seconds = Math.floor(duration % 60);
+                                              console.log(`✅ Audio loaded successfully. Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+                                            }
+                                          }}
+                                          onCanPlay={(e) => {
+                                            console.log('✅ Audio can play:', e.currentTarget.src);
+                                          }}
+                                        >
+                                          Your browser does not support the audio tag.
+                                        </audio>
+                                        {msg.text && !isPlaceholderText && (
+                                          <p className="text-xs text-muted-foreground mt-2 break-words">
+                                            <FormattedText text={msg.text} />
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
                                 )}
                                 {messageType === 'document' && (
@@ -1480,28 +2057,86 @@ export default function ChatInbox() {
                             <p className="text-xs text-muted-foreground whitespace-nowrap">
                               {msg.time ? dayjs(msg.time).format("h:mm A") : dayjs().format("h:mm A")}
                             </p>
-                            {/* 🔧 NEW: Message status indicators (delivered/read) */}
+                            {/* 🔧 ENHANCED: Message status indicators with WhatsApp-specific statuses */}
                             {isAgentSide && (
-                              <div className="flex items-center">
-                                {msg.status === 'delivered' || msg.status === 'completed' ? (
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <CheckCircle2 className="h-3 w-3 text-blue-500" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Delivered</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                ) : msg.readAt ? (
-                                  <Tooltip>
-                                    <TooltipTrigger>
-                                      <CheckCircle2 className="h-3 w-3 text-green-500" />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Read {dayjs(msg.readAt).fromNow()}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                ) : null}
+                              <div className="flex items-center gap-1">
+                                {/* WhatsApp-specific status from metadata */}
+                                {msg.metadata?.whatsappStatus ? (
+                                  <>
+                                    {msg.metadata.whatsappStatus === 'sent' && (
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <CheckCircle2 className="h-3 w-3 text-gray-400" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Sent</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                    {msg.metadata.whatsappStatus === 'delivered' && (
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <CheckCircle2 className="h-3 w-3 text-blue-500" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Delivered{msg.metadata.deliveredAt ? ` ${dayjs(msg.metadata.deliveredAt).fromNow()}` : ''}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                    {msg.metadata.whatsappStatus === 'read' && (
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Read{msg.metadata.readAt ? ` ${dayjs(msg.metadata.readAt).fromNow()}` : ''}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                    {msg.metadata.whatsappStatus === 'failed' && (
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <XCircle className="h-3 w-3 text-red-500" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Failed{msg.metadata.errorMessage ? `: ${msg.metadata.errorMessage}` : ''}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </>
+                                ) : (
+                                  /* Fallback to generic status */
+                                  <>
+                                    {msg.status === 'delivered' || msg.status === 'completed' ? (
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <CheckCircle2 className="h-3 w-3 text-blue-500" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Delivered</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    ) : msg.readAt ? (
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Read {dayjs(msg.readAt).fromNow()}</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    ) : msg.status === 'sending' ? (
+                                      <Tooltip>
+                                        <TooltipTrigger>
+                                          <Loader2 className="h-3 w-3 text-gray-400 animate-spin" />
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Sending...</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    ) : null}
+                                  </>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1514,6 +2149,128 @@ export default function ChatInbox() {
                 })}
               </div>
               <div className="p-3 sm:p-6 border-t">
+                {/* 🔧 META OFFICIAL: WhatsApp Template Selector (only when template is required) */}
+                {showTemplateSelector && 
+                 whatsappSessionInfo?.requiresTemplate &&
+                 currentConversation?.platformInfo?.platform === 'whatsapp' &&
+                 currentConversation?.platformInfo?.connectionId && (
+                  <div className="mb-3 p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <div className="flex items-start gap-3 mb-3">
+                      <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-orange-900 dark:text-orange-200 mb-1">
+                          ⚠️ 24-Hour Session Window Expired
+                        </p>
+                        <p className="text-xs text-orange-700 dark:text-orange-300 mb-2">
+                          According to Meta's WhatsApp Business API rules, you must use an <strong>approved message template</strong> to send messages outside the 24-hour window.
+                        </p>
+                        <p className="text-xs text-orange-700 dark:text-orange-300">
+                          <strong>Why?</strong> Customer hasn't messaged you in 24+ hours. Free-form messages are only allowed within 24 hours of the last customer message.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-orange-900 dark:text-orange-200">
+                        Select an Approved Template:
+                      </Label>
+                      <Select
+                        value={selectedTemplate || ''}
+                        onValueChange={(value) => {
+                          setSelectedTemplate(value);
+                          setShowTemplateSelector(false);
+                        }}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select a template message" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {templates[currentConversation.platformInfo.connectionId]?.length > 0 ? (
+                            (() => {
+                              const connectionTemplates = templates[currentConversation.platformInfo.connectionId];
+                              const approvedTemplates = connectionTemplates.filter((t: any) => t.status === 'APPROVED');
+                              const pendingTemplates = connectionTemplates.filter((t: any) => t.status === 'PENDING');
+                              
+                              if (approvedTemplates.length > 0) {
+                                return (
+                                  <>
+                                    {approvedTemplates.map((template: any) => (
+                                      <SelectItem key={template.id} value={template.name}>
+                                        <div className="flex items-center gap-2">
+                                          <CheckCircle className="h-3 w-3 text-green-500" />
+                                          <span className="font-medium">{template.name}</span>
+                                          <span className="text-xs text-muted-foreground">({template.category})</span>
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                    {pendingTemplates.length > 0 && (
+                                      <>
+                                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                          Pending Approval
+                                        </div>
+                                        {pendingTemplates.map((template: any) => (
+                                          <SelectItem key={template.id} value={template.name} disabled>
+                                            <div className="flex items-center gap-2">
+                                              <Clock className="h-3 w-3 text-yellow-500" />
+                                              <span>{template.name}</span>
+                                              <span className="text-xs text-muted-foreground">({template.category})</span>
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </>
+                                    )}
+                                  </>
+                                );
+                              } else {
+                                return (
+                                  <>
+                                    <SelectItem value="no-approved" disabled>
+                                      No approved templates available
+                                    </SelectItem>
+                                    {pendingTemplates.length > 0 && (
+                                      <>
+                                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                          Pending Approval (Cannot use yet)
+                                        </div>
+                                        {pendingTemplates.map((template: any) => (
+                                          <SelectItem key={template.id} value={template.name} disabled>
+                                            <div className="flex items-center gap-2">
+                                              <Clock className="h-3 w-3 text-yellow-500" />
+                                              <span>{template.name}</span>
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </>
+                                    )}
+                                  </>
+                                );
+                              }
+                            })()
+                          ) : (
+                            <SelectItem value="no-templates" disabled>
+                              No templates available. Create templates from Template Library.
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {templates[currentConversation.platformInfo.connectionId]?.filter((t: any) => t.status === 'APPROVED').length === 0 && (
+                        <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                            <strong>🚀 Quick Start:</strong> Use Template Library to create pre-approved templates instantly!
+                          </p>
+                          <p className="text-xs text-blue-600 dark:text-blue-400">
+                            Go to: AI Agent Settings → WhatsApp Business API → Template Library → Select & Create (2-4 hours approval)
+                          </p>
+                        </div>
+                      )}
+                      {templates[currentConversation.platformInfo.connectionId]?.filter((t: any) => t.status === 'APPROVED').length > 0 && (
+                        <p className="text-xs text-green-700 dark:text-green-300 mt-2">
+                          ✅ <strong>Ready to send!</strong> Selected template is approved and ready to use.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
                 {/* 🔧 NEW: Image preview */}
                 {imagePreview && (
                   <div className="relative mb-3 inline-block">
@@ -1532,6 +2289,63 @@ export default function ChatInbox() {
                     </div>
                   </div>
                 )}
+                
+                {/* 🔧 META OFFICIAL: Audio preview */}
+                {audioPreview && (
+                  <div className="relative mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border border-purple-200/50 dark:border-purple-800/50">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
+                        <Mic className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <audio 
+                          src={audioPreview} 
+                          controls 
+                          className="w-full h-8"
+                          preload="metadata"
+                        >
+                          Your browser does not support the audio tag.
+                        </audio>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {selectedAudioFile?.name || 'Audio recording'}
+                          {selectedAudioFile && ` (${(selectedAudioFile.size / 1024 / 1024).toFixed(2)} MB)`}
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleRemoveAudio}
+                        className="flex-shrink-0 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* 🔧 META OFFICIAL: Recording indicator */}
+                {isRecording && (
+                  <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-3">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center animate-pulse">
+                      <Mic className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                        Recording... {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                      </p>
+                      <p className="text-xs text-red-600 dark:text-red-400">Click stop to finish recording</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      onClick={stopRecording}
+                      className="shrink-0"
+                    >
+                      <Square className="h-4 w-4 mr-1" />
+                      Stop
+                    </Button>
+                  </div>
+                )}
+                
                 <div className="relative flex items-end gap-2">
                   {/* 🔧 NEW: Image upload button */}
                   <input
@@ -1542,20 +2356,62 @@ export default function ChatInbox() {
                     className="hidden"
                     id="image-upload"
                   />
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    className="cursor-pointer h-9 w-9 shrink-0"
-                    disabled={isUploadingImage}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    {isUploadingImage ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ImageIcon className="h-4 w-4" />
-                    )}
-                  </Button>
+                  <input
+                    ref={audioInputRef}
+                    type="file"
+                    accept="audio/*,.aac,.mp4,.mpeg,.amr,.ogg"
+                    onChange={handleAudioSelect}
+                    className="hidden"
+                    id="audio-upload"
+                  />
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="cursor-pointer h-9 w-9 shrink-0"
+                      disabled={isUploadingImage || isUploadingAudio || isRecording}
+                      onClick={() => fileInputRef.current?.click()}
+                      title="Upload image"
+                    >
+                      {isUploadingImage ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ImageIcon className="h-4 w-4" />
+                      )}
+                    </Button>
+                    {/* 🔧 META OFFICIAL: Audio upload/record button */}
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className={cn(
+                        "cursor-pointer h-9 w-9 shrink-0",
+                        isRecording && "bg-red-500 text-white hover:bg-red-600"
+                      )}
+                      disabled={isUploadingImage || isUploadingAudio}
+                      onClick={() => {
+                        if (isRecording) {
+                          stopRecording();
+                        } else {
+                          // Show menu: Upload or Record
+                          const shouldRecord = window.confirm('Choose an option:\n\nOK = Record audio\nCancel = Upload audio file');
+                          if (shouldRecord) {
+                            startRecording();
+                          } else {
+                            audioInputRef.current?.click();
+                          }
+                        }
+                      }}
+                      title={isRecording ? "Stop recording" : "Upload or record audio"}
+                    >
+                      {isRecording ? (
+                        <Square className="h-4 w-4" />
+                      ) : (
+                        <Mic className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                   <Textarea 
                     placeholder={t('chatInbox.messagePlaceholder')} 
                     value={newMessage} 
@@ -1563,13 +2419,13 @@ export default function ChatInbox() {
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                     className="w-full resize-none p-3 sm:p-4 pr-12 sm:pr-14 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
                     rows={1} 
-                    disabled={isUploadingImage}
+                    disabled={isUploadingImage || isUploadingAudio || isRecording}
                   />
                   <Button 
                     onClick={handleSendMessage} 
                     size="icon" 
                     className="h-9 w-9 bg-primary cursor-pointer hover:bg-primary/90 shrink-0"
-                    disabled={isUploadingImage || (!newMessage.trim() && !selectedImageFile)}
+                    disabled={isUploadingImage || isUploadingAudio || (!newMessage.trim() && !selectedImageFile && !selectedAudioFile)}
                   >
                     {isUploadingImage ? (
                       <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />

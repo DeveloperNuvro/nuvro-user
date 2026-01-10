@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Loader2, CheckCircle, XCircle, Globe, MessageSquare, Code, Zap, Sparkles, Power } from "lucide-react";
+import { Copy, Loader2, CheckCircle, XCircle, Globe, Code, Zap, Sparkles, Power, Phone } from "lucide-react";
 import toast from "react-hot-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
 import { fetchAIAgentById, toggleAIAgentStatus } from "@/features/aiAgent/aiAgentSlice";
 import { useParams } from "react-router-dom";
-import UnipileIntegrationTab from "@/components/custom/unipile/UnipileIntegrationTab";
+import WhatsAppBusinessIntegrationTab from "@/components/custom/whatsappBusiness/WhatsAppBusinessIntegrationTab";
 import { Label } from "@/components/ui/label";
 import { useTranslation } from "react-i18next";
 
@@ -328,11 +328,11 @@ export default function SingleAiAgent() {
                             {t('singleAiAgentPage.tabs.websiteEmbed')}
                         </TabsTrigger>
                         <TabsTrigger 
-                            value="integration-unipile" 
-                            className="data-[state=active]:bg-blue-50 data-[state=active]:dark:bg-blue-900/20 data-[state=active]:text-blue-700 data-[state=active]:dark:text-blue-300 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-600 dark:data-[state=active]:border-blue-400 px-6 py-4 text-base font-semibold transition-all text-gray-600 dark:text-gray-400"
+                            value="integration-whatsapp-business" 
+                            className="data-[state=active]:bg-green-50 data-[state=active]:dark:bg-green-900/20 data-[state=active]:text-green-700 data-[state=active]:dark:text-green-300 rounded-none border-b-2 border-transparent data-[state=active]:border-green-600 dark:data-[state=active]:border-green-400 px-6 py-4 text-base font-semibold transition-all text-gray-600 dark:text-gray-400"
                         >
-                            <MessageSquare className="mr-2 h-5 w-5" />
-                            {t('singleAiAgentPage.tabs.multiPlatform')}
+                            <Phone className="mr-2 h-5 w-5" />
+                            WhatsApp Business API
                         </TabsTrigger>
                     </TabsList>
 
@@ -341,8 +341,8 @@ export default function SingleAiAgent() {
                             <WebsiteEmbedTab script={script} />
                         </TabsContent>
 
-                        <TabsContent value="integration-unipile" className="mt-0">
-                            <UnipileIntegrationTab agentId={selectedAgent?._id} />
+                        <TabsContent value="integration-whatsapp-business" className="mt-0">
+                            <WhatsAppBusinessIntegrationTab agentId={selectedAgent?._id} />
                         </TabsContent>
                     </div>
                 </Tabs>
