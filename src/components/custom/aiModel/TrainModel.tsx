@@ -46,7 +46,7 @@ export default function TrainModelForm() {
     resolver: zodResolver(trainModelSchema),
     mode: 'onChange',
     defaultValues: {
-      modelType: 'gpt-4o',
+      modelType: 'gemini-2.0-flash',
       sourceDataTimezone: userTimezone,
     }
   });
@@ -125,9 +125,9 @@ export default function TrainModelForm() {
             <CustomSelect
               text={t('trainModelPage.step1.selectLlmLabel')}
               {...register('modelType')}
-              options={[{ label: 'GPT-4o', value: 'gpt-4o' }]}
+              options={[{ label: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash' }]}
               error={errors.modelType?.message}
-              defaultValue="gpt-4o"
+              defaultValue="gemini-2.0-flash"
             />
 
             <CustomSelect

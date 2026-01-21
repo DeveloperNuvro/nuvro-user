@@ -334,6 +334,7 @@ const DashboardOverviewPage: React.FC = () => {
                                             {formatDistanceToNow(new Date(ticket.createdAt), { addSuffix: true, locale: dateLocale })}
                                         </p>
                                     </div>
+
                                 </div>
                                 <Badge 
                                     variant={ticket.status === 'open' ? 'destructive' : 'secondary'} 

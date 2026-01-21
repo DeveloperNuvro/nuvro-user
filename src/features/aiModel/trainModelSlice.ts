@@ -29,7 +29,17 @@ export interface AIModel {
   _id: string;
   name: string;
   business: string;
-  modelType: 'GPT-3.5' | 'GPT-4' | 'gpt-4o';
+  modelType:
+    | 'GPT-3.5'
+    | 'GPT-4'
+    | 'gpt-4o'
+    | 'gpt-4o-mini'
+    | 'gemini-2.0-flash'
+    | 'gemini-2.0-flash-002'
+    | 'gemini-2.5-flash'
+    | 'gemini-2.5-flash-002'
+    | 'gemini-2.5-pro'
+    | 'gemini-2.5-pro-002';
   trainedFiles?: TrainedFile[]; // Made optional to handle cases where it might be undefined
   status: 'training' | 'deployed' | 'failed';
   fileIndexingStatus?: {

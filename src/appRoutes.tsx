@@ -21,6 +21,7 @@ import AiModelPage from "./pages/AiModelPage";
 import AiAgentPage from "./pages/AiAgentPage";
 import CustomersPage from "./pages/AllCustomerPage";
 import AnalysisPage from "./pages/AnalysisPage";
+import ReportingPage from "./pages/ReportingPage";
 import { PricingPage } from "./pages/PricingPage";
 import AccountSettingsPage from "./pages/AccountSettingPage";
 import TrainModelForm from "./components/custom/aiModel/TrainModel";
@@ -66,6 +67,7 @@ export const menuRoutes: MenuRoute[] = [
   { path: "ai-agent/setup", component: <AiAgentPage />, label: "AI Agent", icon: <SiProbot className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Main Menu" },
   { path: "customers", component: <CustomersPage />, label: "Customers", icon: <FiUsers className="mr-2" />, allowedRoles: [ROLES.BUSINESS, ROLES.AGENT], section: "Business" },
   { path: "analytics", component: <AnalysisPage />, label: "Analytics", icon: <FiTrendingUp className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Business" },
+  { path: "reporting", component: <ReportingPage />, label: "Reporting", icon: <FiTrendingUp className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Business" },
   { path: "pricing", component: <PricingPage />, label: "Plan & Payment", icon: <MdOutlinePayment className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Account" },
 
   // --- Agent Menu ---

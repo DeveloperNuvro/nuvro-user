@@ -1193,5 +1193,51 @@
         "help": "Your WooCommerce REST API Consumer Secret (keep it secure)"
       }
     }
+  },
+  "apply": "Apply",
+  "user": "User",
+  "team": "Team",
+  "conversationsAssigned": "Conversations Assigned",
+  "conversationsClosed": "Conversations Closed",
+  "uniqueContacts": "Unique Contacts",
+  "messagesSent": "Messages Sent",
+  "reporting": {
+    "pageTitle": "Reporting",
+    "pageSubtitle": "AI vs Agent replies and assignment activity for your business.",
+    "filters": "Filters",
+    "noData": "No data",
+    "aiMessages": "AI Messages",
+    "aiMessagesDesc": "Messages sent by AI in selected range",
+    "aiConversations": "AI Conversations",
+    "aiConversationsDesc": "Distinct conversations AI replied to",
+    "aiAssignments": "AI Assignments",
+    "aiAssignmentsDesc": "Contacts assigned by AI",
+    "manualAssignments": "Manual Assignments",
+    "manualAssignmentsDesc": "Contacts assigned manually",
+    "aiTickets": "AI Tickets Created",
+    "aiTicketsDesc": "Tickets created by AI escalation",
+    "humanTickets": "Human Tickets Created",
+    "humanTicketsDesc": "Tickets created manually by a human",
+    "totalTickets": "Total Tickets",
+    "totalTicketsDesc": "Total tickets created in selected range",
+    "userPerformance": "User Performance",
+    "userPerformanceHint": "These metrics are computed from messages + assignment events within the selected date range. Hover the ⓘ icons for exact definitions.",
+    "assignmentReport": "Assignment Report",
+    "legend": "Legend",
+    "legendText": "AI = assignment created by AI escalation/transfer, Manual = assigned by a user, System = internal/system-generated.",
+    "assignmentHint": "Counts reflect assignment actions recorded by the system (AI escalation/transfer and manual transfers).",
+    "def": {
+      "aiMessages": "Count of messages sent by the AI (sender = ai) within the selected date range.",
+      "aiConversations": "Number of distinct conversations where the AI sent at least one message in the selected date range.",
+      "aiAssignments": "Count of assignment actions created automatically by AI escalation/transfer (not the number of messages).",
+      "manualAssignments": "Count of assignment actions triggered manually by a user (business/agent) when assigning/transferring a conversation.",
+      "conversationsAssigned": "Number of distinct conversations assigned to this agent in the selected range (based on assignment events).",
+      "conversationsClosed": "Number of conversations that ended with status = closed during the selected range (best-effort; based on conversation updatedAt).",
+      "uniqueContacts": "Distinct customers this agent replied to (based on messages sent by agent/human in the selected range).",
+      "messagesSent": "Total messages sent by this agent (sender = agent/human) in the selected range.",
+      "team": "Agent team is inferred from their channel membership (first channel name shown).",
+      "aiTickets": "Tickets created automatically by AI escalation in the selected date range.",
+      "humanTickets": "Tickets created manually by a human (dashboard/user) in the selected date range."
+    }
   }
 }

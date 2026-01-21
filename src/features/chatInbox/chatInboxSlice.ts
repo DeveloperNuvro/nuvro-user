@@ -51,7 +51,8 @@ export interface Message {
     _id: string;
     text: string;
     time: string;
-    sentBy: "customer" | "agent" | "human" | "system";
+    // 'ai' is used when backend emits AI replies distinctly (for correct reporting + UI alignment)
+    sentBy: "customer" | "agent" | "human" | "system" | "ai";
     status?: 'sending' | 'failed';
     // 🔧 NEW: Media message support
     messageType?: 'text' | 'image' | 'video' | 'audio' | 'document';

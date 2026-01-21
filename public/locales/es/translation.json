@@ -1194,5 +1194,51 @@
         "help": "Tu Secreto de consumidor de la API REST de WooCommerce (manténlo seguro)"
       }
     }
+  },
+  "apply": "Aplicar",
+  "user": "Usuario",
+  "team": "Equipo",
+  "conversationsAssigned": "Conversaciones asignadas",
+  "conversationsClosed": "Conversaciones cerradas",
+  "uniqueContacts": "Contactos únicos",
+  "messagesSent": "Mensajes enviados",
+  "reporting": {
+    "pageTitle": "Informes",
+    "pageSubtitle": "Respuestas de IA vs agentes y actividad de asignaciones de tu negocio.",
+    "filters": "Filtros",
+    "noData": "Sin datos",
+    "aiMessages": "Mensajes de IA",
+    "aiMessagesDesc": "Mensajes enviados por la IA en el rango seleccionado",
+    "aiConversations": "Conversaciones de IA",
+    "aiConversationsDesc": "Conversaciones distintas a las que respondió la IA",
+    "aiAssignments": "Asignaciones por IA",
+    "aiAssignmentsDesc": "Contactos asignados por la IA",
+    "manualAssignments": "Asignaciones manuales",
+    "manualAssignmentsDesc": "Contactos asignados manualmente",
+    "aiTickets": "Tickets creados por IA",
+    "aiTicketsDesc": "Tickets creados por escalamiento de IA",
+    "humanTickets": "Tickets creados por humanos",
+    "humanTicketsDesc": "Tickets creados manualmente por un humano",
+    "totalTickets": "Tickets totales",
+    "totalTicketsDesc": "Total de tickets creados en el rango seleccionado",
+    "userPerformance": "Rendimiento de usuarios",
+    "userPerformanceHint": "Estas métricas se calculan a partir de mensajes y eventos de asignación dentro del rango de fechas seleccionado. Pasa el cursor sobre los íconos ⓘ para ver definiciones exactas.",
+    "assignmentReport": "Informe de asignaciones",
+    "legend": "Leyenda",
+    "legendText": "IA = asignación creada por escalamiento/transferencia de IA; Manual = asignado por un usuario; Sistema = generado internamente por el sistema.",
+    "assignmentHint": "Los conteos reflejan acciones de asignación registradas por el sistema (escalamiento/transferencia por IA y transferencias manuales).",
+    "def": {
+      "aiMessages": "Cantidad de mensajes enviados por la IA (sender = ai) dentro del rango de fechas seleccionado.",
+      "aiConversations": "Número de conversaciones distintas en las que la IA envió al menos un mensaje dentro del rango seleccionado.",
+      "aiAssignments": "Cantidad de acciones de asignación creadas automáticamente por escalamiento/transferencia de IA (no es el número de mensajes).",
+      "manualAssignments": "Cantidad de acciones de asignación activadas manualmente por un usuario (negocio/agente) al asignar o transferir una conversación.",
+      "conversationsAssigned": "Número de conversaciones distintas asignadas a este agente dentro del rango (basado en eventos de asignación).",
+      "conversationsClosed": "Número de conversaciones que terminaron con estado = closed dentro del rango (mejor esfuerzo; basado en updatedAt).",
+      "uniqueContacts": "Clientes distintos a los que este agente respondió (basado en mensajes enviados por agent/human dentro del rango).",
+      "messagesSent": "Total de mensajes enviados por este agente (sender = agent/human) dentro del rango.",
+      "team": "El equipo del agente se infiere por su membresía de canal (se muestra el primer nombre de canal).",
+      "aiTickets": "Tickets creados automáticamente por escalamiento de IA dentro del rango seleccionado.",
+      "humanTickets": "Tickets creados manualmente por un humano (dashboard/usuario) dentro del rango seleccionado."
+    }
   }
 }

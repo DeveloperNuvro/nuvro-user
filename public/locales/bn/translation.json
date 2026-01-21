@@ -1265,5 +1265,51 @@
         "help": "আপনার WooCommerce REST API Consumer Secret (নিরাপদে রাখুন)"
       }
     }
+  },
+  "apply": "প্রয়োগ করুন",
+  "user": "ইউজার",
+  "team": "টিম",
+  "conversationsAssigned": "অ্যাসাইন করা কথোপকথন",
+  "conversationsClosed": "বন্ধ করা কথোপকথন",
+  "uniqueContacts": "ইউনিক কন্টাক্ট",
+  "messagesSent": "পাঠানো বার্তা",
+  "reporting": {
+    "pageTitle": "রিপোর্টিং",
+    "pageSubtitle": "আপনার ব্যবসার জন্য AI বনাম এজেন্ট রিপ্লাই এবং অ্যাসাইনমেন্ট অ্যাক্টিভিটি।",
+    "filters": "ফিল্টার",
+    "noData": "ডেটা নেই",
+    "aiMessages": "AI মেসেজ",
+    "aiMessagesDesc": "নির্বাচিত সময়ে AI পাঠানো বার্তা",
+    "aiConversations": "AI কথোপকথন",
+    "aiConversationsDesc": "যে কথোপকথনে AI রিপ্লাই করেছে (ডিস্টিঙ্ক্ট)",
+    "aiAssignments": "AI অ্যাসাইনমেন্ট",
+    "aiAssignmentsDesc": "AI দ্বারা অ্যাসাইন করা কন্টাক্ট",
+    "manualAssignments": "ম্যানুয়াল অ্যাসাইনমেন্ট",
+    "manualAssignmentsDesc": "মানুষ/ইউজার দ্বারা অ্যাসাইন করা কন্টাক্ট",
+    "aiTickets": "AI তৈরি করা টিকেট",
+    "aiTicketsDesc": "AI escalation থেকে তৈরি টিকেট",
+    "humanTickets": "মানুষ তৈরি করা টিকেট",
+    "humanTicketsDesc": "মানুষ/ড্যাশবোর্ড থেকে ম্যানুয়ালি তৈরি টিকেট",
+    "totalTickets": "মোট টিকেট",
+    "totalTicketsDesc": "নির্বাচিত সময়ে তৈরি মোট টিকেট",
+    "userPerformance": "ইউজার পারফরম্যান্স",
+    "userPerformanceHint": "এই মেট্রিকগুলো নির্বাচিত সময়ের মধ্যে মেসেজ ও অ্যাসাইনমেন্ট ইভেন্ট থেকে গণনা করা হয়। সঠিক সংজ্ঞা দেখতে ⓘ আইকনের ওপর হোভার করুন।",
+    "assignmentReport": "অ্যাসাইনমেন্ট রিপোর্ট",
+    "legend": "লেজেন্ড",
+    "legendText": "AI = AI escalation/transfer দ্বারা তৈরি অ্যাসাইনমেন্ট, Manual = কোনো ইউজার দ্বারা অ্যাসাইন, System = সিস্টেমের অভ্যন্তরীণ অ্যাসাইনমেন্ট।",
+    "assignmentHint": "এই কাউন্টগুলো সিস্টেমে রেকর্ড হওয়া অ্যাসাইনমেন্ট অ্যাকশনকে বোঝায় (AI escalation/transfer এবং ম্যানুয়াল ট্রান্সফার)।",
+    "def": {
+      "aiMessages": "নির্বাচিত সময়ের মধ্যে AI (sender = ai) পাঠানো মোট মেসেজ সংখ্যা।",
+      "aiConversations": "নির্বাচিত সময়ের মধ্যে AI অন্তত একটি মেসেজ পাঠিয়েছে—এমন ডিস্টিঙ্ক্ট কথোপকথনের সংখ্যা।",
+      "aiAssignments": "AI escalation/transfer থেকে স্বয়ংক্রিয়ভাবে তৈরি অ্যাসাইনমেন্ট অ্যাকশনের সংখ্যা (মেসেজ সংখ্যা নয়)।",
+      "manualAssignments": "কোনো ইউজার (ব্যবসা/এজেন্ট) ম্যানুয়ালি কথোপকথন অ্যাসাইন/ট্রান্সফার করলে তৈরি হওয়া অ্যাসাইনমেন্ট অ্যাকশনের সংখ্যা।",
+      "conversationsAssigned": "নির্বাচিত সময়ে এই এজেন্টকে অ্যাসাইন করা ডিস্টিঙ্ক্ট কথোপকথনের সংখ্যা (assignment events ভিত্তিক)।",
+      "conversationsClosed": "নির্বাচিত সময়ে status = closed হয়েছে এমন কথোপকথনের সংখ্যা (best-effort; conversation updatedAt ভিত্তিক)।",
+      "uniqueContacts": "নির্বাচিত সময়ে এই এজেন্ট যে ডিস্টিঙ্ক্ট কাস্টমারকে রিপ্লাই করেছে (agent/human মেসেজ ভিত্তিক)।",
+      "messagesSent": "নির্বাচিত সময়ে এই এজেন্টের মোট পাঠানো মেসেজ সংখ্যা (sender = agent/human)।",
+      "team": "এজেন্ট কোন টিমে আছে তা তাদের চ্যানেল মেম্বারশিপ থেকে অনুমান করা হয় (প্রথম চ্যানেলের নাম দেখানো হয়)।",
+      "aiTickets": "নির্বাচিত সময়ে AI escalation থেকে স্বয়ংক্রিয়ভাবে তৈরি টিকেট সংখ্যা।",
+      "humanTickets": "নির্বাচিত সময়ে মানুষ/ড্যাশবোর্ড ইউজার দ্বারা ম্যানুয়ালি তৈরি টিকেট সংখ্যা।"
+    }
   }
 }

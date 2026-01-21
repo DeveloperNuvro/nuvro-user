@@ -11,6 +11,7 @@ export const labelToKeyMap: { [key: string]: string } = {
   "AI Agent": "sidebar.labels.aiAgent",
   "Customers": "sidebar.labels.customers",
   "Analytics": "sidebar.labels.analytics",
+  "Reporting": "sidebar.labels.reporting",
   "Plan & Payment": "sidebar.labels.planAndPayment",
   "Settings": "sidebar.labels.settings",
   "Log Out": "sidebar.labels.logOut",

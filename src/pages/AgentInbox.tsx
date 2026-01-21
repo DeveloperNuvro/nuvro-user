@@ -463,7 +463,8 @@ export default function AgentInbox() {
         setIsInitialMessageLoad(false); 
     } else if (messagesData?.list && messagesData.list.length > 0) {
         const lastMessage = messagesData.list[messagesData.list.length - 1];
-        if (lastMessage.sentBy === 'human' || lastMessage.sentBy === 'agent' || lastMessage.status === 'sending') {
+        // Treat AI messages as agent-side for correct alignment/scroll behavior
+        if (lastMessage.sentBy === 'human' || lastMessage.sentBy === 'agent' || lastMessage.sentBy === 'ai' || lastMessage.status === 'sending') {
             messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
         }
     }
@@ -1178,7 +1179,8 @@ export default function AgentInbox() {
                     <div className="text-center text-xs text-muted-foreground my-4">{date}</div>
                     {group?.map((msg: any, i) => { 
                       if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />; 
-                      const isAgentSide = ["agent", "human"].includes(msg.sentBy);
+                      // Treat AI as agent-side so customer & AI don't render on the same side
+                      const isAgentSide = ["agent", "human", "ai"].includes(msg.sentBy);
                       const messageType = msg.messageType || msg.metadata?.messageType || 'text';
                       let mediaUrl = msg.cloudinaryUrl || msg.mediaUrl || msg.metadata?.cloudinaryUrl || msg.metadata?.mediaUrl || null;
                       let proxyUrl = msg.proxyUrl || msg.metadata?.proxyUrl || null;
