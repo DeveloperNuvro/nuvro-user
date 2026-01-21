@@ -79,6 +79,7 @@
       "aiagent": "Agente de IA",
       "customers": "Clientes",
       "analytics": "Analíticas",
+      "reporting": "Informes",
       "planpayment": "Plan y Pagos",
       "settings": "Configuración",
       "logout": "Cerrar Sesión"
@@ -1102,6 +1103,10 @@
       "activeStatus": "Activo"
     },
     "form": {
+      "connectTitle": "Conecta tu tienda",
+      "updateTitle": "Actualizar integración",
+      "connectDescription": "Ingresa tus credenciales de API de WooCommerce para conectar",
+      "updateDescription": "Actualiza la configuración de conexión de tu tienda WooCommerce",
       "storeUrl": {
         "label": "URL de la tienda",
         "placeholder": "https://tutienda.com",
@@ -1172,28 +1177,8 @@
       "important": "Importante:",
       "warning": "Guarda las claves de forma segura. Si las pierdes, tendrás que generar nuevas claves.",
       "documentation": "Ver documentación de la API REST de WooCommerce"
-    },
-    "form": {
-      "connectTitle": "Conecta tu tienda",
-      "updateTitle": "Actualizar integración",
-      "connectDescription": "Ingresa tus credenciales de API de WooCommerce para conectar",
-      "updateDescription": "Actualiza la configuración de conexión de tu tienda WooCommerce",
-      "storeUrl": {
-        "label": "URL de la tienda",
-        "placeholder": "https://tutienda.com",
-        "help": "URL de tu tienda WooCommerce sin barra diagonal final"
-      },
-      "consumerKey": {
-        "label": "Clave de consumidor",
-        "placeholder": "ck_...",
-        "help": "Tu Clave de consumidor de la API REST de WooCommerce"
-      },
-      "consumerSecret": {
-        "label": "Secreto de consumidor",
-        "placeholder": "cs_...",
-        "help": "Tu Secreto de consumidor de la API REST de WooCommerce (manténlo seguro)"
-      }
     }
+    
   },
   "apply": "Aplicar",
   "user": "Usuario",
