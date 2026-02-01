@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Loader2, CheckCircle, XCircle, Globe, Code, Zap, Sparkles, Power, Phone } from "lucide-react";
+import { Copy, Loader2, CheckCircle, XCircle, Globe, Code, Zap, Sparkles, Power, Phone, Workflow } from "lucide-react";
 import toast from "react-hot-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { AppDispatch, RootState } from "@/app/store";
 import { fetchAIAgentById, toggleAIAgentStatus } from "@/features/aiAgent/aiAgentSlice";
 import { useParams } from "react-router-dom";
 import WhatsAppBusinessIntegrationTab from "@/components/custom/whatsappBusiness/WhatsAppBusinessIntegrationTab";
+import AgentWorkflowTab from "@/components/custom/workflow/AgentWorkflowTab";
 import { Label } from "@/components/ui/label";
 import { useTranslation } from "react-i18next";
 
@@ -214,8 +215,9 @@ export default function SingleAiAgent() {
     const dispatch = useDispatch<AppDispatch>();
     const { t } = useTranslation();
     const [isToggling, setIsToggling] = useState(false);
-
     const { selectedAgent, status: agentStatus, apiKey } = useSelector((state: RootState) => state.aiAgent);
+    const user = useSelector((state: RootState) => state.auth.user);
+    const businessId = user?.businessId ?? (typeof selectedAgent?.business === 'string' ? selectedAgent.business : (selectedAgent as any)?.business?._id ?? '');
 
     useEffect(() => {
         if (id) {
@@ -334,6 +336,13 @@ export default function SingleAiAgent() {
                             <Phone className="mr-2 h-5 w-5" />
                             WhatsApp Business API
                         </TabsTrigger>
+                        <TabsTrigger 
+                            value="workflow" 
+                            className="data-[state=active]:bg-violet-50 data-[state=active]:dark:bg-violet-900/20 data-[state=active]:text-violet-700 data-[state=active]:dark:text-violet-300 rounded-none border-b-2 border-transparent data-[state=active]:border-violet-600 dark:data-[state=active]:border-violet-400 px-6 py-4 text-base font-semibold transition-all text-gray-600 dark:text-gray-400"
+                        >
+                            <Workflow className="mr-2 h-5 w-5" />
+                            {t('singleAiAgentPage.tabs.workflow')}
+                        </TabsTrigger>
                     </TabsList>
 
                     <div className="p-6 lg:p-8">
@@ -343,6 +352,14 @@ export default function SingleAiAgent() {
 
                         <TabsContent value="integration-whatsapp-business" className="mt-0">
                             <WhatsAppBusinessIntegrationTab agentId={selectedAgent?._id} />
+                        </TabsContent>
+
+                        <TabsContent value="workflow" className="mt-0">
+                            {id && businessId ? (
+                                <AgentWorkflowTab businessId={businessId} agentId={id} />
+                            ) : (
+                                <p className="text-muted-foreground">{t('workflow.noBusiness')}</p>
+                            )}
                         </TabsContent>
                     </div>
                 </Tabs>

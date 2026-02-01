@@ -19,6 +19,7 @@ import unipileReducer from '../features/unipile/unipileSlice';
 import wooCommerceReducer from '../features/wooCommerce/wooCommerceSlice';
 import whatsappBusinessReducer from '../features/whatsappBusiness/whatsappBusinessSlice';
 import reportingReducer from '../features/reporting/reportingSlice';
+import workflowReducer from '../features/workflow/workflowSlice';
 
 export const store = configureStore({
   reducer: {
@@ -42,6 +43,7 @@ export const store = configureStore({
     wooCommerce: wooCommerceReducer,
     whatsappBusiness: whatsappBusinessReducer,
     reporting: reportingReducer,
+    workflow: workflowReducer,
   },
 });
 

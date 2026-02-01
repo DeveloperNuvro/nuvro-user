@@ -9,7 +9,6 @@ import { SiProbot } from "react-icons/si";
 import { TbBoxModel2 } from "react-icons/tb";
 import { MdOutlinePayment } from "react-icons/md";
 import { IoSettingsOutline, IoLogOut } from "react-icons/io5";
-
 // Import all necessary page components from your project
 import DashboardOverviewPage from "./pages/OverviewPage";
 import ChatInbox from "./pages/ChatInbox";
@@ -30,6 +29,7 @@ import CreateAiAgent from "./components/custom/aiAgent/CreateAiAgent";
 import SingleAiAgent from "./pages/SingleAiAgent";
 import { BillingManagement } from "./pages/BillingManagement";
 import ComingSoon from "./components/custom/comingSoon/ComingSoon";
+import WorkflowPage from "./pages/WorkflowPage";
 
 // Define roles for consistency
 export const ROLES = {
@@ -84,6 +84,7 @@ export const additionalProtectedRoutes: AdditionalRoute[] = [
     { path: "ai-model/update/:id", component: <UpdateAIModelForm />, allowedRoles: [ROLES.BUSINESS] },
     { path: "ai-agent/create", component: <CreateAiAgent />, allowedRoles: [ROLES.BUSINESS] },
     { path: "ai-agent/:id", component: <SingleAiAgent />, allowedRoles: [ROLES.BUSINESS] },
+    { path: "workflows", component: <WorkflowPage />, allowedRoles: [ROLES.BUSINESS] },
     { path: "billing", component: <BillingManagement />, allowedRoles: [ROLES.BUSINESS] },
     { path: "help", component: <ComingSoon />, allowedRoles: [ROLES.BUSINESS, ROLES.AGENT] },
 ];

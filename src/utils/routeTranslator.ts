@@ -12,6 +12,7 @@ export const labelToKeyMap: { [key: string]: string } = {
   "Customers": "sidebar.labels.customers",
   "Analytics": "sidebar.labels.analytics",
   "Reporting": "sidebar.labels.reporting",
+  "Workflows": "sidebar.labels.workflows",
   "Plan & Payment": "sidebar.labels.planAndPayment",
   "Settings": "sidebar.labels.settings",
   "Log Out": "sidebar.labels.logOut",

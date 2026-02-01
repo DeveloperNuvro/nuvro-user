@@ -927,8 +927,8 @@ export default function AgentInbox() {
 
         <main 
           className={cn(
-            "flex flex-col border rounded-xl max-h-screen transition-colors overflow-hidden shadow-lg",
-            // Platform-specific main container backgrounds using CSS classes
+            "flex flex-col border rounded-xl max-h-screen transition-colors overflow-hidden shadow-lg min-h-0",
+            // Platform-specific main container backgrounds (same as ChatInbox)
             currentConversation?.platformInfo?.platform === 'whatsapp' 
               ? "chat-bg-whatsapp border-[#d4c5b7] dark:border-[#1e2a32]" 
               : currentConversation?.platformInfo?.platform === 'instagram' 
@@ -1156,8 +1156,8 @@ export default function AgentInbox() {
             <div
               ref={messageListRef} 
               className={cn(
-                "flex-1 p-3 sm:p-6 space-y-2 overflow-y-auto scrollbar-hide relative",
-                // Platform-specific backgrounds with authentic patterns using CSS classes
+                "flex-1 min-h-0 p-3 sm:p-6 space-y-2 overflow-y-auto scrollbar-hide relative",
+                // Platform-specific backgrounds (same as ChatInbox)
                 currentConversation?.platformInfo?.platform === 'whatsapp' 
                   ? "chat-bg-whatsapp"
                   : currentConversation?.platformInfo?.platform === 'instagram'
@@ -1428,8 +1428,8 @@ export default function AgentInbox() {
                   );
                 })}
               </div>
-              <div className="p-3 sm:p-6 border-t">
-                {/* 🔧 NEW: Image preview */}
+              <div className="flex-shrink-0 p-3 sm:p-6 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                {/* Image preview */}
                 {imagePreview && (
                   <div className="mb-3 relative inline-block">
                     <img 

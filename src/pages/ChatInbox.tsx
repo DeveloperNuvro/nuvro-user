@@ -53,11 +53,32 @@ dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 dayjs.extend(relativeTime);
 
-const SystemMessage = ({ text }: { text: string }) => ( 
-  <div className="flex items-center justify-center my-4">
+/** Workflow option for system/ask_question messages */
+interface WorkflowOption {
+  value: string;
+  label: string;
+}
+const SystemMessage = ({ text, workflowOptions, onOptionSelect }: { text: string; workflowOptions?: WorkflowOption[]; onOptionSelect?: (value: string) => void }) => ( 
+  <div className="flex flex-col items-center my-4 gap-2">
     <div className="text-center text-xs px-4 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 break-words">
       <FormattedText text={text} />
     </div>
+    {Array.isArray(workflowOptions) && workflowOptions.length > 0 && (
+      <div className="flex flex-wrap gap-2 justify-center">
+        {workflowOptions.map((opt, idx) => (
+          <Button
+            key={idx}
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-xl text-xs"
+            onClick={() => onOptionSelect?.(opt.value)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+    )}
   </div> 
 );
 const useDebounce = (value: string, delay: number) => { const [debouncedValue, setDebouncedValue] = useState(value); useEffect(() => { const handler = setTimeout(() => { setDebouncedValue(value); }, delay); return () => { clearTimeout(handler); }; }, [value, delay]); return debouncedValue; };
@@ -1789,7 +1810,16 @@ export default function ChatInbox() {
                   <div key={date}>
                     <div className="text-center text-xs text-muted-foreground my-4">{date}</div>
                     {group?.map((msg: any, i) => { 
-                      if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />; 
+                      if (msg.sentBy === 'system') {
+                        const workflowOpts = msg.metadata?.workflowOptions as { value: string; label: string }[] | undefined;
+                        return (
+                          <SystemMessage
+                            key={i}
+                            text={msg.text}
+                            workflowOptions={Array.isArray(workflowOpts) ? workflowOpts : undefined}
+                          />
+                        );
+                      } 
                       // Treat AI as agent-side so customer & AI don't render on the same side
                       const isAgentSide = ["agent", "human", "ai"].includes(msg.sentBy);
                       const messageType = msg.messageType || msg.metadata?.messageType || 'text';
