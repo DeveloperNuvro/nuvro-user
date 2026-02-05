@@ -13,7 +13,6 @@ import {
   ConversationWorkflow,
   WorkflowLanguageContent,
 } from '@/features/workflow/workflowSlice';
-import { fetchChannels } from '@/features/channel/channelSlice';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,27 +48,63 @@ const ASK_LANGUAGE_STEP = {
   defaultNextStepId: 'welcome',
 };
 
-// Fixed menu options only: General, Product, Quotation. Rest = business channels (human agent: transfer if online, else ticket for that channel).
-const FIXED_CATEGORY_OPTIONS = [
-  { value: 'general', labelKey: 'general' },
-  { value: 'product', labelKey: 'product' },
-  { value: 'quotation', labelKey: 'quotation' },
-];
-
 const DEFAULT_STEPS = [
   ASK_LANGUAGE_STEP,
-  { id: 'welcome', type: 'send_message' as const, nextStepId: 'ask_category' },
+  { id: 'welcome', type: 'send_message' as const, nextStepId: 'ask_channel' },
   {
-    id: 'ask_category',
+    id: 'ask_channel',
     type: 'ask_question' as const,
     nextStepId: 'end',
     branches: [
-      { value: 'general', nextStepId: 'end' },
-      { value: 'product', nextStepId: 'tag_product' },
-      { value: 'quotation', nextStepId: 'tag_quotation' },
+      { value: 'Sales', nextStepId: 'ask_sales_options' },
+      { value: 'Support', nextStepId: 'ask_support_options' },
+      { value: 'Technical', nextStepId: 'ask_technical_options' },
     ],
     defaultNextStepId: 'end',
   },
+  {
+    id: 'ask_sales_options',
+    type: 'ask_question' as const,
+    nextStepId: 'end',
+    branches: [
+      { value: 'product', nextStepId: 'assign_sales' },
+      { value: 'general', nextStepId: 'end' },
+      { value: 'transfer_to_human', nextStepId: 'assign_sales' },
+    ],
+  },
+  {
+    id: 'ask_support_options',
+    type: 'ask_question' as const,
+    nextStepId: 'end',
+    branches: [
+      { value: 'product', nextStepId: 'assign_support' },
+      { value: 'general', nextStepId: 'end' },
+      { value: 'transfer_to_human', nextStepId: 'assign_support' },
+    ],
+  },
+  {
+    id: 'ask_technical_options',
+    type: 'ask_question' as const,
+    nextStepId: 'end',
+    branches: [
+      { value: 'product', nextStepId: 'assign_technical' },
+      { value: 'general', nextStepId: 'end' },
+      { value: 'transfer_to_human', nextStepId: 'assign_technical' },
+    ],
+  },
+  {
+    id: 'ask_product_intent',
+    type: 'ask_question' as const,
+    nextStepId: 'end',
+    branches: [
+      { value: 'quotation', nextStepId: 'tag_quotation' },
+      { value: 'product', nextStepId: 'tag_product' },
+    ],
+    defaultNextStepId: 'end',
+  },
+  { id: 'assign_sales', type: 'assign_to' as const, nextStepId: 'end', config: { channelName: 'Sales' } },
+  { id: 'assign_support', type: 'assign_to' as const, nextStepId: 'end', config: { channelName: 'Support' } },
+  { id: 'assign_technical', type: 'assign_to' as const, nextStepId: 'end', config: { channelName: 'Technical' } },
   { id: 'tag_product', type: 'update_tag' as const, nextStepId: 'end', config: { tags: ['product'] } },
   { id: 'tag_quotation', type: 'update_tag' as const, nextStepId: 'end', config: { tags: ['quotation'] } },
 ];
@@ -80,10 +115,63 @@ const LANGUAGES = [
   { code: 'bn', label: 'বাংলা' },
 ];
 
+const COMMON_TIMEZONES = [
+  'UTC',
+  'America/New_York',
+  'America/Los_Angeles',
+  'America/Chicago',
+  'America/Santiago', // Chile
+  'Europe/London',
+  'Europe/Paris',
+  'Asia/Dhaka',
+  'Asia/Kolkata',
+  'Asia/Dubai',
+];
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const defaultBusinessHoursSchedule = (): { dayOfWeek: number; start: string; end: string }[] =>
+  [1, 2, 3, 4, 5].map((dayOfWeek) => ({ dayOfWeek, start: '09:00', end: '17:00' }));
+
 const ASK_LANGUAGE_OPTIONS = [
   { value: 'en', label: 'English' },
   { value: 'es', label: 'Español' },
   { value: 'bn', label: 'বাংলা' },
+];
+
+const DEFAULT_CHANNEL_OPTIONS = [
+  { value: 'Sales', label: 'Sales' },
+  { value: 'Support', label: 'Support' },
+  { value: 'Technical', label: 'Technical' },
+];
+
+const DEFAULT_SUB_OPTIONS_ES = [
+  { value: 'product', label: 'Productos e información' },
+  { value: 'general', label: 'Consulta general' },
+  { value: 'transfer_to_human', label: 'Hablar con un agente' },
+];
+const DEFAULT_SUB_OPTIONS_EN = [
+  { value: 'product', label: 'Products & info' },
+  { value: 'general', label: 'General inquiry' },
+  { value: 'transfer_to_human', label: 'Talk to an agent' },
+];
+const DEFAULT_SUB_OPTIONS_BN = [
+  { value: 'product', label: 'পণ্য ও তথ্য' },
+  { value: 'general', label: 'সাধারণ জিজ্ঞাসা' },
+  { value: 'transfer_to_human', label: 'এজেন্টের সাথে কথা বলুন' },
+];
+
+const DEFAULT_PRODUCT_INTENT_OPTIONS_ES = [
+  { value: 'quotation', label: 'Solicitar cotización' },
+  { value: 'product', label: 'Solo información de productos' },
+];
+const DEFAULT_PRODUCT_INTENT_OPTIONS_EN = [
+  { value: 'quotation', label: 'Get a quote' },
+  { value: 'product', label: 'Just product info' },
+];
+const DEFAULT_PRODUCT_INTENT_OPTIONS_BN = [
+  { value: 'quotation', label: 'কোটেশন নিতে চাই' },
+  { value: 'product', label: 'শুধু পণ্যের তথ্য' },
 ];
 
 const DEFAULT_TRANSLATIONS: Record<string, WorkflowLanguageContent> = {
@@ -91,42 +179,50 @@ const DEFAULT_TRANSLATIONS: Record<string, WorkflowLanguageContent> = {
     steps: {
       ask_language: { message: '¿En qué idioma desea continuar?', options: ASK_LANGUAGE_OPTIONS },
       welcome: { message: '¡Hola! ¿En qué podemos ayudarte hoy?' },
-      ask_category: {
-        message: 'Elige una opción:',
+      ask_channel: {
+        message: 'Elige un departamento:',
         options: [
-          { value: 'general', label: 'Consulta general' },
-          { value: 'product', label: 'Productos' },
-          { value: 'quotation', label: 'Cotización' },
+          { value: 'Sales', label: 'Ventas' },
+          { value: 'Support', label: 'Soporte' },
+          { value: 'Technical', label: 'Técnico' },
         ],
       },
+      ask_sales_options: { message: '¿En qué podemos ayudarte?', options: DEFAULT_SUB_OPTIONS_ES },
+      ask_support_options: { message: '¿En qué podemos ayudarte?', options: DEFAULT_SUB_OPTIONS_ES },
+      ask_technical_options: { message: '¿En qué podemos ayudarte?', options: DEFAULT_SUB_OPTIONS_ES },
+      ask_product_intent: { message: '¿Qué necesitas?', options: DEFAULT_PRODUCT_INTENT_OPTIONS_ES },
     },
   },
   en: {
     steps: {
       ask_language: { message: 'Which language would you like to continue in?', options: ASK_LANGUAGE_OPTIONS },
       welcome: { message: 'Hello! How can we help you today?' },
-      ask_category: {
-        message: 'Choose an option:',
-        options: [
-          { value: 'general', label: 'General' },
-          { value: 'product', label: 'Products' },
-          { value: 'quotation', label: 'Quotation' },
-        ],
+      ask_channel: {
+        message: 'Choose a department:',
+        options: DEFAULT_CHANNEL_OPTIONS,
       },
+      ask_sales_options: { message: 'How can we help you?', options: DEFAULT_SUB_OPTIONS_EN },
+      ask_support_options: { message: 'How can we help you?', options: DEFAULT_SUB_OPTIONS_EN },
+      ask_technical_options: { message: 'How can we help you?', options: DEFAULT_SUB_OPTIONS_EN },
+      ask_product_intent: { message: 'What do you need?', options: DEFAULT_PRODUCT_INTENT_OPTIONS_EN },
     },
   },
   bn: {
     steps: {
       ask_language: { message: 'কোন ভাষায় চালিয়ে যেতে চান?', options: ASK_LANGUAGE_OPTIONS },
       welcome: { message: 'হ্যালো! আজ আমরা আপনাকে কীভাবে সাহায্য করতে পারি?' },
-      ask_category: {
-        message: 'একটি অপশন বেছে নিন:',
+      ask_channel: {
+        message: 'ডিপার্টমেন্ট বেছে নিন:',
         options: [
-          { value: 'general', label: 'সাধারণ' },
-          { value: 'product', label: 'পণ্য' },
-          { value: 'quotation', label: 'কোটেশন' },
+          { value: 'Sales', label: 'সেলস' },
+          { value: 'Support', label: 'সাপোর্ট' },
+          { value: 'Technical', label: 'টেকনিক্যাল' },
         ],
       },
+      ask_sales_options: { message: 'কীভাবে সাহায্য করতে পারি?', options: DEFAULT_SUB_OPTIONS_BN },
+      ask_support_options: { message: 'কীভাবে সাহায্য করতে পারি?', options: DEFAULT_SUB_OPTIONS_BN },
+      ask_technical_options: { message: 'কীভাবে সাহায্য করতে পারি?', options: DEFAULT_SUB_OPTIONS_BN },
+      ask_product_intent: { message: 'কী চাইবেন?', options: DEFAULT_PRODUCT_INTENT_OPTIONS_BN },
     },
   },
 };
@@ -140,7 +236,6 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
   const { workflows, status, error } = useSelector((state: RootState) => state.workflow);
-  const { channels } = useSelector((state: RootState) => state.channel);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -152,17 +247,31 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
   const [translations, setTranslations] = useState<Record<string, WorkflowLanguageContent>>(
     JSON.parse(JSON.stringify(DEFAULT_TRANSLATIONS))
   );
+  const [businessHours24_7, setBusinessHours24_7] = useState(true);
+  const [businessHoursTimezone, setBusinessHoursTimezone] = useState('UTC');
+  const [businessHoursSchedule, setBusinessHoursSchedule] = useState<{ dayOfWeek: number; start: string; end: string }[]>(defaultBusinessHoursSchedule());
   const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     if (businessId && agentId) dispatch(fetchWorkflows({ businessId, agentId }));
   }, [businessId, agentId, dispatch]);
 
-  useEffect(() => {
-    dispatch(fetchChannels());
-  }, [dispatch]);
+  const updateScheduleSlot = (dayOfWeek: number, field: 'start' | 'end', value: string) => {
+    setBusinessHoursSchedule((prev) => {
+      const idx = prev.findIndex((s) => s.dayOfWeek === dayOfWeek);
+      const next = [...prev];
+      if (idx >= 0) {
+        next[idx] = { ...next[idx], [field]: value };
+      } else {
+        next.push({ dayOfWeek, start: field === 'start' ? value : '09:00', end: field === 'end' ? value : '17:00' });
+        next.sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+      }
+      return next;
+    });
+  };
 
-  const channelNames = Array.isArray(channels) ? channels.map((c) => c.name) : [];
+  const getScheduleSlot = (dayOfWeek: number) =>
+    businessHoursSchedule.find((s) => s.dayOfWeek === dayOfWeek) ?? { dayOfWeek, start: '', end: '' };
 
   const openCreate = () => {
     setEditingWorkflow(null);
@@ -171,6 +280,9 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
     setActive(true);
     setDefaultLanguage('es');
     setTranslations(JSON.parse(JSON.stringify(DEFAULT_TRANSLATIONS)));
+    setBusinessHours24_7(true);
+    setBusinessHoursTimezone('UTC');
+    setBusinessHoursSchedule(defaultBusinessHoursSchedule());
     setIsModalOpen(true);
   };
 
@@ -181,12 +293,35 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
       setTrigger(w.trigger ?? 'conversation_opened');
       setActive(w.active ?? true);
       setDefaultLanguage(w.defaultLanguage || 'es');
+      const bh = (w as any).businessHours;
+      if (bh && bh.timezone) {
+        setBusinessHours24_7(bh.enabled === false);
+        setBusinessHoursTimezone(bh.timezone || 'UTC');
+        setBusinessHoursSchedule(Array.isArray(bh.schedule) && bh.schedule.length ? bh.schedule : defaultBusinessHoursSchedule());
+      } else {
+        setBusinessHours24_7(true);
+        setBusinessHoursTimezone('UTC');
+        setBusinessHoursSchedule(defaultBusinessHoursSchedule());
+      }
       const base = w.translations && typeof w.translations === 'object'
         ? JSON.parse(JSON.stringify(w.translations))
         : JSON.parse(JSON.stringify(DEFAULT_TRANSLATIONS));
       for (const lang of Object.keys(base)) {
-        if (!(base[lang] as any)?.steps?.ask_language) {
-          (base[lang] as any).steps = { ...(base[lang] as any)?.steps, ask_language: { message: (DEFAULT_TRANSLATIONS as any)[lang]?.steps?.ask_language?.message ?? 'Which language?', options: ASK_LANGUAGE_OPTIONS } };
+        const def = (DEFAULT_TRANSLATIONS as any)[lang]?.steps;
+        (base[lang] as any).steps = { ...(base[lang] as any)?.steps };
+        if (!(base[lang] as any).steps.ask_language) {
+          (base[lang] as any).steps.ask_language = { message: def?.ask_language?.message ?? 'Which language?', options: ASK_LANGUAGE_OPTIONS };
+        }
+        if (!(base[lang] as any).steps.ask_channel) {
+          (base[lang] as any).steps.ask_channel = def?.ask_channel ?? { message: 'Choose a department:', options: DEFAULT_CHANNEL_OPTIONS };
+        }
+        ['ask_sales_options', 'ask_support_options', 'ask_technical_options'].forEach((stepId) => {
+          if (!(base[lang] as any).steps[stepId]) {
+            (base[lang] as any).steps[stepId] = def?.ask_sales_options ?? { message: 'How can we help you?', options: DEFAULT_SUB_OPTIONS_EN };
+          }
+        });
+        if (!(base[lang] as any).steps.ask_product_intent) {
+          (base[lang] as any).steps.ask_product_intent = def?.ask_product_intent ?? { message: 'What do you need?', options: DEFAULT_PRODUCT_INTENT_OPTIONS_EN };
         }
       }
       setTranslations(base);
@@ -202,42 +337,38 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
       toast.error(t('workflow.nameRequired'));
       return;
     }
-    // Fixed 3 (general, product, quotation) + business channels only
-    const baseAskStep = DEFAULT_STEPS.find((s) => s.id === 'ask_category') as any;
-    const channelBranches = channelNames.map((n) => ({ value: n, nextStepId: `tag_channel_${n}` }));
-    const askCategoryStep = baseAskStep
-      ? { ...baseAskStep, branches: [...(baseAskStep.branches ?? []), ...channelBranches] }
-      : baseAskStep;
-    const baseTagSteps = DEFAULT_STEPS.filter((s: any) => s.type === 'update_tag');
-    const channelTagSteps = channelNames.map((n) => ({
-      id: `tag_channel_${n}`,
-      type: 'update_tag' as const,
-      nextStepId: 'end',
-      config: { tags: [n] },
-    }));
-    const steps = [
-      DEFAULT_STEPS.find((s) => s.id === 'ask_language'),
-      DEFAULT_STEPS.find((s) => s.id === 'welcome'),
-      askCategoryStep,
-      ...baseTagSteps,
-      ...channelTagSteps,
-    ].filter(Boolean);
+    // Fixed 3-channel flow: ask_channel (Sales/Support/Technical) + ask_*_options (Product/General/Transfer). No dynamic channels.
+    const steps = [...DEFAULT_STEPS];
 
     const defaultTr = DEFAULT_TRANSLATIONS as Record<string, WorkflowLanguageContent>;
     const translationsWithFixedOptions: Record<string, WorkflowLanguageContent> = {};
     for (const lang of Object.keys(translations)) {
       const tr = translations[lang];
-      const fixedOptions = (defaultTr[lang]?.steps?.ask_category as any)?.options ?? FIXED_CATEGORY_OPTIONS.map((f) => ({ value: f.value, label: f.value }));
-      const channelOptions = channelNames.map((n) => ({ value: n, label: n }));
+      const channelOpts = (tr?.steps?.ask_channel as any)?.options ?? (defaultTr[lang]?.steps?.ask_channel as any)?.options ?? DEFAULT_CHANNEL_OPTIONS;
+      const subOpts = (tr?.steps?.ask_sales_options as any)?.options ?? (defaultTr[lang]?.steps?.ask_sales_options as any)?.options ?? DEFAULT_SUB_OPTIONS_EN;
+      const productIntentOpts = (tr?.steps?.ask_product_intent as any)?.options ?? (defaultTr[lang]?.steps?.ask_product_intent as any)?.options ?? DEFAULT_PRODUCT_INTENT_OPTIONS_EN;
       translationsWithFixedOptions[lang] = {
         ...tr,
         steps: {
           ...tr?.steps,
           ask_language: { message: (tr?.steps?.ask_language as any)?.message ?? (defaultTr[lang]?.steps?.ask_language as any)?.message ?? 'Which language?', options: ASK_LANGUAGE_OPTIONS },
-          ask_category: { ...(tr?.steps?.ask_category as any), message: (tr?.steps?.ask_category as any)?.message ?? '', options: [...fixedOptions, ...channelOptions] },
+          ask_channel: { message: (tr?.steps?.ask_channel as any)?.message ?? (defaultTr[lang]?.steps?.ask_channel as any)?.message ?? '', options: channelOpts },
+          ask_sales_options: { message: (tr?.steps?.ask_sales_options as any)?.message ?? (defaultTr[lang]?.steps?.ask_sales_options as any)?.message ?? '', options: subOpts },
+          ask_support_options: { message: (tr?.steps?.ask_support_options as any)?.message ?? (defaultTr[lang]?.steps?.ask_support_options as any)?.message ?? '', options: subOpts },
+          ask_technical_options: { message: (tr?.steps?.ask_technical_options as any)?.message ?? (defaultTr[lang]?.steps?.ask_technical_options as any)?.message ?? '', options: subOpts },
+          ask_product_intent: { message: (tr?.steps?.ask_product_intent as any)?.message ?? (defaultTr[lang]?.steps?.ask_product_intent as any)?.message ?? '', options: productIntentOpts },
         },
       };
     }
+
+    const businessHoursPayload =
+      businessHours24_7
+        ? undefined
+        : {
+            timezone: businessHoursTimezone,
+            enabled: true,
+            schedule: businessHoursSchedule.filter((s) => s.start && s.end),
+          };
 
     const basePayload = {
       name: name.trim(),
@@ -249,7 +380,14 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
     };
     if (editingWorkflow) {
       dispatch(
-        updateWorkflowThunk({ businessId, workflowId: editingWorkflow._id, data: basePayload })
+        updateWorkflowThunk({
+          businessId,
+          workflowId: editingWorkflow._id,
+          data: {
+            ...basePayload,
+            businessHours: businessHours24_7 ? null : businessHoursPayload ?? undefined,
+          },
+        })
       )
         .unwrap()
         .then(() => {
@@ -259,7 +397,16 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
         })
         .catch((err) => toast.error(err));
     } else {
-      dispatch(createWorkflowThunk({ businessId, data: { ...basePayload, agentId } }))
+      dispatch(
+        createWorkflowThunk({
+          businessId,
+          data: {
+            ...basePayload,
+            ...(businessHoursPayload && { businessHours: businessHoursPayload }),
+            agentId,
+          },
+        })
+      )
         .unwrap()
         .then(() => {
           toast.success(t('workflow.created'));
@@ -440,6 +587,54 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
                 <option value="first_message">{t('workflow.triggerFirstMessage')}</option>
               </select>
             </div>
+            <div className="space-y-3 rounded-lg border border-input bg-muted/20 p-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">{t('workflow.businessHours')}</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{t('workflow.businessHours24_7')}</span>
+                  <Switch checked={businessHours24_7} onCheckedChange={setBusinessHours24_7} />
+                </div>
+              </div>
+              {!businessHours24_7 && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">{t('workflow.businessHoursTimezone')}</Label>
+                    <select
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                      value={businessHoursTimezone}
+                      onChange={(e) => setBusinessHoursTimezone(e.target.value)}
+                    >
+                      {COMMON_TIMEZONES.map((tz) => (
+                        <option key={tz} value={tz}>{tz}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">{t('workflow.businessHoursSchedule')}</Label>
+                    <div className="grid gap-2 text-xs">
+                      {DAY_NAMES.map((_, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="w-8">{DAY_NAMES[i]}</span>
+                          <Input
+                            type="time"
+                            className="h-8 w-28"
+                            value={getScheduleSlot(i).start}
+                            onChange={(e) => updateScheduleSlot(i, 'start', e.target.value)}
+                          />
+                          <span className="text-muted-foreground">–</span>
+                          <Input
+                            type="time"
+                            className="h-8 w-28"
+                            value={getScheduleSlot(i).end}
+                            onChange={(e) => updateScheduleSlot(i, 'end', e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">{t('workflow.translations')}</Label>
               <Tabs value={defaultLanguage} onValueChange={(v) => setDefaultLanguage(v as 'es' | 'en' | 'bn')} className="mt-1">
@@ -469,13 +664,45 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
                       />
                     </div>
                     <div>
-                      <Label className="text-xs font-medium">{t('workflow.askCategoryMessage')}</Label>
+                      <Label className="text-xs font-medium">{t('workflow.askChannelMessage')}</Label>
                       <Input
                         className="mt-1"
-                        value={translations[lang.code]?.steps?.ask_category?.message ?? ''}
-                        onChange={(e) => updateLangStep(lang.code, 'ask_category', 'message', e.target.value)}
-                        placeholder={lang.code === 'es' ? 'Elige una opción:' : lang.code === 'bn' ? 'একটি অপশন বেছে নিন:' : 'Choose an option:'}
+                        value={translations[lang.code]?.steps?.ask_channel?.message ?? ''}
+                        onChange={(e) => updateLangStep(lang.code, 'ask_channel', 'message', e.target.value)}
+                        placeholder={lang.code === 'es' ? 'Elige un departamento:' : lang.code === 'bn' ? 'ডিপার্টমেন্ট বেছে নিন:' : 'Choose a department:'}
                       />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium">{t('workflow.askSubOptionsMessage')}</Label>
+                      <Input
+                        className="mt-1"
+                        value={translations[lang.code]?.steps?.ask_sales_options?.message ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setTranslations((prev) => {
+                            const next = { ...prev };
+                            if (!next[lang.code]) next[lang.code] = { steps: {} };
+                            const steps = { ...next[lang.code].steps };
+                            steps.ask_sales_options = { ...(steps.ask_sales_options as any), message: v };
+                            steps.ask_support_options = { ...(steps.ask_support_options as any), message: v };
+                            steps.ask_technical_options = { ...(steps.ask_technical_options as any), message: v };
+                            next[lang.code] = { ...next[lang.code], steps };
+                            return next;
+                          });
+                        }}
+                        placeholder={lang.code === 'es' ? '¿En qué podemos ayudarte?' : lang.code === 'bn' ? 'কীভাবে সাহায্য করতে পারি?' : 'How can we help you?'}
+                      />
+                      <p className="text-xs text-muted-foreground mt-0.5">{t('workflow.askSubOptionsMessageHint')}</p>
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium">{t('workflow.askProductIntentMessage')}</Label>
+                      <Input
+                        className="mt-1"
+                        value={translations[lang.code]?.steps?.ask_product_intent?.message ?? ''}
+                        onChange={(e) => updateLangStep(lang.code, 'ask_product_intent', 'message', e.target.value)}
+                        placeholder={lang.code === 'es' ? '¿Qué necesitas?' : lang.code === 'bn' ? 'কী চাইবেন?' : 'What do you need?'}
+                      />
+                      <p className="text-xs text-muted-foreground mt-0.5">{t('workflow.askProductIntentMessageHint')}</p>
                     </div>
                   </TabsContent>
                 ))}

@@ -202,7 +202,7 @@ export default function AgentInbox() {
   const [newMessage, setNewMessage] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState<'open' | 'closed'>('open');
-  const [activePlatform, setActivePlatform] = useState<'all' | 'whatsapp' | 'instagram' | 'telegram' | 'website'>('all');
+  const [activePlatform, setActivePlatform] = useState<'all' | 'website' | 'whatsapp'>('all');
   const [isTyping] = useState<{ [key: string]: boolean }>({});
   // 🔧 NEW: Dialog states for enhanced features
   const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
@@ -344,7 +344,7 @@ export default function AgentInbox() {
   // 🔧 NEW: Mark conversation as read when opened
   useEffect(() => {
     if (selectedCustomer) {
-      const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
+      const conversation = conversations.find((c) => c.customer?.id === selectedCustomer);
       if (conversation?.id && (conversation?.unreadCount || 0) > 0) {
         handleMarkAsRead(conversation.id);
       }
@@ -352,24 +352,22 @@ export default function AgentInbox() {
   }, [selectedCustomer, conversations, handleMarkAsRead]);
   
   // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
-  const handleNewChatAssigned = useCallback((data: ConversationInList) => {
+  const handleNewChatAssigned = useCallback((data: ConversationInList & { channelId?: string }) => {
     console.log('🔔 AgentInbox: Received newChatAssigned event:', data);
-    
-    // Only add if this conversation is assigned to this agent
-    if (data.assignedAgentId === agentId) {
-      console.log('✅ AgentInbox: Conversation assigned to this agent, adding to list');
-      
-      // Check if conversation already exists to avoid duplicate toasts
+    if (!data?.customer) return;
+
+    // Add if assigned to this agent OR assigned to this agent's channel (workflow → channel; we're a channel member)
+    const isAssignedToMe = data.assignedAgentId === agentId;
+    const isAssignedToMyChannel = !!data.channelId; // backend only emits to channel members, so we're in the channel
+    if (isAssignedToMe || isAssignedToMyChannel) {
       const existingConversation = conversations.find(c => c.id === data.id);
       if (!existingConversation) {
         dispatch(addAssignedConversation(data));
-        toast.success(`New conversation assigned: ${data.customer.name}`);
+        if (isAssignedToMe) toast.success(`New conversation assigned: ${data.customer.name}`);
+        else toast.success(`New chat in ${(data as any).channelName || 'your channel'}: ${data.customer.name}`);
       } else {
-        // Conversation already exists, just update it silently
         dispatch(addAssignedConversation(data));
       }
-    } else {
-      console.log('⚠️ AgentInbox: Conversation not assigned to this agent, ignoring');
     }
   }, [agentId, conversations, dispatch]);
 
@@ -665,12 +663,14 @@ export default function AgentInbox() {
         const newStatus = responseData.data.aiReplyDisabled;
         
         // Update local state
-        dispatch(updateConversationStatus({
-          customerId: currentConversation.customer.id,
-          status: currentConversation.status,
-          assignedAgentId: currentConversation.assignedAgentId,
-          aiReplyDisabled: newStatus
-        }));
+        if (currentConversation.customer?.id) {
+          dispatch(updateConversationStatus({
+            customerId: currentConversation.customer.id,
+            status: currentConversation.status,
+            assignedAgentId: currentConversation.assignedAgentId,
+            aiReplyDisabled: newStatus
+          }));
+        }
         
         // Show single success message
         toast.success(`AI replies ${newStatus ? 'disabled' : 'enabled'} for this conversation.`);
@@ -715,75 +715,49 @@ export default function AgentInbox() {
         <aside className={cn(
           "flex flex-col border p-4 rounded-xl max-h-screen transition-colors shadow-lg",
           activePlatform === 'whatsapp' ? "chat-bg-whatsapp border-[#d4c5b7] dark:border-[#1e2a32]" :
-          activePlatform === 'instagram' ? "chat-bg-instagram border-[#e8d4e0] dark:border-[#3d2a42]" :
-          activePlatform === 'telegram' ? "chat-bg-telegram border-[#d1d5db] dark:border-[#1a2332]" :
           activePlatform === 'website' ? "chat-bg-website border-border" :
           "bg-card border-border"
         )}>
           <h1 className="text-2xl font-bold mb-4 px-2">{t('agentInbox.title')}</h1>
           
-          {/* Platform Tabs */}
+          {/* Platform Tabs: All, Website Chat, WhatsApp Chat */}
           <div className="flex items-center gap-1 mb-3 p-1 bg-muted rounded-lg overflow-x-auto scrollbar-hide">
             <button
               onClick={() => setActivePlatform('all')}
               className={cn(
                 "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all whitespace-nowrap",
-                activePlatform === 'all' 
-                  ? "bg-background shadow-sm" 
+                activePlatform === 'all'
+                  ? "bg-background shadow-sm"
                   : "hover:bg-background/50"
               )}
             >
-              All
+              {t('agentInbox.tabs.all') || 'All'}
             </button>
             <button
               onClick={() => setActivePlatform('website')}
               className={cn(
                 "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 whitespace-nowrap",
-                activePlatform === 'website' 
-                  ? "bg-background shadow-sm" 
+                activePlatform === 'website'
+                  ? "bg-background shadow-sm"
                   : "hover:bg-background/50"
               )}
             >
               <Globe className="h-3 w-3 flex-shrink-0" />
-              <span className="hidden sm:inline">Website</span>
+              <span className="hidden sm:inline">{t('agentInbox.tabs.websiteChat') || 'Website Chat'}</span>
             </button>
             <button
               onClick={() => setActivePlatform('whatsapp')}
               className={cn(
                 "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 whitespace-nowrap",
-                activePlatform === 'whatsapp' 
-                  ? "bg-[#25d366] text-white shadow-sm" 
+                activePlatform === 'whatsapp'
+                  ? "bg-[#25d366] text-white shadow-sm"
                   : "hover:bg-[#25d366]/10 text-[#25d366]"
               )}
             >
               <MessageCircle className="h-3 w-3 flex-shrink-0" />
-              <span className="hidden sm:inline">WhatsApp</span>
+              <span className="hidden sm:inline">{t('agentInbox.tabs.whatsappChat') || 'WhatsApp Chat'}</span>
             </button>
-            <button
-              onClick={() => setActivePlatform('instagram')}
-              className={cn(
-                "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 bg-gradient-to-r from-[#f09433] via-[#e6683c] to-[#dc2743] text-white whitespace-nowrap",
-                activePlatform === 'instagram' 
-                  ? "opacity-100 shadow-sm" 
-                  : "opacity-70 hover:opacity-90"
-              )}
-            >
-              <MessageCircle className="h-3 w-3 flex-shrink-0" />
-              <span className="hidden sm:inline">Instagram</span>
-            </button>
-            <button
-              onClick={() => setActivePlatform('telegram')}
-              className={cn(
-                "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 whitespace-nowrap",
-                activePlatform === 'telegram' 
-                  ? "bg-[#0088cc] text-white shadow-sm" 
-                  : "hover:bg-[#0088cc]/10 text-[#0088cc]"
-              )}
-            >
-              <MessageCircle className="h-3 w-3 flex-shrink-0" />
-              <span className="hidden sm:inline">Telegram</span>
-            </button>
-        </div>
+          </div>
 
           <div className="flex items-center gap-2 p-2 border-b">
           <Button variant={activeFilter === 'open' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('open')}>{t('agentInbox.filters.open')}</Button>
@@ -796,13 +770,13 @@ export default function AgentInbox() {
             {agentInboxStatus === 'loading' && conversations.length > 0 ? ( // This handles subsequent loads
               <div className="flex justify-center items-center py-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : conversations.length > 0 ? (
-              conversations.map((convo) => {
+              conversations.filter((convo) => convo.customer?.id).map((convo) => {
                 const platform = convo.platformInfo?.platform || 'website';
-                const isSelected = selectedCustomer === convo.customer.id;
+                const isSelected = selectedCustomer === convo.customer!.id;
                 return (
-                <div 
-                  key={convo.id} 
-                  onClick={() => setSelectedCustomer(convo.customer.id)} 
+                <div
+                  key={convo.id}
+                  onClick={() => setSelectedCustomer(convo.customer!.id)} 
                   className={cn(
                     "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg cursor-pointer transition-colors min-w-0",
                     platform === 'whatsapp' && (isSelected ? "bg-[#dcf8c6] dark:bg-[#1f2c33]" : "hover:bg-[#dcf8c6]/50 dark:hover:bg-[#1f2c33]/50"),
@@ -813,7 +787,7 @@ export default function AgentInbox() {
                   )}
                 >
                   <div className="relative shrink-0">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary text-xs sm:text-sm">{convo.customer.name?.charAt(0).toUpperCase()}</div>
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-muted rounded-full flex items-center justify-center font-bold text-primary text-xs sm:text-sm">{(convo.customer?.name ?? '?').charAt(0).toUpperCase()}</div>
                     {/* 🔧 NEW: Unread count badge - positioned on avatar */}
                     {(convo.unreadCount || 0) > 0 && (
                       <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center z-10 border-2 border-background shadow-sm">
@@ -835,7 +809,7 @@ export default function AgentInbox() {
                             </TooltipContent>
                           </Tooltip>
                         )}
-                        <p className="font-semibold truncate text-sm sm:text-base">{convo.customer.name}</p>
+                        <p className="font-semibold truncate text-sm sm:text-base">{convo.customer?.name ?? '—'}</p>
                         {convo.platformInfo?.platform && (
                           <PlatformBadge platform={convo.platformInfo.platform} />
                         )}
@@ -871,7 +845,7 @@ export default function AgentInbox() {
                     <div className="flex justify-between items-center mt-0.5 gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm text-muted-foreground truncate min-w-0">
-                          {isTyping[convo.customer.id] ? (
+                          {isTyping[convo.customer?.id ?? ''] ? (
                             <span className="text-primary italic">{t('chatInbox.typing')}</span>
                           ) : (
                             convo.preview || t('chatInbox.noMessages')

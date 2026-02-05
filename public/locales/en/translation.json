@@ -131,6 +131,11 @@
   "status_in_progress": "In Progress",
   "chatInbox": {
     "title": "Inbox",
+    "tabs": {
+      "all": "All",
+      "websiteChat": "Website Chat",
+      "whatsappChat": "WhatsApp Chat"
+    },
     "offlineAgents": "No agents online",
     "onlineAgents": "Online Agents",
     "filterOpen": "Open",
@@ -211,12 +216,21 @@
     "welcomeMessageHelp": "First message the customer sees (e.g. “Hello! How can we help you today?”).",
     "askCategoryMessage": "Category question",
     "askCategoryMessageHelp": "The question shown above the buttons (e.g. “Choose an option:”).",
+    "askChannelMessage": "Department / channel question",
+    "askSubOptionsMessage": "Sub-options question (Sales / Support / Technical)",
+    "askSubOptionsMessageHint": "Shown after the customer picks a department. Same message for Sales, Support, and Technical.",
+    "askProductIntentMessage": "Quote vs info (after Product)",
+    "askProductIntentMessageHint": "Shown when customer chose Product. Options: Get a quote / Just product info.",
     "fixedOptionsHelp": "Options are fixed: General, Quotation, Support ticket, plus your business channels. You cannot add or remove options.",
     "categoryOptions": "Button options (value|label per line)",
     "categoryOptionsHelp": "Each line = one button. Format: value|label. The value is used internally (e.g. quotation, product, general); the label is what the customer sees. Use channels for human/ticket (e.g. Support, Sales) – transfer if agent online, else ticket for that channel.",
     "channelOptions": "Channel options",
     "channelOptionsHelp": "Add your business channels (e.g. Sales, Support) as workflow options. When the customer selects a channel, they are connected to an agent in that channel if online, or a support ticket is created.",
     "optionsPlaceholder": "quotation|Quotation\nproduct|Products\ngeneral|General",
+    "businessHours": "Business hours",
+    "businessHours24_7": "Available 24/7",
+    "businessHoursTimezone": "Timezone",
+    "businessHoursSchedule": "Hours per day (outside these hours, customers get full AI chat)",
     "cancel": "Cancel",
     "create": "Create",
     "save": "Save",
@@ -874,6 +888,11 @@
   },
   "agentInbox": {
     "title": "My Inbox",
+    "tabs": {
+      "all": "All",
+      "websiteChat": "Website Chat",
+      "whatsappChat": "WhatsApp Chat"
+    },
     "status": {
       "online": "Online",
       "offline": "Offline"

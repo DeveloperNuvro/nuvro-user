@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, CheckCircle, XCircle, MessageSquare, Instagram, Mail, Phone, Linkedin, Globe, Building2, AtSign, RefreshCw, RotateCcw, Info, KeyRound } from "lucide-react";
+import { Loader2, Plus, Trash2, CheckCircle, XCircle, MessageSquare, Phone, RefreshCw, RotateCcw, Info, KeyRound } from "lucide-react";
 import QRCode from 'qrcode';
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
@@ -28,7 +28,8 @@ import { useTranslation } from "react-i18next";
 
 // Platform config will be created inside component to access translations
 
-const supportedPlatforms = ['whatsapp', 'instagram', 'telegram', 'email', 'linkedin', 'google', 'microsoft', 'twitter'] as const;
+// Only WhatsApp for now; add instagram, telegram, etc. later if needed
+const supportedPlatforms = ['whatsapp'] as const;
 
 interface ConnectionFormData {
   platform: typeof supportedPlatforms[number] | '';
@@ -63,9 +64,10 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
     });
     
     if (!agentIdString) {
-      // If no agentId provided, show all connections (for backward compatibility)
-      console.log(`🔍 UnipileIntegrationTab: No agentId provided, showing all ${allConnections.length} connections`);
-      return allConnections;
+      // If no agentId provided, show all WhatsApp connections only
+      const whatsappOnly = allConnections.filter((c: any) => String(c.platform || '').toLowerCase() === 'whatsapp');
+      console.log(`🔍 UnipileIntegrationTab: No agentId provided, showing ${whatsappOnly.length} WhatsApp connections`);
+      return whatsappOnly;
     }
     
     // 🔧 SECURITY FIX: Filter connections that belong to this agent
@@ -87,67 +89,21 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
       return matches;
     });
     
-    console.log(`✅ UnipileIntegrationTab: Filtered ${allConnections.length} connections to ${filtered.length} for agentId: ${agentIdString}`, {
-      filteredConnections: filtered.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        platform: c.platform,
-        agentId: c.agentId
-      }))
-    });
+    // Only show WhatsApp connections (Instagram, Telegram etc. hidden for now)
+    const whatsappOnly = filtered.filter((c: any) => String(c.platform || '').toLowerCase() === 'whatsapp');
+
+    console.log(`✅ UnipileIntegrationTab: Filtered ${allConnections.length} connections to ${whatsappOnly.length} (WhatsApp only) for agentId: ${agentIdString}`);
     
-    return filtered;
+    return whatsappOnly;
   }, [allConnections, agentIdString]);
   
-  // Platform config with translations
-  const platformConfig = {
+  // Platform config – only WhatsApp for now
+  const platformConfig: Record<string, { icon: any; color: string; name: string; description: string }> = {
     whatsapp: {
       icon: Phone,
       color: "bg-green-500",
       name: t('singleAiAgentPage.multiPlatform.platforms.whatsapp.name'),
       description: t('singleAiAgentPage.multiPlatform.platforms.whatsapp.description')
-    },
-    instagram: {
-      icon: Instagram,
-      color: "bg-pink-500",
-      name: t('singleAiAgentPage.multiPlatform.platforms.instagram.name'),
-      description: t('singleAiAgentPage.multiPlatform.platforms.instagram.description')
-    },
-    telegram: {
-      icon: MessageSquare,
-      color: "bg-blue-500",
-      name: t('singleAiAgentPage.multiPlatform.platforms.telegram.name'),
-      description: t('singleAiAgentPage.multiPlatform.platforms.telegram.description')
-    },
-    email: {
-      icon: Mail,
-      color: "bg-red-500",
-      name: t('singleAiAgentPage.multiPlatform.platforms.email.name'),
-      description: t('singleAiAgentPage.multiPlatform.platforms.email.description')
-    },
-    linkedin: {
-      icon: Linkedin,
-      color: "bg-blue-600",
-      name: t('singleAiAgentPage.multiPlatform.platforms.linkedin.name'),
-      description: t('singleAiAgentPage.multiPlatform.platforms.linkedin.description')
-    },
-    google: {
-      icon: Globe,
-      color: "bg-blue-500",
-      name: t('singleAiAgentPage.multiPlatform.platforms.google.name'),
-      description: t('singleAiAgentPage.multiPlatform.platforms.google.description')
-    },
-    microsoft: {
-      icon: Building2,
-      color: "bg-gray-600",
-      name: t('singleAiAgentPage.multiPlatform.platforms.microsoft.name'),
-      description: t('singleAiAgentPage.multiPlatform.platforms.microsoft.description')
-    },
-    twitter: {
-      icon: AtSign,
-      color: "bg-sky-500",
-      name: t('singleAiAgentPage.multiPlatform.platforms.twitter.name'),
-      description: t('singleAiAgentPage.multiPlatform.platforms.twitter.description')
     }
   };
   

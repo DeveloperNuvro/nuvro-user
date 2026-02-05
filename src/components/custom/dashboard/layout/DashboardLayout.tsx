@@ -25,6 +25,7 @@ import {
   addNewCustomer,
   removeConversation,
   updateConversationStatus,
+  updateConversationEnhanced,
   ConversationInList,
   Message
 } from '@/features/chatInbox/chatInboxSlice';
@@ -119,7 +120,14 @@ export default function DashboardLayout() {
     }
   }, [user, dispatch, t]);
 
-  const handleNewAssignment = useCallback((data: ConversationInList) => {
+  const handleNewAssignment = useCallback((data: ConversationInList & { conversationId?: string }) => {
+    // Workflow channel assignment may emit newChatAssigned without customer (conversationId, status, channelId, channelName only)
+    if (!data?.customer) {
+      if (data?.conversationId && user.role === 'business') {
+        dispatch(updateConversationEnhanced({ conversationId: data.conversationId, status: data.status, assignedAgentId: data.assignedAgentId }));
+      }
+      return;
+    }
     if (user.role === 'agent') {
       dispatch(addAssignedConversation(data));
       toast.success(t('chatInbox.toastNewChat', { customerName: data.customer.name }));

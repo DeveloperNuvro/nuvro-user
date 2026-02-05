@@ -131,6 +131,11 @@
   "status_in_progress": "En Progreso",
   "chatInbox": {
     "title": "Bandeja de Entrada",
+    "tabs": {
+      "all": "Todo",
+      "websiteChat": "Chat Web",
+      "whatsappChat": "Chat WhatsApp"
+    },
     "filterOpen": "Abiertas",
     "filterClosed": "Cerradas",
      "offlineAgents": "No hay agentes en línea",
@@ -211,12 +216,21 @@
     "welcomeMessageHelp": "Primer mensaje que ve el cliente (ej. “¡Hola! ¿En qué podemos ayudarte?”).",
     "askCategoryMessage": "Pregunta de categoría",
     "askCategoryMessageHelp": "La pregunta que aparece encima de los botones (ej. “Elige una opción:”).",
+    "askChannelMessage": "Pregunta de departamento / canal",
+    "askSubOptionsMessage": "Pregunta de subopciones (Ventas / Soporte / Técnico)",
+    "askSubOptionsMessageHint": "Se muestra cuando el cliente elige un departamento. El mismo mensaje para Ventas, Soporte y Técnico.",
+    "askProductIntentMessage": "Cotización vs info (después de Productos)",
+    "askProductIntentMessageHint": "Se muestra cuando el cliente eligió Productos. Opciones: Solicitar cotización / Solo información.",
     "fixedOptionsHelp": "Las opciones son fijas: General, Cotización, Ticket de soporte, Técnico, más tus canales. No puedes añadir ni quitar opciones.",
     "categoryOptions": "Opciones de botones (valor|etiqueta por línea)",
     "categoryOptionsHelp": "Cada línea = un botón. Formato: valor|etiqueta. El valor es interno (ej. quotation, product, general). Usa canales para humano/ticket (ej. Soporte, Ventas): transferir si agente en línea, si no, ticket para ese canal.",
     "channelOptions": "Opciones de canal",
     "channelOptionsHelp": "Añade tus canales de negocio (ej. Ventas, Soporte) como opciones del flujo. Si el cliente elige un canal, se conecta con un agente de ese canal si está en línea, o se crea un ticket.",
     "optionsPlaceholder": "quotation|Cotización\nproduct|Productos\ngeneral|General",
+    "businessHours": "Horario de atención",
+    "businessHours24_7": "Disponible 24/7",
+    "businessHoursTimezone": "Zona horaria",
+    "businessHoursSchedule": "Horario por día (fuera de estas horas, el cliente tiene chat IA completo)",
     "cancel": "Cancelar",
     "create": "Crear",
     "save": "Guardar",
@@ -872,6 +886,11 @@
   },
   "agentInbox": {
     "title": "Mi Bandeja de Entrada",
+    "tabs": {
+      "all": "Todo",
+      "websiteChat": "Chat Web",
+      "whatsappChat": "Chat WhatsApp"
+    },
     "status": {
       "online": "En línea",
       "offline": "Desconectado"

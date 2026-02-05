@@ -202,6 +202,11 @@
   "status_in_progress": "চলছে",
   "chatInbox": {
     "title": "ইনবক্স",
+    "tabs": {
+      "all": "সব",
+      "websiteChat": "ওয়েবসাইট চ্যাট",
+      "whatsappChat": "হোয়াটসঅ্যাপ চ্যাট"
+    },
     "filterOpen": "খোলা",
     "filterClosed": "বন্ধ",
     "searchPlaceholder": "গ্রাহকের নাম দিয়ে খুঁজুন...",
@@ -282,12 +287,21 @@
     "welcomeMessageHelp": "গ্রাহক যে প্রথম মেসেজটা দেখে (যেমন “হ্যালো! কীভাবে সাহায্য করতে পারি?”)।",
     "askCategoryMessage": "ক্যাটাগরি প্রশ্ন",
     "askCategoryMessageHelp": "বাটনের ওপরে যে প্রশ্ন দেখাবে (যেমন “একটি অপশন বেছে নিন:”)।",
+    "askChannelMessage": "ডিপার্টমেন্ট / চ্যানেল প্রশ্ন",
+    "askSubOptionsMessage": "সাব-অপশন প্রশ্ন (সেলস / সাপোর্ট / টেকনিক্যাল)",
+    "askSubOptionsMessageHint": "গ্রাহক ডিপার্টমেন্ট বেছে নেওয়ার পর দেখায়। সেলস, সাপোর্ট ও টেকনিক্যালের জন্য একই মেসেজ।",
+    "askProductIntentMessage": "কোট বনাম তথ্য (পণ্য বেছে নেওয়ার পর)",
+    "askProductIntentMessageHint": "গ্রাহক পণ্য বেছে নিলে দেখায়। অপশন: কোটেশন নিন / শুধু পণ্যের তথ্য।",
     "fixedOptionsHelp": "অপশন ফিক্সড: জেনারেল, কোটেশন, সাপোর্ট টিকেট ও আপনার চ্যানেলগুলো। অপশন যোগ বা বাদ করা যাবে না।",
     "categoryOptions": "বাটন অপশন (প্রতি লাইনে value|label)",
     "categoryOptionsHelp": "প্রতি লাইন = একটি বাটন। ফরম্যাট: value|label। value দিয়ে সিস্টেম কাজ করে (যেমন quotation, product, general)। চ্যানেল দিয়ে হিউম্যান/টিকেট (যেমন সাপোর্ট, সেলস): এজেন্ট অনলাইন থাকলে ট্রান্সফার, নাহলে সেই চ্যানেলে টিকেট।",
     "channelOptions": "চ্যানেল অপশন",
     "channelOptionsHelp": "বিজনেস চ্যানেল (যেমন সেলস, সাপোর্ট) ওয়ার্কফ্লো অপশন হিসেবে যোগ করুন। গ্রাহক চ্যানেল সিলেক্ট করলে সেই চ্যানেলের এজেন্ট অনলাইনে থাকলে কানেক্ট হবে, না থাকলে সাপোর্ট টিকেট তৈরি হবে।",
     "optionsPlaceholder": "quotation|কোটেশন\nproduct|পণ্য\ngeneral|সাধারণ",
+    "businessHours": "ব্যবসার সময়",
+    "businessHours24_7": "২৪/৭ খোলা",
+    "businessHoursTimezone": "টাইমজোন",
+    "businessHoursSchedule": "প্রতিদিনের সময় (এই সময়ের বাইরে গ্রাহক পুরো AI চ্যাট পাবে)",
     "cancel": "বাতিল",
     "create": "তৈরি করুন",
     "save": "সেভ করুন",
@@ -943,6 +957,11 @@
   },
   "agentInbox": {
     "title": "আমার ইনবক্স",
+    "tabs": {
+      "all": "সব",
+      "websiteChat": "ওয়েবসাইট চ্যাট",
+      "whatsappChat": "হোয়াটসঅ্যাপ চ্যাট"
+    },
     "status": {
       "online": "অনলাইন",
       "offline": "অফলাইন"

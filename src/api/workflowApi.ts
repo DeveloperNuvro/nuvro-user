@@ -35,6 +35,18 @@ export interface WorkflowLanguageContent {
   steps: Record<string, WorkflowStepTranslation>;
 }
 
+export interface WorkflowBusinessHoursSchedule {
+  dayOfWeek: number;
+  start: string;
+  end: string;
+}
+
+export interface WorkflowBusinessHours {
+  timezone: string;
+  enabled: boolean;
+  schedule: WorkflowBusinessHoursSchedule[];
+}
+
 export interface ConversationWorkflow {
   _id: string;
   businessId: string;
@@ -43,6 +55,7 @@ export interface ConversationWorkflow {
   trigger: WorkflowTrigger;
   active: boolean;
   defaultLanguage: string;
+  businessHours?: WorkflowBusinessHours;
   steps: WorkflowStep[];
   translations: Record<string, WorkflowLanguageContent>;
   createdAt?: string;
@@ -68,6 +81,7 @@ export const createWorkflow = async (
     trigger: WorkflowTrigger;
     active?: boolean;
     defaultLanguage?: string;
+    businessHours?: WorkflowBusinessHours;
     steps: WorkflowStep[];
     translations: Record<string, WorkflowLanguageContent>;
   }
@@ -84,6 +98,7 @@ export const updateWorkflow = async (
     trigger: WorkflowTrigger;
     active: boolean;
     defaultLanguage: string;
+    businessHours: WorkflowBusinessHours | null;
     steps: WorkflowStep[];
     translations: Record<string, WorkflowLanguageContent>;
   }>
