@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, CheckCircle, XCircle, MessageSquare, Phone, RefreshCw, RotateCcw, Info, KeyRound } from "lucide-react";
+import { Loader2, Plus, Trash2, CheckCircle, XCircle, MessageSquare, Phone, RefreshCw, RotateCcw, Info, KeyRound, Settings } from "lucide-react";
 import QRCode from 'qrcode';
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
@@ -21,8 +21,12 @@ import {
   solveCheckpoint,
   syncAccount,
   getAccountById,
-  UnipileConnection
+  updateUnipileChannelConfig,
+  UnipileConnection,
+  type ChannelMode,
+  type ChannelFallbackBehavior,
 } from "@/features/unipile/unipileSlice";
+import { fetchWorkflows } from "@/features/workflow/workflowSlice";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -122,6 +126,15 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
   const [checkpointCode, setCheckpointCode] = useState('');
   const [accountDetailsDialogOpen, setAccountDetailsDialogOpen] = useState(false);
   const [accountDetails, setAccountDetails] = useState<any>(null);
+  const [channelConfigDialogOpen, setChannelConfigDialogOpen] = useState(false);
+  const [channelConfigConnection, setChannelConfigConnection] = useState<UnipileConnection | null>(null);
+  const [channelConfigMode, setChannelConfigMode] = useState<ChannelMode>('hybrid');
+  const [channelConfigFallback, setChannelConfigFallback] = useState<ChannelFallbackBehavior>('route_to_ai');
+  const [channelConfigDefaultFlowId, setChannelConfigDefaultFlowId] = useState<string | null>(null);
+  const [channelConfigSaving, setChannelConfigSaving] = useState(false);
+  const workflows = useSelector((state: RootState) => state.workflow?.workflows ?? []);
+  const user = useSelector((state: RootState) => state.auth.user);
+  const businessId = user?.businessId ?? '';
 
   useEffect(() => {
     // 🔧 NEW: Pass agentId when fetching connections (convert to string if it's an ObjectId)
@@ -463,6 +476,38 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
     }
   };
 
+  const openChannelConfigDialog = (connection: UnipileConnection) => {
+    setChannelConfigConnection(connection);
+    setChannelConfigMode((connection.mode ?? 'hybrid') as ChannelMode);
+    setChannelConfigFallback((connection.fallbackBehavior ?? 'route_to_ai') as ChannelFallbackBehavior);
+    setChannelConfigDefaultFlowId((connection as any).defaultFlowId ?? null);
+    setChannelConfigDialogOpen(true);
+    if (businessId) dispatch(fetchWorkflows({ businessId }));
+  };
+
+  const handleSaveChannelConfig = async () => {
+    if (!channelConfigConnection) return;
+    const connectionId = channelConfigConnection.id || channelConfigConnection.connectionId;
+    if (!connectionId) return;
+    setChannelConfigSaving(true);
+    try {
+      await dispatch(updateUnipileChannelConfig({
+        connectionId: String(connectionId),
+        mode: channelConfigMode,
+        fallbackBehavior: channelConfigFallback,
+        defaultFlowId: channelConfigDefaultFlowId,
+      })).unwrap();
+      toast.success(t('channelSettings.saved'));
+      setChannelConfigDialogOpen(false);
+      setChannelConfigConnection(null);
+    } catch (error: any) {
+      const msg = typeof error === 'string' ? error : error?.message || t('channelSettings.saveError');
+      toast.error(msg);
+    } finally {
+      setChannelConfigSaving(false);
+    }
+  };
+
   const formatConnectionDate = (connection: any) => {
     try {
       const dateString = connection.created_at || connection.createdAt;
@@ -607,6 +652,78 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
               >
                 {status === 'loading' && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {t('singleAiAgentPage.multiPlatform.connect')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Channel config dialog (mode, fallback) */}
+        <Dialog open={channelConfigDialogOpen} onOpenChange={(open) => { setChannelConfigDialogOpen(open); if (!open) setChannelConfigConnection(null); }}>
+          <DialogContent className="sm:max-w-[480px]">
+            <DialogHeader>
+              <DialogTitle>{t('channelSettings.title')}</DialogTitle>
+              <DialogDescription>
+                {channelConfigConnection ? `${channelConfigConnection.name} (${channelConfigConnection.platform})` : t('channelSettings.description')}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <p className="text-sm text-muted-foreground border-l-2 border-blue-500 pl-3">
+                {t('channelSettings.intro')}
+              </p>
+              <div className="grid gap-2">
+                <Label className="font-medium">{t('channelSettings.modeLabel')}</Label>
+                <Select value={channelConfigMode} onValueChange={(v) => setChannelConfigMode(v as ChannelMode)}>
+                  <SelectTrigger><SelectValue placeholder={t('channelSettings.modePlaceholder')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="human_only">{t('channelSettings.modeHumanOnly')}</SelectItem>
+                    <SelectItem value="hybrid">{t('channelSettings.modeHybrid')}</SelectItem>
+                    <SelectItem value="ai_only">{t('channelSettings.modeAiOnly')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t('channelSettings.modeHelp')}
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label className="font-medium">{t('channelSettings.fallbackLabel')}</Label>
+                <Select value={channelConfigFallback} onValueChange={(v) => setChannelConfigFallback(v as ChannelFallbackBehavior)}>
+                  <SelectTrigger><SelectValue placeholder={t('channelSettings.fallbackPlaceholder')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="route_to_ai">{t('channelSettings.fallbackRouteToAi')}</SelectItem>
+                    <SelectItem value="assign_to_human">{t('channelSettings.fallbackAssignToHuman')}</SelectItem>
+                    <SelectItem value="create_ticket">{t('channelSettings.fallbackCreateTicket')}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t('channelSettings.fallbackHelp')}
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label className="font-medium">{t('channelSettings.workflowLabel')}</Label>
+                <Select
+                  value={channelConfigDefaultFlowId ?? 'none'}
+                  onValueChange={(v) => setChannelConfigDefaultFlowId(v === 'none' ? null : v)}
+                >
+                  <SelectTrigger><SelectValue placeholder={t('channelSettings.workflowPlaceholder')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t('channelSettings.workflowNone')}</SelectItem>
+                    {workflows.filter((w) => w.active).map((w) => (
+                      <SelectItem key={w._id} value={w._id}>
+                        {w.name} {w.agentId ? t('channelSettings.workflowWithAi') : t('channelSettings.workflowHumanOnly')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t('channelSettings.workflowHelp')}
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setChannelConfigDialogOpen(false); setChannelConfigConnection(null); }}>{t('channelSettings.cancel')}</Button>
+              <Button onClick={handleSaveChannelConfig} disabled={channelConfigSaving}>
+                {channelConfigSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t('channelSettings.save')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -764,6 +881,17 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                         {t('singleAiAgentPage.multiPlatform.connected')} {formatConnectionDate(connection)}
                       </div>
                       <div className="flex items-center gap-2">
+                        {/* Channel settings (mode, fallback) */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openChannelConfigDialog(connection)}
+                          disabled={status === 'loading'}
+                          className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                          title={t('channelSettings.buttonTitle')}
+                        >
+                          <Settings className="w-4 h-4" />
+                        </Button>
                         {/* 🔧 NEW: Account details button */}
                         {connection.connectionId && (
                           <Button

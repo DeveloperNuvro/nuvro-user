@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -108,6 +107,7 @@ export default function WorkflowPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<ConversationWorkflow | null>(null);
   const [name, setName] = useState('');
   const [trigger, setTrigger] = useState<'conversation_opened' | 'first_message'>('conversation_opened');
@@ -135,11 +135,13 @@ export default function WorkflowPage() {
 
   const openEdit = (w: ConversationWorkflow) => {
     try {
+      if (businessId) dispatch(fetchAiAgentsByBusinessId());
       setEditingWorkflow(w);
       setName(w.name ?? '');
       setTrigger(w.trigger ?? 'conversation_opened');
       setActive(w.active ?? true);
       setDefaultLanguage(w.defaultLanguage || 'es');
+      setSelectedAgentId(w.agentId ?? '');
       setTranslations(
         w.translations && typeof w.translations === 'object'
           ? JSON.parse(JSON.stringify(w.translations))
@@ -160,10 +162,6 @@ export default function WorkflowPage() {
       toast.error(t('workflow.nameRequired'));
       return;
     }
-    if (!editingWorkflow && !selectedAgentId) {
-      toast.error(t('workflow.agentRequired'));
-      return;
-    }
     const basePayload = {
       name: name.trim(),
       trigger,
@@ -172,9 +170,14 @@ export default function WorkflowPage() {
       steps: editingWorkflow?.steps ?? DEFAULT_STEPS,
       translations,
     };
+    const agentIdValue = selectedAgentId?.trim() || null;
     if (editingWorkflow) {
       dispatch(
-        updateWorkflowThunk({ businessId, workflowId: editingWorkflow._id, data: basePayload })
+        updateWorkflowThunk({
+          businessId,
+          workflowId: editingWorkflow._id,
+          data: { ...basePayload, agentId: agentIdValue },
+        })
       )
         .unwrap()
         .then(() => {
@@ -183,7 +186,12 @@ export default function WorkflowPage() {
         })
         .catch((err) => toast.error(err));
     } else {
-      dispatch(createWorkflowThunk({ businessId, data: { ...basePayload, agentId: selectedAgentId } }))
+      dispatch(
+        createWorkflowThunk({
+          businessId,
+          data: { ...basePayload, agentId: agentIdValue || undefined },
+        })
+      )
         .unwrap()
         .then(() => {
           toast.success(t('workflow.created'));
@@ -193,9 +201,13 @@ export default function WorkflowPage() {
     }
   };
 
-  const handleDelete = () => {
-    if (!editingWorkflow || !businessId) return;
-    dispatch(deleteWorkflowThunk({ businessId, workflowId: editingWorkflow._id }))
+  const handleDelete = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    const workflowId = editingWorkflow?._id;
+    if (!workflowId || !businessId || isDeleting) return;
+    setIsDeleting(true);
+    dispatch(deleteWorkflowThunk({ businessId, workflowId }))
       .unwrap()
       .then(() => {
         toast.success(t('workflow.deleted'));
@@ -203,7 +215,8 @@ export default function WorkflowPage() {
         setEditingWorkflow(null);
         setIsModalOpen(false);
       })
-      .catch((err) => toast.error(err));
+      .catch((err) => toast.error(err))
+      .finally(() => setIsDeleting(false));
   };
 
   const updateLangStep = (lang: string, stepId: string, field: 'message' | 'options', value: string | { value: string; label: string }[]) => {
@@ -233,6 +246,7 @@ export default function WorkflowPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {t('workflow.subtitle')}
+            {t('workflow.subtitleHybrid') || ' Workflows can run without an AI agent (human-only). Add an agent in edit to enable AI replies on website and WhatsApp.'}
           </p>
         </div>
           <Button onClick={openCreate} className="bg-pink-500 hover:bg-pink-600 text-white">
@@ -275,6 +289,11 @@ export default function WorkflowPage() {
                     {' · '}
                     <Globe className="inline h-3 w-3 mr-0.5" />
                     {w.defaultLanguage}
+                    {w.agentId ? (
+                      <span className="ml-2 text-blue-600 dark:text-blue-400">{t('workflow.withAI', 'With AI')}</span>
+                    ) : (
+                      <span className="ml-2 text-amber-600 dark:text-amber-400">{t('workflow.humanOnly', 'Human only')}</span>
+                    )}
                     {w.active ? (
                       <span className="ml-2 text-green-600 dark:text-green-400">{t('workflow.active')}</span>
                     ) : (
@@ -287,6 +306,18 @@ export default function WorkflowPage() {
                 <Button variant="outline" size="sm" onClick={() => openEdit(w)}>
                   <Edit className="h-4 w-4 mr-1" />
                   {t('workflow.edit')}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    setEditingWorkflow(w);
+                    setIsDeleteOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  {t('workflow.delete')}
                 </Button>
               </div>
             </div>
@@ -305,22 +336,22 @@ export default function WorkflowPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-6 py-4">
-            {!editingWorkflow && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t('workflow.agentLabel')}</Label>
-                <select
-                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                  value={selectedAgentId}
-                  onChange={(e) => setSelectedAgentId(e.target.value)}
-                >
-                  <option value="">{t('workflow.selectAgent')}</option>
-                  {aiAgents.map((a) => (
-                    <option key={a._id} value={a._id}>{a.name}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-muted-foreground">{t('workflow.agentHelp')}</p>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">{t('workflow.agentLabel')} ({t('workflow.optional', 'Optional')})</Label>
+              <select
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                value={selectedAgentId}
+                onChange={(e) => setSelectedAgentId(e.target.value)}
+              >
+                <option value="">{t('workflow.noAgent', 'No agent (human-only workflow)')}</option>
+                {aiAgents.map((a) => (
+                  <option key={a._id} value={a._id}>{a.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                {t('workflow.agentHelpOptional', 'Leave empty for human/ticket only. Add an AI agent later to enable AI replies in this workflow.')}
+              </p>
+            </div>
             {/* When does it run */}
             <div className="space-y-2">
               <Label className="text-sm font-medium flex items-center gap-1.5">
@@ -461,10 +492,15 @@ export default function WorkflowPage() {
             {t('workflow.deleteConfirmDesc')}
           </AlertDialogDescription>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('workflow.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              {t('workflow.delete')}
-            </AlertDialogAction>
+            <AlertDialogCancel disabled={isDeleting}>{t('workflow.cancel')}</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={isDeleting}
+              onClick={(e) => handleDelete(e)}
+            >
+              {isDeleting ? t('workflow.deleting') || 'Deleting...' : t('workflow.delete')}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

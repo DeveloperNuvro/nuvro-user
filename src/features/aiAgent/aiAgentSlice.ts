@@ -26,12 +26,59 @@ export interface AIAgent {
 export type NewAIAgentPayload = Omit<AIAgent, '_id'>;
 export type EditAIAgentPayload = Partial<Omit<AIAgent, '_id'>> & { _id: string };
 
+/** Structured details returned by GET /ai-agent/:id for the dashboard details page. */
+export interface AgentDetailsPayload {
+  basic: {
+    id: string;
+    name: string;
+    active: boolean;
+    statusLabel: string;
+    workflowEnabled: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
+  personality: {
+    tone: string;
+    toneLabel: string;
+    instruction: string | null;
+  };
+  fallback: {
+    enabled: boolean;
+    forwardToHuman: boolean;
+    fallbackMessage: string;
+  };
+  analytics: {
+    totalConversations: number;
+    avgResponseTime: number;
+    customerSatisfaction: number;
+  };
+  integrations: {
+    options: string[];
+    domains: string[];
+    whatsApps: string[];
+  };
+  languageSupport: string[];
+  responseTemplates: string[];
+  aiModel: {
+    id: string;
+    name: string;
+    modelType: string | null;
+    status: string | null;
+    vectorStore: string | null;
+  } | null;
+  widget: {
+    apiKey: string | null;
+    hasApiKey: boolean;
+  };
+}
+
 /**
  * The shape of the API response when fetching a single agent by its ID.
  */
 interface FetchAgentByIdResponse {
-    agent: AIAgent;
-    apiKey: string;
+  agent: AIAgent;
+  apiKey: string;
+  details?: AgentDetailsPayload;
 }
 
 /**
@@ -42,6 +89,7 @@ interface AIAgentState {
   error: string | null;
   aiAgents: AIAgent[];
   selectedAgent: AIAgent | null;
+  selectedAgentDetails: AgentDetailsPayload | null;
   apiKey: string | null;
 }
 
@@ -52,6 +100,7 @@ const initialState: AIAgentState = {
   error: null,
   aiAgents: [],
   selectedAgent: null,
+  selectedAgentDetails: null,
   apiKey: null,
 };
 
@@ -89,6 +138,19 @@ export const fetchAIAgentById = createAsyncThunk<FetchAgentByIdResponse, string,
       return res.data.data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.response?.data?.message || "Failed to fetch agent");
+    }
+  }
+);
+
+/** Get widget API key for business (no agent). Used when embedding with "Business workflow only". */
+export const fetchWidgetApiKey = createAsyncThunk<{ apiKey: string }, void, { rejectValue: string }>(
+  'aiAgent/fetchWidgetApiKey',
+  async (_, thunkAPI) => {
+    try {
+      const res = await api.get('/api/v1/ai-agent/widget-api-key');
+      return res.data.data;
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(err.response?.data?.message || 'Failed to fetch widget API key');
     }
   }
 );
@@ -150,9 +212,10 @@ const aiAgentSlice = createSlice({
   initialState,
   reducers: {
     clearSelectedAgent: (state) => {
-        state.selectedAgent = null;
-        state.apiKey = null;
-    }
+      state.selectedAgent = null;
+      state.selectedAgentDetails = null;
+      state.apiKey = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -184,6 +247,7 @@ const aiAgentSlice = createSlice({
         state.status = "succeeded";
         state.selectedAgent = action.payload.agent;
         state.apiKey = action.payload.apiKey;
+        state.selectedAgentDetails = action.payload.details ?? null;
       })
       .addCase(fetchAIAgentById.rejected, (state, action) => {
         state.status = "failed";
@@ -214,6 +278,7 @@ const aiAgentSlice = createSlice({
         state.aiAgents = state.aiAgents.filter(agent => agent._id !== action.payload);
         if (state.selectedAgent?._id === action.payload) {
             state.selectedAgent = null;
+            state.selectedAgentDetails = null;
             state.apiKey = null;
         }
       })

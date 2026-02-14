@@ -1,6 +1,25 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '@/api/axios';
 
+export type ChannelMode = 'human_only' | 'hybrid' | 'ai_only';
+export type ChannelFallbackBehavior = 'route_to_ai' | 'assign_to_human' | 'create_ticket';
+export type OutsideHoursOption = 'create_ticket' | 'talk_with_ai' | 'wait_for_human';
+
+export interface ChannelWorkingHoursSchedule {
+  dayOfWeek: number;
+  start: string;
+  end: string;
+}
+export interface ChannelWorkingHours {
+  timezone: string;
+  enabled: boolean;
+  schedule: ChannelWorkingHoursSchedule[];
+}
+export interface OutsideHoursBehavior {
+  showClosedMessage: boolean;
+  options: OutsideHoursOption[];
+}
+
 export interface UnipileConnection {
   id: string;
   connectionId: string;
@@ -14,6 +33,12 @@ export interface UnipileConnection {
     authUrl?: string;
     qrcode?: string;
   };
+  /** Conversation Engine: channel config */
+  mode?: ChannelMode;
+  defaultFlowId?: string | null;
+  workingHours?: ChannelWorkingHours | null;
+  outsideHoursBehavior?: OutsideHoursBehavior | null;
+  fallbackBehavior?: ChannelFallbackBehavior;
 }
 
 export interface UnipileCredentials {
@@ -98,7 +123,12 @@ export const fetchUnipileConnections = createAsyncThunk(
           createdAt: conn.createdAt || conn.created_at,
           updatedAt: conn.updatedAt || conn.updated_at,
           checkpoint: conn.checkpoint,
-          agentId: conn.agentId ? String(conn.agentId) : undefined, // 🔧 NEW: Include agentId for filtering
+          agentId: conn.agentId ? String(conn.agentId) : undefined,
+          mode: conn.mode ?? 'hybrid',
+          defaultFlowId: conn.defaultFlowId ?? null,
+          workingHours: conn.workingHours ?? undefined,
+          outsideHoursBehavior: conn.outsideHoursBehavior ?? undefined,
+          fallbackBehavior: conn.fallbackBehavior ?? 'route_to_ai',
         };
       });
       
@@ -149,6 +179,24 @@ export const createUnipileConnection = createAsyncThunk(
       
       return rejectWithValue(errorMessage);
     }
+  }
+);
+
+export interface UpdateChannelConfigPayload {
+  connectionId: string;
+  mode?: ChannelMode;
+  defaultFlowId?: string | null;
+  workingHours?: ChannelWorkingHours | null;
+  outsideHoursBehavior?: OutsideHoursBehavior | null;
+  fallbackBehavior?: ChannelFallbackBehavior;
+}
+export const updateUnipileChannelConfig = createAsyncThunk(
+  'unipile/updateChannelConfig',
+  async (payload: UpdateChannelConfigPayload) => {
+    const { connectionId, ...body } = payload;
+    const res = await api.patch(`/api/v1/unipile/connections/${connectionId}/config`, body);
+    const data = res.data?.data ?? res.data;
+    return { connectionId, ...data };
   }
 );
 
@@ -499,6 +547,17 @@ const unipileSlice = createSlice({
       .addCase(createUnipileConnection.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload as string;
+      })
+      .addCase(updateUnipileChannelConfig.fulfilled, (state, action) => {
+        const { connectionId, mode, defaultFlowId, workingHours, outsideHoursBehavior, fallbackBehavior } = action.payload;
+        const conn = state.connections.find((c) => c.id === connectionId || c.connectionId === connectionId);
+        if (conn) {
+          if (mode !== undefined) conn.mode = mode;
+          if (defaultFlowId !== undefined) conn.defaultFlowId = defaultFlowId;
+          if (workingHours !== undefined) conn.workingHours = workingHours;
+          if (outsideHoursBehavior !== undefined) conn.outsideHoursBehavior = outsideHoursBehavior;
+          if (fallbackBehavior !== undefined) conn.fallbackBehavior = fallbackBehavior;
+        }
       })
       
       // Reconnect connection

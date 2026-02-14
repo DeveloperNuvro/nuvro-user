@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import ComponentSkeleton from '@/components/skeleton/ComponentSkeleton';
+import moment from 'moment-timezone';
 
 const ASK_LANGUAGE_STEP = {
   id: 'ask_language',
@@ -115,18 +116,8 @@ const LANGUAGES = [
   { code: 'bn', label: 'বাংলা' },
 ];
 
-const COMMON_TIMEZONES = [
-  'UTC',
-  'America/New_York',
-  'America/Los_Angeles',
-  'America/Chicago',
-  'America/Santiago', // Chile
-  'Europe/London',
-  'Europe/Paris',
-  'Asia/Dhaka',
-  'Asia/Kolkata',
-  'Asia/Dubai',
-];
+// All IANA timezones (e.g. UTC, America/New_York, Asia/Dhaka, Europe/London, etc.)
+const ALL_TIMEZONES = moment.tz.names();
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -239,6 +230,7 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState<ConversationWorkflow | null>(null);
   const [name, setName] = useState('');
   const [trigger, setTrigger] = useState<'conversation_opened' | 'first_message'>('conversation_opened');
@@ -417,8 +409,10 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
     }
   };
 
-  const handleDelete = () => {
-    if (!editingWorkflow || !businessId) return;
+  const handleDelete = (e?: React.MouseEvent) => {
+    e?.preventDefault();
+    if (!editingWorkflow || !businessId || isDeleting) return;
+    setIsDeleting(true);
     dispatch(deleteWorkflowThunk({ businessId, workflowId: editingWorkflow._id }))
       .unwrap()
       .then(() => {
@@ -428,7 +422,8 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
         setIsModalOpen(false);
         dispatch(fetchWorkflows({ businessId, agentId }));
       })
-      .catch((err) => toast.error(err));
+      .catch((err) => toast.error(err))
+      .finally(() => setIsDeleting(false));
   };
 
   const handleSeedDemo = () => {
@@ -604,7 +599,7 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
                       value={businessHoursTimezone}
                       onChange={(e) => setBusinessHoursTimezone(e.target.value)}
                     >
-                      {COMMON_TIMEZONES.map((tz) => (
+                      {ALL_TIMEZONES.map((tz) => (
                         <option key={tz} value={tz}>{tz}</option>
                       ))}
                     </select>
@@ -741,9 +736,14 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
           <AlertDialogTitle>{t('workflow.deleteConfirmTitle')}</AlertDialogTitle>
           <AlertDialogDescription>{t('workflow.deleteConfirmDesc')}</AlertDialogDescription>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('workflow.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              {t('workflow.delete')}
+            <AlertDialogCancel disabled={isDeleting}>{t('workflow.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              type="button"
+              disabled={isDeleting}
+              onClick={(e) => handleDelete(e)}
+              className="bg-destructive text-destructive-foreground"
+            >
+              {isDeleting ? t('workflow.deleting') || 'Deleting...' : t('workflow.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

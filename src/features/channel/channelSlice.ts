@@ -4,10 +4,12 @@ import { HumanAgent } from "../humanAgent/humanAgentSlice"; // Re-use the agent 
 
 /**
  * Interface for a Channel, matching the populated backend response.
+ * displayLabel: translated name for UI (en/es/bn from backend by user language).
  */
 export interface Channel {
   _id: string;
   name: string;
+  displayLabel?: string; // Use this for UI; name is for API/edit
   members: HumanAgent[]; // Backend populates members with agent details
   businessId: string;
 }

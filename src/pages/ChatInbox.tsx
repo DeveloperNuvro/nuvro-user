@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Sparkles, ZapOff, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X, Mic, Square } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X, Mic, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -723,7 +723,10 @@ export default function ChatInbox() {
 
   const handleSendMessage = useCallback(async () => {
     if ((!newMessage.trim() && !selectedImageFile && !selectedAudioFile) || !selectedCustomer || !businessId || !currentConversation) return;
-    
+
+    const socket = getSocket();
+    if (socket?.connected && selectedCustomer) socket.emit('agentStoppedTyping', { customerId: selectedCustomer });
+
     const platform = currentConversation.platformInfo?.platform || 'website';
     const messageText = newMessage.trim();
     let imageUrl: string | null = null;
@@ -763,7 +766,6 @@ export default function ChatInbox() {
 
     // For website conversations, use internal messaging
     if (platform === 'website' || !platform) {
-      const socket = getSocket();
       if (!socket) {
         toast.error('Connection error. Please refresh the page.');
         return;
@@ -851,7 +853,6 @@ export default function ChatInbox() {
     }
 
     // Fallback to internal messaging for unknown platforms
-    const socket = getSocket();
     if (!socket) {
       toast.error('Connection error. Please refresh the page.');
       return;
@@ -869,49 +870,7 @@ export default function ChatInbox() {
   };
 
   const handleCloseConversation = () => { if (currentConversation?.id && businessId) { dispatch(closeConversation({ conversationId: currentConversation.id, businessId })).unwrap().then(() => { toast.success(t('chatInbox.toastCloseSuccess')); setSelectedCustomer(null); }).catch(err => toast.error(err || t('chatInbox.toastCloseFailed'))); } };
-  
-  const handleToggleAiReply = async () => {
-    if (!currentConversation?.id || !businessId) return;
-    
-    const platform = currentConversation.platformInfo?.platform;
-    
-    if (platform !== 'whatsapp') {
-      toast.error('AI reply toggle is only available for WhatsApp conversations.');
-      return;
-    }
 
-    try {
-      const response = await api.patch(`/api/v1/customer/conversations/${currentConversation.id}/toggle-ai-reply`, {
-        businessId,
-        aiReplyDisabled: !currentConversation.aiReplyDisabled
-      });
-      
-      // Backend returns { status: 'success', message: '...', data: { aiReplyDisabled: boolean, ... } }
-      const responseData = response.data;
-      
-      if (responseData && responseData.data && typeof responseData.data.aiReplyDisabled === 'boolean') {
-        const newStatus = responseData.data.aiReplyDisabled;
-        
-        // Update local state
-        dispatch(updateConversationStatus({
-          customerId: currentConversation.customer.id,
-          status: currentConversation.status,
-          assignedAgentId: currentConversation.assignedAgentId,
-          aiReplyDisabled: newStatus
-        }));
-        
-        // Show single success message
-        toast.success(`AI replies ${newStatus ? 'disabled' : 'enabled'} for this conversation.`);
-      } else {
-        console.error('Invalid response structure:', responseData);
-        toast.error('Failed to toggle AI replies - invalid response');
-      }
-    } catch (error: any) {
-      console.error('Toggle AI reply error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to toggle AI replies';
-      toast.error(errorMessage);
-    }
-  };
   // 🔧 OPTIMIZED: Memoize pagination handlers
   const handleNextPage = useCallback(() => {
     if (currentPage < totalPages && businessId) {
@@ -1105,21 +1064,26 @@ export default function ChatInbox() {
                       </div>
                     </div>
                     
-                    {/* 🔧 NEW: Tags display */}
-                    {convo.tags && convo.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1 mb-0.5">
-                        {convo.tags.slice(0, 2).map((tag, i) => (
-                          <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
-                            {tag}
-                          </span>
-                        ))}
-                        {convo.tags.length > 2 && (
-                          <span className="text-xs px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
-                            +{convo.tags.length - 2}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    {/* 🔧 NEW: Tags display (exclude platform tag to avoid duplicate with PlatformBadge) */}
+                    {(() => {
+                      const platformKey = (convo.platformInfo?.platform || convo.source || '').toLowerCase();
+                      const filteredTags = (convo.tags || []).filter(t => t.toLowerCase() !== platformKey);
+                      if (filteredTags.length === 0) return null;
+                      return (
+                        <div className="flex flex-wrap gap-1 mt-1 mb-0.5">
+                          {filteredTags.slice(0, 2).map((tag, i) => (
+                            <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                              {tag}
+                            </span>
+                          ))}
+                          {filteredTags.length > 2 && (
+                            <span className="text-xs px-1.5 py-0.5 bg-muted text-muted-foreground rounded">
+                              +{filteredTags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                     
                     <div className="flex justify-between items-center mt-0.5 gap-2">
                       <p className="text-xs sm:text-sm text-muted-foreground truncate min-w-0 flex-1">
@@ -1211,67 +1175,26 @@ export default function ChatInbox() {
                       </TooltipContent>
                     </Tooltip>
                   )}
-                  {/* 🔧 NEW: Show overdue indicator if no response and time > 5 minutes */}
-                  {!currentConversation?.firstResponseAt && currentConversation?.createdAt && dayjs().diff(dayjs(currentConversation.createdAt), 'minute') > 5 && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <div className="flex items-center gap-1 text-xs text-orange-500">
-                          <AlertCircle className="h-3 w-3" />
-                          <span>Overdue {dayjs().from(dayjs(currentConversation.createdAt), true)}</span>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>No response yet. Created {dayjs(currentConversation.createdAt).fromNow()}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {/* 🔧 NEW: Tags in header */}
-                  {currentConversation?.tags && currentConversation.tags.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      {currentConversation.tags.slice(0, 2).map((tag, i) => (
-                        <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
-                          {tag}
-                        </span>
-                      ))}
-                      {currentConversation.tags.length > 2 && (
-                        <span className="text-xs text-muted-foreground">+{currentConversation.tags.length - 2}</span>
-                      )}
-                    </div>
-                  )}
+                  {/* 🔧 NEW: Tags in header (exclude platform to avoid duplicate with PlatformBadge) */}
+                  {(() => {
+                    const platformKey = (currentConversation?.platformInfo?.platform || currentConversation?.source || '').toLowerCase();
+                    const headerTags = (currentConversation?.tags || []).filter(t => t.toLowerCase() !== platformKey);
+                    if (!headerTags.length) return null;
+                    return (
+                      <div className="flex items-center gap-1">
+                        {headerTags.slice(0, 2).map((tag, i) => (
+                          <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                            {tag}
+                          </span>
+                        ))}
+                        {headerTags.length > 2 && (
+                          <span className="text-xs text-muted-foreground">+{headerTags.length - 2}</span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center gap-2">
-                  {/* AI Reply Toggle - Only for Instagram, WhatsApp, Telegram */}
-                  {currentConversation?.platformInfo?.platform && 
-                   currentConversation.platformInfo.platform === 'whatsapp' && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={currentConversation.aiReplyDisabled ? "outline" : "default"}
-                          size="icon"
-                          onClick={handleToggleAiReply}
-                          className={cn(
-                            "cursor-pointer",
-                            currentConversation.aiReplyDisabled 
-                              ? "border-orange-500 text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-950" 
-                              : "bg-primary text-primary-foreground"
-                          )}
-                        >
-                          {currentConversation.aiReplyDisabled ? (
-                            <ZapOff className="h-4 w-4" />
-                          ) : (
-                            <Sparkles className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          {currentConversation.aiReplyDisabled 
-                            ? "AI replies are OFF - Click to enable" 
-                            : "AI replies are ON - Click to disable"}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
@@ -1932,6 +1855,8 @@ export default function ChatInbox() {
                     placeholder={t('chatInbox.messagePlaceholder')} 
                     value={newMessage} 
                     onChange={e => setNewMessage(e.target.value)} 
+                    onFocus={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentTyping', { customerId: selectedCustomer }); }}
+                    onBlur={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentStoppedTyping', { customerId: selectedCustomer }); }}
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                     className="w-full resize-none p-3 sm:p-4 pr-12 sm:pr-14 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
                     rows={1} 

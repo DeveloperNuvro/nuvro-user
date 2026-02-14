@@ -19,6 +19,19 @@ interface BusinessProfile {
   name: string;
   logo?: string;
   widgetColor?: string;
+  defaultWorkingHours?: DefaultWorkingHours | null;
+  defaultOutsideHoursBehavior?: DefaultOutsideHoursBehavior | null;
+}
+
+// Company-level defaults (used when channel has no config)
+export interface DefaultWorkingHours {
+  timezone: string;
+  enabled: boolean;
+  schedule?: { dayOfWeek: number; start: string; end: string }[];
+}
+export interface DefaultOutsideHoursBehavior {
+  showClosedMessage?: boolean;
+  options?: ('create_ticket' | 'talk_with_ai' | 'wait_for_human')[];
 }
 
 // The combined profile data we will fetch
@@ -29,6 +42,8 @@ export interface ProfileData {
   businessName: string;
   businessLogo?: string;
   widgetColor?: string;
+  defaultWorkingHours?: DefaultWorkingHours | null;
+  defaultOutsideHoursBehavior?: DefaultOutsideHoursBehavior | null;
 }
 
 // The main state for this slice
@@ -90,19 +105,27 @@ export const updateUserProfile = createAsyncThunk<
   }
 );
 
-// Thunk to update the business profile (name and/or widgetColor)
+// Thunk to update the business profile (name, widgetColor, company defaults)
 export const updateBusinessProfile = createAsyncThunk<
   BusinessProfile,
-  { businessName?: string; widgetColor?: string },
+  {
+    businessName?: string;
+    widgetColor?: string;
+    defaultWorkingHours?: DefaultWorkingHours | null;
+    defaultOutsideHoursBehavior?: DefaultOutsideHoursBehavior | null;
+  },
   { rejectValue: string }
 >(
   "profile/updateBusiness",
   async (payload, thunkAPI) => {
     try {
       const response = await api.patch('/api/v1/profile/business', payload);
-      const successMessage = payload.widgetColor 
-        ? "Widget color updated successfully!" 
-        : "Business name updated successfully!";
+      const successMessage =
+        payload.defaultWorkingHours !== undefined || payload.defaultOutsideHoursBehavior !== undefined
+          ? "Company defaults updated successfully!"
+          : payload.widgetColor
+            ? "Widget color updated successfully!"
+            : "Business name updated successfully!";
       toast.success(successMessage);
       return response.data.data;
     } catch (err: any) {
@@ -212,9 +235,9 @@ const profileSlice = createSlice({
         state.updateStatus = 'succeeded';
         if (state.profile) {
           state.profile.businessName = action.payload.name;
-          if (action.payload.widgetColor !== undefined) {
-            state.profile.widgetColor = action.payload.widgetColor;
-          }
+          if (action.payload.widgetColor !== undefined) state.profile.widgetColor = action.payload.widgetColor;
+          if ('defaultWorkingHours' in action.payload) state.profile.defaultWorkingHours = (action.payload as any).defaultWorkingHours ?? null;
+          if ('defaultOutsideHoursBehavior' in action.payload) state.profile.defaultOutsideHoursBehavior = (action.payload as any).defaultOutsideHoursBehavior ?? null;
         }
       })
       .addCase(changeUserPassword.fulfilled, (state) => {

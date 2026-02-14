@@ -76,7 +76,8 @@ export const getWorkflow = async (businessId: string, workflowId: string) => {
 export const createWorkflow = async (
   businessId: string,
   data: {
-    agentId: string;
+    agentId?: string | null;
+    channelIds?: string[];
     name: string;
     trigger: WorkflowTrigger;
     active?: boolean;
@@ -86,7 +87,10 @@ export const createWorkflow = async (
     translations: Record<string, WorkflowLanguageContent>;
   }
 ) => {
-  const response = await api.post(`/api/v1/workflows/${businessId}`, data);
+  const payload = { ...data };
+  if (payload.agentId === '' || payload.agentId === undefined) delete payload.agentId;
+  else if (payload.agentId === null) payload.agentId = null;
+  const response = await api.post(`/api/v1/workflows/${businessId}`, payload);
   return response.data.data as ConversationWorkflow;
 };
 
@@ -94,6 +98,8 @@ export const updateWorkflow = async (
   businessId: string,
   workflowId: string,
   data: Partial<{
+    agentId: string | null;
+    channelIds: string[];
     name: string;
     trigger: WorkflowTrigger;
     active: boolean;

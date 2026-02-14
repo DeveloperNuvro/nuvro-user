@@ -317,7 +317,7 @@ export default function ChannelPage() {
             isOpen={isDeleteConfirmOpen}
             onOpenChange={setDeleteConfirmOpen}
             onConfirm={handleDeleteChannel}
-            itemName={selectedChannel.name}
+            itemName={selectedChannel.displayLabel ?? selectedChannel.name}
         />
       )}
     </div>
@@ -405,7 +405,7 @@ const ChannelCard = ({ channel, onEdit, onDelete, isDarkMode }: { channel: Chann
                   <Users size={32} className="text-white" />
                 </div>
                 <h3 className="text-2xl font-bold tracking-wide text-center truncate w-full px-2 drop-shadow-lg">
-                  {channel?.name}
+                  {channel?.displayLabel ?? channel?.name}
                 </h3>
                 {isDefault && (
                   <div className="mt-2 flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-full border border-white/30">

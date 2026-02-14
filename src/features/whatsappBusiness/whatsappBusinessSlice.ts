@@ -1,6 +1,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { api } from '@/api/axios';
 
+export type ChannelMode = 'human_only' | 'hybrid' | 'ai_only';
+export type ChannelFallbackBehavior = 'route_to_ai' | 'assign_to_human' | 'create_ticket';
+
 export interface WhatsAppBusinessConnection {
   connectionId: string;
   phoneNumberId: string;
@@ -8,6 +11,11 @@ export interface WhatsAppBusinessConnection {
   connectionName: string;
   status: 'pending' | 'active' | 'inactive' | 'error' | 'connected';
   agentId?: string;
+  mode?: ChannelMode;
+  defaultFlowId?: string | null;
+  workingHours?: Record<string, unknown> | null;
+  outsideHoursBehavior?: Record<string, unknown> | null;
+  fallbackBehavior?: ChannelFallbackBehavior;
   metadata?: {
     phoneNumber?: string;
     displayName?: string;
@@ -94,6 +102,11 @@ export const fetchWhatsAppConnections = createAsyncThunk(
           connectionName: conn.connectionName || conn.name || `WhatsApp Business - ${conn.phoneNumber}`,
           status: normalizedStatus,
           agentId: conn.agentId ? String(conn.agentId) : undefined,
+          mode: conn.mode ?? 'hybrid',
+          defaultFlowId: conn.defaultFlowId ?? null,
+          workingHours: conn.workingHours ?? undefined,
+          outsideHoursBehavior: conn.outsideHoursBehavior ?? undefined,
+          fallbackBehavior: conn.fallbackBehavior ?? 'route_to_ai',
           metadata: conn.metadata || {},
           connectedAt: conn.connectedAt,
           createdAt: conn.createdAt || conn.created_at,
@@ -164,14 +177,22 @@ export const createWhatsAppConnection = createAsyncThunk(
   }
 );
 
+export interface UpdateWhatsAppConnectionUpdates extends Partial<CreateWhatsAppConnectionRequest> {
+  mode?: ChannelMode;
+  defaultFlowId?: string | null;
+  workingHours?: Record<string, unknown> | null;
+  outsideHoursBehavior?: Record<string, unknown> | null;
+  fallbackBehavior?: ChannelFallbackBehavior;
+}
 export const updateWhatsAppConnection = createAsyncThunk(
   'whatsappBusiness/updateConnection',
-  async ({ connectionId, updates }: { connectionId: string; updates: Partial<CreateWhatsAppConnectionRequest> }, { rejectWithValue }) => {
+  async ({ connectionId, updates }: { connectionId: string; updates: UpdateWhatsAppConnectionUpdates }, { rejectWithValue }) => {
     try {
       const response = await api.patch(`/api/v1/whatsapp-business/connections/${connectionId}`, updates);
+      const data = response.data?.data || response.data;
       return {
         connectionId,
-        ...(response.data?.data || response.data)
+        ...data,
       };
     } catch (error: any) {
       let errorMessage = 'Failed to update connection';

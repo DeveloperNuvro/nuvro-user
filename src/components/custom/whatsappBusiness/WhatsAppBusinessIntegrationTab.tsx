@@ -5,18 +5,23 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, CheckCircle, XCircle, Phone, Info, Eye, EyeOff, FileText } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Plus, Trash2, CheckCircle, XCircle, Phone, Info, Eye, EyeOff, FileText, Settings } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
 import { 
   fetchWhatsAppConnections, 
   createWhatsAppConnection,
   initiateOAuthFlow,
+  updateWhatsAppConnection,
   deleteWhatsAppConnection,
   getPhoneNumberInfo,
   clearError,
-  WhatsAppBusinessConnection
+  WhatsAppBusinessConnection,
+  type ChannelMode,
+  type ChannelFallbackBehavior,
 } from "@/features/whatsappBusiness/whatsappBusinessSlice";
+import { fetchWorkflows } from "@/features/workflow/workflowSlice";
 import toast from "react-hot-toast";
 // import { useTranslation } from "react-i18next"; // Reserved for future translations
 import WhatsAppTemplateManagement from "./WhatsAppTemplateManagement";
@@ -63,6 +68,15 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
   const [selectedConnection, setSelectedConnection] = useState<WhatsAppBusinessConnection | null>(null);
   const [phoneInfo, setPhoneInfo] = useState<any>(null);
   const [showTemplatesForConnection, setShowTemplatesForConnection] = useState<string | null>(null);
+  const [channelConfigDialogOpen, setChannelConfigDialogOpen] = useState(false);
+  const [channelConfigConnection, setChannelConfigConnection] = useState<WhatsAppBusinessConnection | null>(null);
+  const [channelConfigMode, setChannelConfigMode] = useState<ChannelMode>('hybrid');
+  const [channelConfigFallback, setChannelConfigFallback] = useState<ChannelFallbackBehavior>('route_to_ai');
+  const [channelConfigDefaultFlowId, setChannelConfigDefaultFlowId] = useState<string | null>(null);
+  const [channelConfigSaving, setChannelConfigSaving] = useState(false);
+  const workflows = useSelector((state: RootState) => state.workflow?.workflows ?? []);
+  const user = useSelector((state: RootState) => state.auth.user);
+  const businessId = user?.businessId ?? '';
   
   const [formData, setFormData] = useState<ConnectionFormData>({
     phoneNumberId: '',
@@ -268,6 +282,38 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
     } catch (error: any) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to get phone number info';
       toast.error(errorMessage);
+    }
+  };
+
+  const openChannelConfigDialog = (connection: WhatsAppBusinessConnection) => {
+    setChannelConfigConnection(connection);
+    setChannelConfigMode((connection.mode ?? 'hybrid') as ChannelMode);
+    setChannelConfigFallback((connection.fallbackBehavior ?? 'route_to_ai') as ChannelFallbackBehavior);
+    setChannelConfigDefaultFlowId(connection.defaultFlowId ?? null);
+    setChannelConfigDialogOpen(true);
+    if (businessId) dispatch(fetchWorkflows({ businessId }));
+  };
+
+  const handleSaveChannelConfig = async () => {
+    if (!channelConfigConnection) return;
+    setChannelConfigSaving(true);
+    try {
+      await dispatch(updateWhatsAppConnection({
+        connectionId: channelConfigConnection.connectionId,
+        updates: {
+          mode: channelConfigMode,
+          fallbackBehavior: channelConfigFallback,
+          defaultFlowId: channelConfigDefaultFlowId,
+        },
+      })).unwrap();
+      toast.success('Channel settings saved.');
+      setChannelConfigDialogOpen(false);
+      setChannelConfigConnection(null);
+    } catch (error: any) {
+      const msg = typeof error === 'string' ? error : error?.message || 'Failed to save channel settings';
+      toast.error(msg);
+    } finally {
+      setChannelConfigSaving(false);
     }
   };
 
@@ -660,6 +706,16 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => openChannelConfigDialog(connection)}
+                        disabled={status === 'loading'}
+                        className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+                        title="Channel settings (mode, fallback)"
+                      >
+                        <Settings className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setShowTemplatesForConnection(connection.connectionId)}
                         disabled={status === 'loading'}
                         className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 dark:hover:bg-purple-900/20"
@@ -695,6 +751,69 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
           </div>
         )}
       </div>
+
+      {/* Channel config dialog */}
+      <Dialog open={channelConfigDialogOpen} onOpenChange={(open) => { setChannelConfigDialogOpen(open); if (!open) setChannelConfigConnection(null); }}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Channel settings</DialogTitle>
+            <DialogDescription>
+              {channelConfigConnection ? `${channelConfigConnection.connectionName} (${channelConfigConnection.phoneNumber})` : 'Set how this channel routes messages.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Mode</Label>
+              <Select value={channelConfigMode} onValueChange={(v) => setChannelConfigMode(v as ChannelMode)}>
+                <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="human_only">Human only</SelectItem>
+                  <SelectItem value="hybrid">Hybrid</SelectItem>
+                  <SelectItem value="ai_only">AI only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Fallback when user doesn&apos;t follow flow</Label>
+              <Select value={channelConfigFallback} onValueChange={(v) => setChannelConfigFallback(v as ChannelFallbackBehavior)}>
+                <SelectTrigger><SelectValue placeholder="Select fallback" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="route_to_ai">Route to AI</SelectItem>
+                  <SelectItem value="assign_to_human">Assign to human</SelectItem>
+                  <SelectItem value="create_ticket">Create ticket</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Default workflow</Label>
+              <Select
+                value={channelConfigDefaultFlowId ?? 'none'}
+                onValueChange={(v) => setChannelConfigDefaultFlowId(v === 'none' ? null : v)}
+              >
+                <SelectTrigger><SelectValue placeholder="Select workflow" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None (use first active for channel)</SelectItem>
+                  {workflows.filter((w) => w.active).map((w) => (
+                    <SelectItem key={w._id} value={w._id}>
+                      {w.name} {w.agentId ? '(with AI)' : '(human-only)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Optional. This workflow runs when a customer messages. Add an AI agent in the workflow to enable AI replies.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setChannelConfigDialogOpen(false); setChannelConfigConnection(null); }}>Cancel</Button>
+            <Button onClick={handleSaveChannelConfig} disabled={channelConfigSaving}>
+              {channelConfigSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Phone Info Dialog */}
       <Dialog open={phoneInfoDialogOpen} onOpenChange={setPhoneInfoDialogOpen}>

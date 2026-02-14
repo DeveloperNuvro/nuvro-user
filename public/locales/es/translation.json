@@ -81,6 +81,9 @@
       "analytics": "Analíticas",
       "reporting": "Informes",
       "workflows": "Flujos de trabajo",
+      "workflow": "Flujo de trabajo",
+      "integrations": "Integraciones",
+      "widget": "Widget",
       "planpayment": "Plan y Pagos",
       "settings": "Configuración",
       "logout": "Cerrar Sesión"
@@ -198,6 +201,12 @@
     "selectAgent": "Seleccione un agente",
     "agentHelp": "Los flujos son por agente. El widget muestra el flujo de este agente cuando está conectado.",
     "agentRequired": "Seleccione un agente IA",
+    "optional": "Opcional",
+    "noAgent": "Sin agente (solo humano)",
+    "agentHelpOptional": "Dejar vacío para solo humano/ticket. Añade un agente de IA después para habilitar respuestas IA en este flujo.",
+    "subtitleHybrid": " Los flujos pueden funcionar sin agente IA (solo humano). Añade un agente en editar para habilitar respuestas IA en web y WhatsApp.",
+    "withAI": "Con IA",
+    "humanOnly": "Solo humano",
     "agentTabDesc": "Gestionar el flujo de conversación de este agente (mensaje de bienvenida, idioma y categoría). El widget muestra este flujo cuando los clientes chatean con este agente.",
     "agentTabDescShort": "Opciones fijas: General, Productos, Cotización, Soporte. El resto = sus canales (agente humano: transferir si está en línea, si no, ticket de soporte para ese canal). Misma calidad de IA que sin flujo.",
     "seedDemo": "Crear flujo demo",
@@ -972,6 +981,36 @@
     "deleteButton": "Eliminar",
     "deletingButton": "Eliminando..."
   },
+  "companyDefaults": {
+    "title": "Valores por defecto de la empresa",
+    "subtitle": "Se utilizan cuando un canal no tiene horarios o configuración de fuera de horario.",
+    "defaultWorkingHours": "Horario laboral por defecto",
+    "useWorkingHours": "Usar horario laboral",
+    "timezone": "Zona horaria",
+    "timezonePlaceholder": "Seleccionar zona horaria",
+    "hoursPerDay": "Horas por día",
+    "day": "Día",
+    "start": "Inicio",
+    "end": "Fin",
+    "outsideHoursBehavior": "Comportamiento fuera de horario",
+    "showClosedMessage": "Mostrar mensaje \"Estamos cerrados\"",
+    "optionsWhenClosed": "Opciones cuando está cerrado:",
+    "option": {
+      "create_ticket": "Crear ticket",
+      "talk_with_ai": "Hablar con IA",
+      "wait_for_human": "Esperar agente humano"
+    },
+    "saveButton": "Guardar valores por defecto",
+    "days": {
+      "sunday": "Domingo",
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado"
+    }
+  },
   "businessForm": {
     "title": "Información del Negocio",
     "subtitle": "Actualiza el nombre y el logotipo de tu empresa.",
@@ -994,6 +1033,52 @@
       "passwordMismatch": "Las nuevas contraseñas no coinciden.",
       "updateSuccess": "¡Contraseña actualizada exitosamente!"
     }
+  },
+  "integrationsPage": {
+    "title": "Integraciones",
+    "subtitle": "Conecta WhatsApp Business y mensajería multiplataforma (Unipile). Gestiona la configuración de canales y horarios aquí.",
+    "tabWhatsApp": "WhatsApp Business",
+    "tabMultiPlatform": "Multiplataforma",
+    "fourScenarioNote": "Puedes conectar WhatsApp sin agente de IA (solo humanos). Añade un agente de IA en Flujos de trabajo después para respuestas con IA. Se admiten los 4 escenarios (horario laboral on/off × con o sin IA).",
+    "toast": {
+      "connectionSuccess": "Conexión completada. Estado actualizado."
+    }
+  },
+  "channelSettings": {
+    "title": "Configuración del canal",
+    "buttonTitle": "Configuración del canal (modo, fallback)",
+    "description": "Define cómo este canal enruta los mensajes.",
+    "intro": "Lo que ven los clientes depende de tu flujo: horario laboral (on/off) y si el flujo tiene un agente de IA. Puedes empezar sin IA y añadir un agente en Flujos más tarde.",
+    "modeLabel": "Quién gestiona las conversaciones por defecto",
+    "modePlaceholder": "Seleccionar modo",
+    "modeHumanOnly": "Solo humanos (sin IA)",
+    "modeHybrid": "Híbrido (flujo + IA cuando el flujo tiene agente)",
+    "modeAiOnly": "Solo IA",
+    "modeHelp": "Elige \"Solo humanos\" si aún no quieres IA. Añade un agente de IA en tu flujo después para activar respuestas con IA.",
+    "fallbackLabel": "Cuando el cliente escribe texto libre (no elige una opción)",
+    "fallbackPlaceholder": "Seleccionar fallback",
+    "fallbackRouteToAi": "Enviar a IA",
+    "fallbackAssignToHuman": "Asignar a humano",
+    "fallbackCreateTicket": "Crear ticket",
+    "fallbackHelp": "Si usas modo \"Solo humanos\", \"Enviar a IA\" no usará IA; se aplicarán tickets o asignación.",
+    "workflowLabel": "Flujo por defecto para este canal",
+    "workflowPlaceholder": "Seleccionar flujo",
+    "workflowNone": "Ninguno — usar el primer flujo activo de este canal",
+    "workflowWithAi": "(con IA)",
+    "workflowHumanOnly": "(solo humanos)",
+    "workflowHelp": "Este flujo se ejecuta cuando un cliente envía mensaje. Sin IA en el flujo = solo humanos (tickets/transferencia). Para activar IA, añade un agente de IA al flujo en la página Flujos.",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "saved": "Configuración del canal guardada.",
+    "saveError": "Error al guardar la configuración del canal."
+  },
+  "widgetEmbed": {
+    "pageSubtitle": "Añade el widget con solo flujo de negocio (sin agente) o elige un agente de IA. Puedes añadir un agente al flujo después en la página Flujo de trabajo.",
+    "selectAgentOrWorkflow": "Widget: solo flujo o un agente",
+    "chooseOption": "Elige una opción...",
+    "businessWorkflowOnly": "Solo flujo de negocio (sin agente)",
+    "selectAbove": "Selecciona una opción arriba para obtener el script.",
+    "loadingApiKey": "Cargando..."
   },
   "createAiAgentPage": {
     "title": "Crear Agente de IA",
