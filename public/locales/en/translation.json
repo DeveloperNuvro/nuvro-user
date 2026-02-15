@@ -1042,6 +1042,17 @@
     "tabWhatsApp": "WhatsApp Business",
     "tabMultiPlatform": "Multi-Platform",
     "fourScenarioNote": "You can connect WhatsApp without an AI agent (human-only). Add an AI agent in Workflows later for AI replies. All 4 scenarios (business hours on/off × with or without AI) are supported.",
+    "restrictionAvoidance": {
+      "title": "Keep your WhatsApp number in good standing",
+      "subtitle": "Simple habits that help your number stay healthy and avoid limits.",
+      "tips": {
+        "warmup": "Start with a few real chats; avoid heavy messaging when the number is new.",
+        "firstMessage": "When you message first, ask a question or offer help so customers are more likely to reply.",
+        "coldOutreach": "Avoid sending lots of first messages that get no reply; it can hurt your number.",
+        "quality": "Check your account in Meta Business Manager and keep reply rates healthy.",
+        "volume": "Reply when customers have just written; avoid sudden bursts of messages to many people."
+      }
+    },
     "toast": {
       "connectionSuccess": "Connection completed. Status updated."
     }

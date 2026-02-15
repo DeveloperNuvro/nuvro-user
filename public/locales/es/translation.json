@@ -1040,6 +1040,17 @@
     "tabWhatsApp": "WhatsApp Business",
     "tabMultiPlatform": "Multiplataforma",
     "fourScenarioNote": "Puedes conectar WhatsApp sin agente de IA (solo humanos). Añade un agente de IA en Flujos de trabajo después para respuestas con IA. Se admiten los 4 escenarios (horario laboral on/off × con o sin IA).",
+    "restrictionAvoidance": {
+      "title": "Mantén tu número de WhatsApp en buen estado",
+      "subtitle": "Pequeños hábitos que ayudan a que tu número se mantenga sano y sin límites.",
+      "tips": {
+        "warmup": "Empieza con pocas conversaciones reales; evita enviar mucho cuando el número es nuevo.",
+        "firstMessage": "Cuando escribes primero, haz una pregunta u ofrece ayuda para que sea más probable que te respondan.",
+        "coldOutreach": "Evita enviar muchos primeros mensajes sin respuesta; puede perjudicar tu número.",
+        "quality": "Revisa tu cuenta en Meta Business Manager y mantén unas buenas tasas de respuesta.",
+        "volume": "Responde cuando el cliente acaba de escribir; evita enviar de golpe muchos mensajes a mucha gente."
+      }
+    },
     "toast": {
       "connectionSuccess": "Conexión completada. Estado actualizado."
     }

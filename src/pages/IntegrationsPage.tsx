@@ -9,6 +9,7 @@ import { fetchUnipileConnections } from "@/features/unipile/unipileSlice";
 import { fetchWhatsAppConnections } from "@/features/whatsappBusiness/whatsappBusinessSlice";
 import UnipileIntegrationTab from "@/components/custom/unipile/UnipileIntegrationTab";
 import WhatsAppBusinessIntegrationTab from "@/components/custom/whatsappBusiness/WhatsAppBusinessIntegrationTab";
+import WhatsAppRestrictionAvoidanceTips from "@/components/custom/integrations/WhatsAppRestrictionAvoidanceTips";
 import { Card, CardContent } from "@/components/ui/card";
 import toast from "react-hot-toast";
 
@@ -57,6 +58,9 @@ export default function IntegrationsPage() {
               </div>
             </CardContent>
           </Card>
+          <div className="mt-4">
+            <WhatsAppRestrictionAvoidanceTips />
+          </div>
         </div>
         <Tabs defaultValue="whatsapp" className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2">
