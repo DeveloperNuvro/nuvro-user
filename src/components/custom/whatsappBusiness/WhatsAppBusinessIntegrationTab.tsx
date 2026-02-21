@@ -25,6 +25,7 @@ import { fetchWorkflows } from "@/features/workflow/workflowSlice";
 import toast from "react-hot-toast";
 // import { useTranslation } from "react-i18next"; // Reserved for future translations
 import WhatsAppTemplateManagement from "./WhatsAppTemplateManagement";
+import WhatsAppIntegrationsPolicySection from "./WhatsAppIntegrationsPolicySection";
 
 interface ConnectionFormData {
   phoneNumberId: string;
@@ -751,6 +752,22 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
           </div>
         )}
       </div>
+
+      {/* Meta policy copy + compliance summary (for appeal / review) */}
+      <Card className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            WhatsApp Business Policy (Meta)
+          </CardTitle>
+          <CardDescription>
+            Opt-in and content responsibility guidelines; compliance summary for appeal or review.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <WhatsAppIntegrationsPolicySection variant="short" showComplianceSummary />
+        </CardContent>
+      </Card>
 
       {/* Channel config dialog */}
       <Dialog open={channelConfigDialogOpen} onOpenChange={(open) => { setChannelConfigDialogOpen(open); if (!open) setChannelConfigConnection(null); }}>

@@ -25,6 +25,35 @@ export const getMessagesByCustomer = async (
   return response.data.data;
 };
 
+export type WhatsAppOptIn = {
+  status: 'opted_in' | 'opted_out' | 'pending';
+  optedInAt: string | null;
+  optedOutAt: string | null;
+  optInSource: string | null;
+};
+
+export type WhatsAppSessionInfo = {
+  withinWindow: boolean;
+  hoursRemaining: number;
+  lastMessageTimestamp: string | null;
+  requiresTemplate: boolean;
+  optIn?: WhatsAppOptIn;
+};
+
+export const getWhatsAppSessionByConversation = async (conversationId: string): Promise<WhatsAppSessionInfo> => {
+  const response = await api.get(`/api/v1/chat-inbox/conversations/${conversationId}/whatsapp-session`);
+  return response.data.data;
+};
+
+/** Set WhatsApp opt-in status (Meta policy – business-initiated/promotional). */
+export const setWhatsAppOptIn = async (
+  conversationId: string,
+  payload: { status: 'opted_in' | 'opted_out'; optInSource?: string }
+) => {
+  const response = await api.patch(`/api/v1/chat-inbox/conversations/${conversationId}/whatsapp-opt-in`, payload);
+  return response.data.data;
+};
+
 export const sendMessageViaConversation = async (data: {
   conversationId: string;
   message: string;
@@ -34,11 +63,23 @@ export const sendMessageViaConversation = async (data: {
   mediaUrl?: string;
   messageType?: 'text' | 'image' | 'video' | 'audio' | 'document';
   platform?: 'whatsapp' | 'unipile' | 'whatsapp-business';
+  useTemplate?: boolean;
+  templateName?: string;
+  templateLanguage?: string;
+  templateComponents?: Array<{
+    type: 'header' | 'body' | 'button';
+    parameters?: Array<{
+      type: 'text' | 'image' | 'video' | 'document' | 'currency' | 'date_time';
+      text?: string;
+      image?: { link?: string; id?: string };
+      video?: { link?: string; id?: string };
+      document?: { link?: string; id?: string };
+      currency?: { fallback_value: string; code: string; amount_1000: number };
+      date_time?: { fallback_value: string };
+    }>;
+  }>;
 }) => {
-  // 🔧 META OFFICIAL: Use chat-inbox endpoint for WhatsApp Business API
-  // This endpoint automatically detects WhatsApp conversations and uses Meta's API
   const endpoint = '/api/v1/chat-inbox/conversations/send-message';
-  
   const response = await api.post(endpoint, data);
   return response.data.data;
 };
@@ -198,6 +239,17 @@ export const uploadAudio = async (file: File): Promise<{ url: string }> => {
 // 🔧 NEW: Get customer platforms
 export const getCustomerPlatforms = async (customerId: string) => {
   const response = await api.get(`/api/v1/unipile/customers/${customerId}/platforms`);
+  return response.data.data;
+};
+
+// 🔧 META: WhatsApp policy copy & compliance summary (for Integrations / Help / appeal)
+export const getWhatsAppPolicyCopy = async () => {
+  const response = await api.get('/api/v1/whatsapp-business/policy-copy');
+  return response.data.data;
+};
+
+export const getWhatsAppComplianceSummary = async () => {
+  const response = await api.get('/api/v1/whatsapp-business/compliance-summary');
   return response.data.data;
 };
 
