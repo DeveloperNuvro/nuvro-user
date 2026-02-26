@@ -479,9 +479,13 @@
   "updateAiModelPage": {
     "tabs": {
       "settings": "Settings",
-      "woocommerce": "WooCommerce"
+      "woocommerce": "WooCommerce",
+      "shopify": "Shopify"
     },
     "woocommerce": {
+      "noBusinessId": "Business ID not found"
+    },
+    "shopify": {
       "noBusinessId": "Business ID not found"
     }
   },
@@ -856,10 +860,19 @@
     }
   },
   "updateAiModelPage": {
+    "dataSourcesHint": "Train this model with any source: PDF/files, WooCommerce, or Shopify. Use one or more.",
     "loading": {
       "loadingData": "Loading model data...",
       "loadingError": "Error loading model. It may not exist.",
       "notFound": "Model not found. It might have been deleted."
+    },
+    "tabs": {
+      "settings": "Settings",
+      "pdf": "PDF / Files",
+      "woocommerce": "WooCommerce",
+      "shopify": "Shopify",
+      "trainWithPdfTitle": "Train with PDF / Files",
+      "trainWithPdfHint": "Add or remove PDF, DOCX, TXT, XLSX. The model will use this content to answer questions."
     },
     "sidebar": {
       "title": "Update AI Model",
@@ -873,17 +886,21 @@
       "selectLlmLabel": "Select LLM",
       "manageFilesTitle": "Manage Existing Files",
       "undoDeleteTooltip": "Undo Delete",
+      "downloadTooltip": "Download",
       "addFilesTitle": "Add More Files",
       "dragAndDrop": "Drag & drop files here, or click to select files",
-      "newFilesTitle": "New files to be added"
+      "newFilesTitle": "New files to be added",
+      "noFilesMessage": "No trained files. Add PDF or other files below."
     },
     "validation": {
-      "nameRequired": "Model name is required"
+      "nameRequired": "Model name is required",
+      "timezoneRequired": "Timezone is required"
     },
     "toast": {
       "noChanges": "No changes detected. Please edit the name, add new files, or remove existing ones.",
       "updateSuccess": "Model updated successfully!",
-      "updateError": "Update failed: {{error}}"
+      "updateError": "Update failed: {{error}}",
+      "downloadError": "Download failed"
     }
   },
   "profileForm": {
@@ -948,17 +965,25 @@
   },
   "trainModelPage": {
     "step1": {
-      "title": "Model Information",
+      "title": "Create AI Model",
       "modelNameLabel": "Model Name",
       "selectLlmLabel": "Select LLM",
+      "timezoneLabel": "Source Data Timezone",
       "cancelButton": "Cancel",
-      "nextButton": "Next"
+      "afterCreateHint": "After creation you'll be taken to the model page to train it with PDF, WooCommerce or Shopify."
     },
     "step2": {
-      "title": "Data Sources",
-      "fileTab": "File",
+      "title": "Configure your training",
+      "subtitle": "You selected:",
+      "back": "Back",
+      "fileTab": "PDF / Files",
       "dragAndDrop": "Drag & drop files here, or click to select files",
-      "supportedFiles": "Supported File Types: .pdf, .docx, .txt, .xlsx"
+      "supportedFiles": "Supported: .pdf, .docx, .txt, .xlsx",
+      "filesOptional": "Optional. You can add files later from model settings.",
+      "connectAfterCreate": "Connect WooCommerce after creation",
+      "wooHint": "You'll be taken to the model page to connect your store.",
+      "shopifyConnectAfter": "Connect Shopify after creation",
+      "shopifyHint": "You'll be taken to the model page to connect your store."
     },
     "sidebar": {
       "title": "Sources",
@@ -1404,6 +1429,115 @@
         "placeholder": "cs_...",
         "help": "Your WooCommerce REST API Consumer Secret (keep it secure)"
       }
+    }
+  },
+  "shopify": {
+    "modal": {
+      "title": "Shopify Integration",
+      "description": "Connect your Shopify store to enable real-time product information for this AI model.",
+      "close": "Close"
+    },
+    "status": {
+      "connected": "Connected",
+      "storeDomain": "Store domain",
+      "lastSync": "Last sync",
+      "active": "Your store is actively syncing",
+      "inactive": "Inactive",
+      "realTime": "Real-time sync enabled",
+      "secure": "Secure connection",
+      "activeStatus": "Active"
+    },
+    "form": {
+      "storeDomain": {
+        "label": "Store domain",
+        "placeholder": "mystore or mystore.myshopify.com",
+        "help": "Your Shopify store name or full myshopify.com domain"
+      },
+      "accessToken": {
+        "label": "Admin API access token",
+        "placeholder": "shpat_...",
+        "help": "Admin API access token with read_products scope"
+      },
+      "isActive": {
+        "label": "Active Integration",
+        "description": "Enable or disable this integration"
+      },
+      "validation": {
+        "required": "Store domain and access token are required"
+      },
+      "show": "Show",
+      "hide": "Hide",
+      "connectTitle": "Connect Your Store",
+      "updateTitle": "Update Integration",
+      "connectDescription": "Enter your store domain and Admin API access token",
+      "updateDescription": "Update your Shopify store connection settings"
+    },
+    "oauth": {
+      "title": "Connect with Shopify (recommended)",
+      "description": "Enter your store name and you'll be taken to Shopify to authorize. No need to copy any token.",
+      "storePlaceholder": "e.g. mystore or mystore-2",
+      "storeHelp": "Use only your Shopify store name (from admin URL: store/YOUR-NAME). Do not enter a custom domain like yourstore.com — that will cause an error.",
+      "storeHelpShort": "Enter your Shopify store name only (e.g. mystore-2), not yourstore.com",
+      "connectButton": "Connect with Shopify",
+      "redirecting": "Redirecting...",
+      "hideManual": "Hide access token form",
+      "useTokenInstead": "Or connect with access token instead"
+    },
+    "connect": {
+      "button": "Connect Store",
+      "connecting": "Connecting...",
+      "success": "Shopify store connected successfully",
+      "error": "Failed to connect Shopify store"
+    },
+    "update": {
+      "button": "Update Integration",
+      "updating": "Updating...",
+      "success": "Shopify integration updated successfully",
+      "error": "Failed to update Shopify integration"
+    },
+    "disconnect": {
+      "button": "Disconnect",
+      "confirm": "Are you sure you want to disconnect this Shopify store?",
+      "success": "Shopify store disconnected successfully",
+      "error": "Failed to disconnect Shopify store"
+    },
+    "test": {
+      "button": "Test Connection",
+      "testing": "Testing...",
+      "connected": "Connection Successful",
+      "failed": "Connection Failed",
+      "productsFound": "Found {{count}} products",
+      "success": "Connection successful! Found {{count}} products.",
+      "error": "Connection test failed"
+    },
+    "tab": {
+      "title": "Shopify Integration",
+      "description": "Connect your Shopify store to enable real-time product information for this AI model."
+    },
+    "instructions": {
+      "title": "How to get Shopify Admin API access token?",
+      "subtitle": "Step-by-step guide to connect your store",
+      "step1": "Log in to your Shopify admin",
+      "step2": "Go to Settings → Apps and sales channels → Develop apps",
+      "step3": "Create an app or open an existing one",
+      "step4": "Configure Admin API scopes (e.g. read_products)",
+      "step5": "Install the app and generate an Admin API access token",
+      "step6": "Copy the token and paste it in the form below",
+      "step7": "Store domain: use your store name (e.g. mystore) or mystore.myshopify.com",
+      "important": "Important:",
+      "warning": "Keep your access token secure. Do not share it publicly.",
+      "documentation": "Shopify Admin API Documentation"
+    },
+    "products": {
+      "title": "Store products",
+      "description": "Products from your Shopify store (cached, refresh to update)",
+      "previous": "Previous",
+      "next": "Next",
+      "refresh": "Refresh",
+      "pageInfo": "{{count}} products on this page",
+      "empty": "No products in this store yet.",
+      "viewInStore": "View in store",
+      "price": "{{price}}"
     }
   },
   "apply": "Apply",

@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { InputBox as Input } from '@/components/custom/inputbox/InputBox';
 import CustomSelect from '../select/CustomSelect';
 import { ButtonSmall, IconDeleteButton } from '../button/Button';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { formatFileSize, getFileTypeLabel } from '@/lib/utils';
 import { FiPaperclip, FiRotateCcw, FiDownload } from "react-icons/fi";
@@ -19,8 +19,9 @@ import { fetchAiModelsByBusinessId, updateAIModel } from '../../../features/aiMo
 import toast from 'react-hot-toast';
 import moment from 'moment-timezone';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Settings, Link2 } from 'lucide-react';
+import { Settings, Link2, Store, FileText } from 'lucide-react';
 import WooCommerceIntegrationTab from './WooCommerceIntegrationTab';
+import ShopifyIntegrationTab from './ShopifyIntegrationTab';
 
 export default function UpdateAIModelForm() {
   const { id: modelId } = useParams<{ id: string }>();
@@ -36,6 +37,13 @@ export default function UpdateAIModelForm() {
 
   const [newlyUploadedFiles, setNewlyUploadedFiles] = useState<File[]>([]);
   const [filesToDelete, setFilesToDelete] = useState<string[]>([]);
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['settings', 'pdf', 'woocommerce', 'shopify'].includes(tab)) return tab;
+    if (searchParams.get('shopify') === 'connected') return 'shopify';
+    return 'settings';
+  });
 
   const { status, aiModels } = useSelector((state: RootState) => state.trainModel);
   const user = useSelector((state: RootState) => state.auth.user);
@@ -126,123 +134,153 @@ export default function UpdateAIModelForm() {
 
   return (
     <div className="mx-auto max-w-6xl mt-10">
-      <Tabs defaultValue="settings" className="w-full">
-        <TabsList className="mb-6">
+      <p className="text-sm text-muted-foreground mb-4">
+        {t('updateAiModelPage.dataSourcesHint', 'Train this model with any source: PDF/files, WooCommerce, or Shopify. Use one or more.')}
+      </p>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="mb-6 flex flex-wrap">
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
             {t('updateAiModelPage.tabs.settings', 'Settings')}
+          </TabsTrigger>
+          <TabsTrigger value="pdf" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            {t('updateAiModelPage.tabs.pdf', 'PDF / Files')}
           </TabsTrigger>
           <TabsTrigger value="woocommerce" className="flex items-center gap-2">
             <Link2 className="h-4 w-4" />
             {t('updateAiModelPage.tabs.woocommerce', 'WooCommerce')}
           </TabsTrigger>
+          <TabsTrigger value="shopify" className="flex items-center gap-2">
+            <Store className="h-4 w-4" />
+            {t('updateAiModelPage.tabs.shopify', 'Shopify')}
+          </TabsTrigger>
         </TabsList>
 
+        <form onSubmit={handleSubmit(onSubmit)}>
         <TabsContent value="settings">
-          <form onSubmit={handleSubmit(onSubmit)}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
                 <h2 className="text-2xl font-semibold text-foreground mb-4">{t('updateAiModelPage.form.mainTitle')}</h2>
-            <div className="space-y-6 mb-8">
-              <Input label={t('updateAiModelPage.form.modelNameLabel')} {...register('name')} />
-              {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
-              
-              <CustomSelect
-                text={t('updateAiModelPage.form.selectLlmLabel')}
-                value={modelToUpdate.modelType}
-                disabled={true}
-                options={[{ label: modelToUpdate.modelType, value: modelToUpdate.modelType }]}
-              />
-
-              <CustomSelect
-                text={t('updateAiModelPage.form.timezoneLabel', 'Source Data Timezone')}
-                {...register('sourceDataTimezone')}
-                options={timezones.map(tz => ({ label: tz, value: tz }))}
-                error={errors.sourceDataTimezone?.message}
-                defaultValue={modelToUpdate.sourceDataTimezone}
-              />
-            </div>
-
-            <h2 className="text-[22px] font-semibold text-foreground mb-4">{t('updateAiModelPage.form.manageFilesTitle')}</h2>
-            <div className='space-y-2 mb-8 max-h-60 overflow-y-auto pr-2'>
-              {modelToUpdate.trainedFiles && modelToUpdate.trainedFiles.length > 0 ? (
-                modelToUpdate.trainedFiles.map((file) => {
-                  const isMarkedForDeletion = filesToDelete.includes(file.url);
-                  return (
-                    <div
-                      className={`border-[1px] flex items-center gap-2 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] w-full px-4 py-3 transition-all ${isMarkedForDeletion ? 'bg-red-50 dark:bg-red-900/20 opacity-60' : ''}`}
-                      key={file.url}
-                    >
-                      <CiFileOn className='text-[30px]' />
-                      <span className={`truncate ${isMarkedForDeletion ? 'line-through' : ''}`}>{file.name}</span>
-                      <div className='ml-auto flex items-center gap-2'>
-                        <button type="button" onClick={() => handleDownload(file.url, file.name)} className="p-2 cursor-pointer rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                          <FiDownload className="text-blue-600 h-5 w-5" title={t('updateAiModelPage.form.downloadTooltip')} />
-                        </button>
-                        {isMarkedForDeletion ? (
-                          <button type="button" onClick={() => handleUndoDeletion(file.url)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                             <FiRotateCcw className="text-green-600 h-5 w-5" title={t('updateAiModelPage.form.undoDeleteTooltip')} />
-                          </button>
-                        ) : (
-                          <IconDeleteButton onClick={() => handleMarkForDeletion(file.url)} />
-                        )}
-                      </div>
-                    </div>
-                  )
-                })
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  {t('updateAiModelPage.form.noFilesMessage', 'No trained files available for this model.')}
+                <div className="space-y-6 mb-8">
+                  <Input label={t('updateAiModelPage.form.modelNameLabel')} {...register('name')} />
+                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
+                  <CustomSelect
+                    text={t('updateAiModelPage.form.selectLlmLabel')}
+                    value={modelToUpdate.modelType}
+                    disabled={true}
+                    options={[{ label: modelToUpdate.modelType, value: modelToUpdate.modelType }]}
+                  />
+                  <CustomSelect
+                    text={t('updateAiModelPage.form.timezoneLabel', 'Source Data Timezone')}
+                    {...register('sourceDataTimezone')}
+                    options={timezones.map(tz => ({ label: tz, value: tz }))}
+                    error={errors.sourceDataTimezone?.message}
+                    defaultValue={modelToUpdate.sourceDataTimezone}
+                  />
                 </div>
-              )}
-            </div>
-            
-            <h2 className="text-[22px] font-semibold text-foreground mb-4">{t('updateAiModelPage.form.addFilesTitle')}</h2>
-            <Card className="min-h-[200px] border-dashed border-[#D4D8DE] dark:border-[#2C3139] border-2 flex justify-center items-center p-6" onDrop={handleDrop} onDragOver={preventDefaults}>
-                <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center gap-3 text-primary">
-                  <FiPaperclip className='text-[20px]' /> {t('updateAiModelPage.form.dragAndDrop')}
-                </label>
-                <input type="file" id="file-upload" multiple onChange={handleFileChange} className="hidden" />
-            </Card>
-
-            {newlyUploadedFiles.length > 0 && (
-              <div className='mt-5'>
-                <h3 className="font-semibold mb-2">{t('updateAiModelPage.form.newFilesTitle')}:</h3>
-                {newlyUploadedFiles.map((file, idx) => (
-                  <div className='border-[1px] flex items-center gap-2 mt-1 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] w-full px-4 py-3' key={idx}>
-                    <CiFileOn className='text-[40px]' />
-                    <div>
-                      <div className='text-[#101214] dark:text-[#FFFFFF]'>{file.name}</div>
-                      <div className='text-[12px] text-[#A3ABB8]'>
-                        <span className='uppercase'>.{getFileTypeLabel(file.type, file.name)}</span> | <span className='ml-1'>{formatFileSize(file.size)}</span>
-                      </div>
-                    </div>
-                    <div className='ml-auto'><IconDeleteButton onClick={() => handleRemoveNewFile(idx)} /></div>
+              </div>
+              <div className="lg:col-span-1">
+                <Card className="border-[#D4D8DE] dark:border-[#2C3139] border-[1px] rounded-[8px] p-[16px]">
+                  <p className="text-[22px] font-500 text-center font-bold mb-[20px]">{t('updateAiModelPage.sidebar.title')}</p>
+                  <ButtonSmall
+                    value={status === 'updating' ? t('updateAiModelPage.sidebar.updatingButton') : t('updateAiModelPage.sidebar.updateButton')}
+                    disabled={status === 'updating'}
+                    type="submit"
+                    customClass="w-full"
+                  />
+                  <div className="mt-4">
+                    <Link to="/main-menu/ai-model">
+                      <ButtonSmall value={t('updateAiModelPage.sidebar.cancelButton')} isOutline customClass="w-full" />
+                    </Link>
                   </div>
-                ))}
+                </Card>
               </div>
-            )}
-          </div>
-          
-          <div className="lg:col-span-1">
-            <Card className="border-[#D4D8DE] dark:border-[#2C3139] border-[1px] rounded-[8px] p-[16px]">
-              <p className="text-[22px] font-500 text-center font-bold mb-[20px]">{t('updateAiModelPage.sidebar.title')}</p>
-              <ButtonSmall 
-                value={status === 'updating' ? t('updateAiModelPage.sidebar.updatingButton') : t('updateAiModelPage.sidebar.updateButton')} 
-                disabled={status === 'updating'} 
-                type='submit' 
-                customClass='w-full' 
-              />
-              <div className="mt-4">
-                <Link to="/main-menu/ai-model">
-                    <ButtonSmall value={t('updateAiModelPage.sidebar.cancelButton')} isOutline customClass="w-full" />
-                </Link>
-              </div>
-            </Card>
-          </div>
-        </div>
-      </form>
+            </div>
         </TabsContent>
+
+        <TabsContent value="pdf">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <h2 className="text-2xl font-semibold text-foreground">{t('updateAiModelPage.tabs.trainWithPdfTitle', 'Train with PDF / Files')}</h2>
+                <p className="text-sm text-muted-foreground">{t('updateAiModelPage.tabs.trainWithPdfHint', 'Add or remove PDF, DOCX, TXT, XLSX. The model will use this content to answer questions.')}</p>
+                <h3 className="text-lg font-semibold text-foreground">{t('updateAiModelPage.form.manageFilesTitle')}</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                  {modelToUpdate.trainedFiles && modelToUpdate.trainedFiles.length > 0 ? (
+                    modelToUpdate.trainedFiles.map((file) => {
+                      const isMarkedForDeletion = filesToDelete.includes(file.url);
+                      return (
+                        <div
+                          className={`border-[1px] flex items-center gap-2 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] w-full px-4 py-3 transition-all ${isMarkedForDeletion ? 'bg-red-50 dark:bg-red-900/20 opacity-60' : ''}`}
+                          key={file.url}
+                        >
+                          <CiFileOn className="text-[30px]" />
+                          <span className={`truncate ${isMarkedForDeletion ? 'line-through' : ''}`}>{file.name}</span>
+                          <div className="ml-auto flex items-center gap-2">
+                            <button type="button" onClick={() => handleDownload(file.url, file.name)} className="p-2 cursor-pointer rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                              <FiDownload className="text-blue-600 h-5 w-5" title={t('updateAiModelPage.form.downloadTooltip')} />
+                            </button>
+                            {isMarkedForDeletion ? (
+                              <button type="button" onClick={() => handleUndoDeletion(file.url)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                                <FiRotateCcw className="text-green-600 h-5 w-5" title={t('updateAiModelPage.form.undoDeleteTooltip')} />
+                              </button>
+                            ) : (
+                              <IconDeleteButton onClick={() => handleMarkForDeletion(file.url)} />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
+                      {t('updateAiModelPage.form.noFilesMessage', 'No trained files. Add PDF or other files below.')}
+                    </div>
+                  )}
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">{t('updateAiModelPage.form.addFilesTitle')}</h3>
+                <Card className="min-h-[200px] border-dashed border-[#D4D8DE] dark:border-[#2C3139] border-2 flex justify-center items-center p-6" onDrop={handleDrop} onDragOver={preventDefaults}>
+                  <label htmlFor="file-upload-pdf-tab" className="cursor-pointer flex flex-col items-center gap-3 text-primary">
+                    <FiPaperclip className="text-[20px]" /> {t('updateAiModelPage.form.dragAndDrop')}
+                  </label>
+                  <input type="file" id="file-upload-pdf-tab" multiple onChange={handleFileChange} className="hidden" />
+                </Card>
+                {newlyUploadedFiles.length > 0 && (
+                  <div className="mt-5">
+                    <h3 className="font-semibold mb-2">{t('updateAiModelPage.form.newFilesTitle')}:</h3>
+                    {newlyUploadedFiles.map((file, idx) => (
+                      <div className="border-[1px] flex items-center gap-2 mt-1 text-[#101214] dark:text-[#FFFFFF] border-[#D4D8DE] dark:border-[#2C3139] w-full px-4 py-3" key={idx}>
+                        <CiFileOn className="text-[40px]" />
+                        <div>
+                          <div className="text-[#101214] dark:text-[#FFFFFF]">{file.name}</div>
+                          <div className="text-[12px] text-[#A3ABB8]">
+                            <span className="uppercase">.{getFileTypeLabel(file.type, file.name)}</span> | <span className="ml-1">{formatFileSize(file.size)}</span>
+                          </div>
+                        </div>
+                        <div className="ml-auto"><IconDeleteButton onClick={() => handleRemoveNewFile(idx)} /></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="lg:col-span-1">
+                <Card className="border-[#D4D8DE] dark:border-[#2C3139] border-[1px] rounded-[8px] p-[16px]">
+                  <p className="text-[22px] font-500 text-center font-bold mb-[20px]">{t('updateAiModelPage.sidebar.title')}</p>
+                  <ButtonSmall
+                    value={status === 'updating' ? t('updateAiModelPage.sidebar.updatingButton') : t('updateAiModelPage.sidebar.updateButton')}
+                    disabled={status === 'updating'}
+                    type="submit"
+                    customClass="w-full"
+                  />
+                  <div className="mt-4">
+                    <Link to="/main-menu/ai-model">
+                      <ButtonSmall value={t('updateAiModelPage.sidebar.cancelButton')} isOutline customClass="w-full" />
+                    </Link>
+                  </div>
+                </Card>
+              </div>
+            </div>
+        </TabsContent>
+        </form>
 
         <TabsContent value="woocommerce">
           {businessId && modelId ? (
@@ -250,6 +288,15 @@ export default function UpdateAIModelForm() {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               {t('updateAiModelPage.woocommerce.noBusinessId', 'Business ID not found')}
+            </div>
+          )}
+        </TabsContent>
+        <TabsContent value="shopify">
+          {businessId && modelId ? (
+            <ShopifyIntegrationTab modelId={modelId} businessId={businessId} modelName={modelToUpdate.name} />
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              {t('updateAiModelPage.shopify.noBusinessId', 'Business ID not found')}
             </div>
           )}
         </TabsContent>

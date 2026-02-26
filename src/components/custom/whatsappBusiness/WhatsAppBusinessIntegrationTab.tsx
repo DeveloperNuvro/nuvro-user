@@ -21,7 +21,6 @@ import {
   type ChannelMode,
   type ChannelFallbackBehavior,
 } from "@/features/whatsappBusiness/whatsappBusinessSlice";
-import { fetchWorkflows } from "@/features/workflow/workflowSlice";
 import toast from "react-hot-toast";
 // import { useTranslation } from "react-i18next"; // Reserved for future translations
 import WhatsAppTemplateManagement from "./WhatsAppTemplateManagement";
@@ -73,12 +72,7 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
   const [channelConfigConnection, setChannelConfigConnection] = useState<WhatsAppBusinessConnection | null>(null);
   const [channelConfigMode, setChannelConfigMode] = useState<ChannelMode>('hybrid');
   const [channelConfigFallback, setChannelConfigFallback] = useState<ChannelFallbackBehavior>('route_to_ai');
-  const [channelConfigDefaultFlowId, setChannelConfigDefaultFlowId] = useState<string | null>(null);
   const [channelConfigSaving, setChannelConfigSaving] = useState(false);
-  const workflows = useSelector((state: RootState) => state.workflow?.workflows ?? []);
-  const user = useSelector((state: RootState) => state.auth.user);
-  const businessId = user?.businessId ?? '';
-  
   const [formData, setFormData] = useState<ConnectionFormData>({
     phoneNumberId: '',
     phoneNumber: '',
@@ -290,9 +284,7 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
     setChannelConfigConnection(connection);
     setChannelConfigMode((connection.mode ?? 'hybrid') as ChannelMode);
     setChannelConfigFallback((connection.fallbackBehavior ?? 'route_to_ai') as ChannelFallbackBehavior);
-    setChannelConfigDefaultFlowId(connection.defaultFlowId ?? null);
     setChannelConfigDialogOpen(true);
-    if (businessId) dispatch(fetchWorkflows({ businessId }));
   };
 
   const handleSaveChannelConfig = async () => {
@@ -304,7 +296,7 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
         updates: {
           mode: channelConfigMode,
           fallbackBehavior: channelConfigFallback,
-          defaultFlowId: channelConfigDefaultFlowId,
+          defaultFlowId: null,
         },
       })).unwrap();
       toast.success('Channel settings saved.');
@@ -801,26 +793,9 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label>Default workflow</Label>
-              <Select
-                value={channelConfigDefaultFlowId ?? 'none'}
-                onValueChange={(v) => setChannelConfigDefaultFlowId(v === 'none' ? null : v)}
-              >
-                <SelectTrigger><SelectValue placeholder="Select workflow" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None (use first active for channel)</SelectItem>
-                  {workflows.filter((w) => w.active).map((w) => (
-                    <SelectItem key={w._id} value={w._id}>
-                      {w.name} {w.agentId ? '(with AI)' : '(human-only)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Optional. This workflow runs when a customer messages. Add an AI agent in the workflow to enable AI replies.
-              </p>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Workflow is assigned from the Workflow page (workflow-centric). Assign this WhatsApp connection to a workflow there.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setChannelConfigDialogOpen(false); setChannelConfigConnection(null); }}>Cancel</Button>

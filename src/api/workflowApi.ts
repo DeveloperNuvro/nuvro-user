@@ -51,6 +51,8 @@ export interface ConversationWorkflow {
   _id: string;
   businessId: string;
   agentId?: string;
+  /** Channel/connection IDs (WhatsApp, Unipile) this workflow runs on. Empty = not assigned to channels (widget/default). */
+  channelIds?: string[];
   name: string;
   trigger: WorkflowTrigger;
   active: boolean;

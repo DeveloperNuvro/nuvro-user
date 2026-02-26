@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
 import { useTranslation } from 'react-i18next';
-import { Workflow, Plus, Edit, Trash2, MessageSquare, Globe, Loader2 } from 'lucide-react';
+import { Workflow, Plus, Edit, Trash2, MessageSquare, Globe, Loader2, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   fetchWorkflows,
@@ -35,6 +35,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import ComponentSkeleton from '@/components/skeleton/ComponentSkeleton';
+import { Card, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import moment from 'moment-timezone';
 
 const ASK_LANGUAGE_STEP = {
@@ -480,58 +482,69 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
       {status === 'loading' && workflows.length === 0 ? (
         <ComponentSkeleton />
       ) : workflows.length === 0 ? (
-        <div className="border rounded-xl p-12 text-center text-muted-foreground">
-          <Workflow className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>{t('workflow.noWorkflows')}</p>
-          <Button onClick={openCreate} variant="outline" className="mt-4">
-            {t('workflow.addWorkflow')}
-          </Button>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {workflows.map((w) => (
-            <div
-              key={w._id}
-              className="border rounded-xl p-4 flex items-center justify-between hover:bg-muted/50"
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium">{w.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t('workflow.trigger')}: {w.trigger === 'conversation_opened' ? t('workflow.triggerOpened') : t('workflow.triggerFirstMessage')}
-                    {' · '}
-                    <Globe className="inline h-3 w-3 mr-0.5" />
-                    {w.defaultLanguage}
-                    {w.active ? (
-                      <span className="ml-2 text-green-600 dark:text-green-400">{t('workflow.active')}</span>
-                    ) : (
-                      <span className="ml-2 text-muted-foreground">{t('workflow.inactive')}</span>
-                    )}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => openEdit(w)}>
-                  <Edit className="h-4 w-4 mr-1" />
-                  {t('workflow.edit')}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-destructive hover:bg-destructive/10"
-                  onClick={() => {
-                    setEditingWorkflow(w);
-                    setIsDeleteOpen(true);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  {t('workflow.delete')}
-                </Button>
-              </div>
+        <Card className="border-2 border-dashed border-muted-foreground/20 bg-muted/20 overflow-hidden">
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="rounded-2xl bg-[var(--accent-color)]/10 p-5 mb-4">
+              <Workflow className="h-12 w-12 text-[var(--accent-color)]" strokeWidth={1.5} />
             </div>
+            <p className="text-sm text-muted-foreground mb-4">{t('workflow.noWorkflows')}</p>
+            <Button onClick={openCreate} className="bg-[var(--accent-color)] hover:opacity-90 text-white shadow-md">
+              <Plus className="h-4 w-4 mr-2" />
+              {t('workflow.addWorkflow')}
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+          {workflows.map((w) => (
+            <Card
+              key={w._id}
+              className="group border bg-card shadow-sm hover:shadow-md hover:border-[var(--accent-color)]/30 transition-all duration-200 overflow-hidden"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-stretch">
+                <div className="flex flex-1 min-w-0 p-4">
+                  <div className="flex items-start gap-3 w-full">
+                    <div className="shrink-0 rounded-xl bg-gradient-to-br from-[var(--accent-color)]/20 to-[var(--accent-color)]/5 p-2.5 ring-1 ring-[var(--accent-color)]/10">
+                      <MessageSquare className="h-5 w-5 text-[var(--accent-color)]" strokeWidth={1.5} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground truncate pr-2">{w.name}</h3>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <Badge variant={w.active ? 'default' : 'secondary'} className="text-xs font-medium">
+                          {w.active ? t('workflow.active') : t('workflow.inactive')}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          <Zap className="h-3 w-3 mr-0.5" />
+                          {w.trigger === 'conversation_opened' ? t('workflow.triggerOpened') : t('workflow.triggerFirstMessage')}
+                        </Badge>
+                        <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                          <Globe className="h-3 w-3" />
+                          {w.defaultLanguage}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <CardFooter className="flex flex-row sm:flex-col justify-end gap-2 p-3 sm:p-4 sm:border-l border-t sm:border-t-0 bg-muted/20 sm:bg-transparent">
+                  <Button variant="outline" size="sm" onClick={() => openEdit(w)} className="w-full sm:w-auto">
+                    <Edit className="h-4 w-4 mr-1.5" />
+                    {t('workflow.edit')}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 w-full sm:w-auto"
+                    onClick={() => {
+                      setEditingWorkflow(w);
+                      setIsDeleteOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    {t('workflow.delete')}
+                  </Button>
+                </CardFooter>
+              </div>
+            </Card>
           ))}
         </div>
       )}

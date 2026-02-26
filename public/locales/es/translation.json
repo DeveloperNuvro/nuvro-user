@@ -849,9 +849,13 @@
   "updateAiModelPage": {
     "tabs": {
       "settings": "Configuración",
-      "woocommerce": "WooCommerce"
+      "woocommerce": "WooCommerce",
+      "shopify": "Shopify"
     },
     "woocommerce": {
+      "noBusinessId": "ID de negocio no encontrado"
+    },
+    "shopify": {
       "noBusinessId": "ID de negocio no encontrado"
     },
     "sidebar": {
@@ -1352,7 +1356,115 @@
       "warning": "Guarda las claves de forma segura. Si las pierdes, tendrás que generar nuevas claves.",
       "documentation": "Ver documentación de la API REST de WooCommerce"
     }
-    
+  },
+  "shopify": {
+    "modal": {
+      "title": "Integración de Shopify",
+      "description": "Conecta tu tienda Shopify para habilitar información de productos en tiempo real para este modelo de IA.",
+      "close": "Cerrar"
+    },
+    "oauth": {
+      "title": "Conectar con Shopify (recomendado)",
+      "description": "Introduce el nombre de tu tienda y serás redirigido a Shopify para autorizar. No necesitas copiar ningún token.",
+      "storePlaceholder": "ej. mitienda o mitienda-2",
+      "storeHelp": "Usa solo el nombre de tu tienda Shopify (de la URL del admin: store/TU-NOMBRE). No pongas un dominio personalizado como tutienda.com — dará error.",
+      "storeHelpShort": "Introduce solo el nombre de tu tienda Shopify (ej. mitienda-2), no tutienda.com",
+      "connectButton": "Conectar con Shopify",
+      "redirecting": "Redirigiendo...",
+      "hideManual": "Ocultar formulario de token",
+      "useTokenInstead": "O conectar con token de acceso"
+    },
+    "status": {
+      "connected": "Conectado",
+      "storeDomain": "Dominio de la tienda",
+      "lastSync": "Última sincronización",
+      "active": "Tu tienda se está sincronizando activamente",
+      "inactive": "Inactivo",
+      "realTime": "Sincronización en tiempo real habilitada",
+      "secure": "Conexión segura",
+      "activeStatus": "Activo"
+    },
+    "form": {
+      "storeDomain": {
+        "label": "Dominio de la tienda",
+        "placeholder": "mystore o mystore.myshopify.com",
+        "help": "Nombre de tu tienda Shopify o dominio completo myshopify.com"
+      },
+      "accessToken": {
+        "label": "Token de acceso Admin API",
+        "placeholder": "shpat_...",
+        "help": "Token de acceso Admin API con alcance read_products"
+      },
+      "isActive": {
+        "label": "Integración activa",
+        "description": "Habilitar o deshabilitar esta integración"
+      },
+      "validation": {
+        "required": "El dominio de la tienda y el token de acceso son obligatorios"
+      },
+      "show": "Mostrar",
+      "hide": "Ocultar",
+      "connectTitle": "Conecta tu tienda",
+      "updateTitle": "Actualizar integración",
+      "connectDescription": "Ingresa tu dominio de tienda y token de acceso Admin API",
+      "updateDescription": "Actualiza la configuración de conexión de tu tienda Shopify"
+    },
+    "connect": {
+      "button": "Conectar tienda",
+      "connecting": "Conectando...",
+      "success": "Tienda Shopify conectada exitosamente",
+      "error": "Error al conectar la tienda Shopify"
+    },
+    "update": {
+      "button": "Actualizar integración",
+      "updating": "Actualizando...",
+      "success": "Integración de Shopify actualizada exitosamente",
+      "error": "Error al actualizar la integración de Shopify"
+    },
+    "disconnect": {
+      "button": "Desconectar",
+      "confirm": "¿Estás seguro de que quieres desconectar esta tienda Shopify?",
+      "success": "Tienda Shopify desconectada exitosamente",
+      "error": "Error al desconectar la tienda Shopify"
+    },
+    "test": {
+      "button": "Probar conexión",
+      "testing": "Probando...",
+      "connected": "Conexión exitosa",
+      "failed": "Conexión fallida",
+      "productsFound": "Se encontraron {{count}} productos",
+      "success": "¡Conexión exitosa! Se encontraron {{count}} productos.",
+      "error": "Error al probar la conexión"
+    },
+    "tab": {
+      "title": "Integración de Shopify",
+      "description": "Conecta tu tienda Shopify para habilitar información de productos en tiempo real para este modelo de IA."
+    },
+    "instructions": {
+      "title": "¿Cómo obtener el token de acceso Admin API de Shopify?",
+      "subtitle": "Guía paso a paso para conectar tu tienda",
+      "step1": "Inicia sesión en tu administración de Shopify",
+      "step2": "Ve a Configuración → Apps y canales de ventas → Desarrollar apps",
+      "step3": "Crea una app o abre una existente",
+      "step4": "Configura los alcances de Admin API (p. ej. read_products)",
+      "step5": "Instala la app y genera un token de acceso Admin API",
+      "step6": "Copia el token y pégalo en el formulario a continuación",
+      "step7": "Dominio: usa el nombre de tu tienda (p. ej. mystore) o mystore.myshopify.com",
+      "important": "Importante:",
+      "warning": "Mantén tu token de acceso seguro. No lo compartas públicamente.",
+      "documentation": "Documentación de la API Admin de Shopify"
+    },
+    "products": {
+      "title": "Productos de la tienda",
+      "description": "Productos de tu tienda Shopify (en caché, actualiza para refrescar)",
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "refresh": "Actualizar",
+      "pageInfo": "{{count}} productos en esta página",
+      "empty": "Aún no hay productos en esta tienda.",
+      "viewInStore": "Ver en tienda",
+      "price": "{{price}}"
+    }
   },
   "apply": "Aplicar",
   "user": "Usuario",

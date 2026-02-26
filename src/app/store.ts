@@ -17,6 +17,7 @@ import humanAgentInbox from '../features/humanAgent/humanAgentInboxSlice';
 import agentTicket from '../features/SupportTicket/agentTicketSlice';
 import unipileReducer from '../features/unipile/unipileSlice';
 import wooCommerceReducer from '../features/wooCommerce/wooCommerceSlice';
+import shopifyReducer from '../features/shopify/shopifySlice';
 import whatsappBusinessReducer from '../features/whatsappBusiness/whatsappBusinessSlice';
 import reportingReducer from '../features/reporting/reportingSlice';
 import workflowReducer from '../features/workflow/workflowSlice';
@@ -41,6 +42,7 @@ export const store = configureStore({
     agentTickets: agentTicket,
     unipile: unipileReducer,
     wooCommerce: wooCommerceReducer,
+    shopify: shopifyReducer,
     whatsappBusiness: whatsappBusinessReducer,
     reporting: reportingReducer,
     workflow: workflowReducer,

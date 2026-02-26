@@ -920,9 +920,13 @@
   "updateAiModelPage": {
     "tabs": {
       "settings": "সেটিংস",
-      "woocommerce": "WooCommerce"
+      "woocommerce": "WooCommerce",
+      "shopify": "Shopify"
     },
     "woocommerce": {
+      "noBusinessId": "ব্যবসার ID পাওয়া যায়নি"
+    },
+    "shopify": {
       "noBusinessId": "ব্যবসার ID পাওয়া যায়নি"
     },
     "loading": {
@@ -1439,6 +1443,115 @@
         "placeholder": "cs_...",
         "help": "আপনার WooCommerce REST API Consumer Secret (নিরাপদে রাখুন)"
       }
+    }
+  },
+  "shopify": {
+    "modal": {
+      "title": "Shopify ইন্টিগ্রেশন",
+      "description": "এই AI মডেলের জন্য রিয়েল-টাইম পণ্যের তথ্য সক্ষম করতে আপনার Shopify স্টোর সংযুক্ত করুন।",
+      "close": "বন্ধ করুন"
+    },
+    "oauth": {
+      "title": "Connect with Shopify (প্রস্তাবিত)",
+      "description": "আপনার স্টোরের নাম লিখুন, Shopify এ অটোরাইজ করতে নিয়ে যাওয়া হবে। টোকেন কপি করার দরকার নেই।",
+      "storePlaceholder": "যেমন mystore বা mystore-2",
+      "storeHelp": "শুধু আপনার Shopify স্টোরের নাম দিন (অ্যাডমিন URL: store/আপনার-নাম)। yourstore.com এর মতো কাস্টম ডোমেইন দেবেন না — তাতে error হবে।",
+      "storeHelpShort": "শুধু Shopify স্টোরের নাম দিন (যেমন mystore-2), yourstore.com নয়",
+      "connectButton": "Shopify দিয়ে সংযুক্ত করুন",
+      "redirecting": "রিডাইরেক্ট হচ্ছে...",
+      "hideManual": "অ্যাক্সেস টোকেন ফর্ম লুকান",
+      "useTokenInstead": "অথবা অ্যাক্সেস টোকেন দিয়ে সংযুক্ত করুন"
+    },
+    "status": {
+      "connected": "সংযুক্ত",
+      "storeDomain": "স্টোর ডোমেইন",
+      "lastSync": "শেষ সিঙ্ক",
+      "active": "আপনার স্টোর সক্রিয়ভাবে সিঙ্ক হচ্ছে",
+      "inactive": "নিষ্ক্রিয়",
+      "realTime": "রিয়েল-টাইম সিঙ্ক সক্ষম",
+      "secure": "নিরাপদ সংযোগ",
+      "activeStatus": "সক্রিয়"
+    },
+    "form": {
+      "storeDomain": {
+        "label": "স্টোর ডোমেইন",
+        "placeholder": "mystore অথবা mystore.myshopify.com",
+        "help": "আপনার Shopify স্টোরের নাম অথবা পূর্ণ myshopify.com ডোমেইন"
+      },
+      "accessToken": {
+        "label": "Admin API অ্যাক্সেস টোকেন",
+        "placeholder": "shpat_...",
+        "help": "read_products স্কোপ সহ Admin API অ্যাক্সেস টোকেন"
+      },
+      "isActive": {
+        "label": "সক্রিয় ইন্টিগ্রেশন",
+        "description": "এই ইন্টিগ্রেশন সক্ষম বা অক্ষম করুন"
+      },
+      "validation": {
+        "required": "স্টোর ডোমেইন এবং অ্যাক্সেস টোকেন প্রয়োজন"
+      },
+      "show": "দেখান",
+      "hide": "লুকান",
+      "connectTitle": "আপনার স্টোর সংযুক্ত করুন",
+      "updateTitle": "ইন্টিগ্রেশন আপডেট করুন",
+      "connectDescription": "আপনার স্টোর ডোমেইন এবং Admin API অ্যাক্সেস টোকেন লিখুন",
+      "updateDescription": "আপনার Shopify স্টোর সংযোগ সেটিংস আপডেট করুন"
+    },
+    "connect": {
+      "button": "স্টোর সংযুক্ত করুন",
+      "connecting": "সংযুক্ত হচ্ছে...",
+      "success": "Shopify স্টোর সফলভাবে সংযুক্ত হয়েছে",
+      "error": "Shopify স্টোর সংযুক্ত করতে ব্যর্থ হয়েছে"
+    },
+    "update": {
+      "button": "ইন্টিগ্রেশন আপডেট করুন",
+      "updating": "আপডেট হচ্ছে...",
+      "success": "Shopify ইন্টিগ্রেশন সফলভাবে আপডেট হয়েছে",
+      "error": "Shopify ইন্টিগ্রেশন আপডেট করতে ব্যর্থ হয়েছে"
+    },
+    "disconnect": {
+      "button": "সংযোগ বিচ্ছিন্ন করুন",
+      "confirm": "আপনি কি নিশ্চিত যে আপনি এই Shopify স্টোরটি সংযোগ বিচ্ছিন্ন করতে চান?",
+      "success": "Shopify স্টোর সফলভাবে সংযোগ বিচ্ছিন্ন হয়েছে",
+      "error": "Shopify স্টোর সংযোগ বিচ্ছিন্ন করতে ব্যর্থ হয়েছে"
+    },
+    "test": {
+      "button": "সংযোগ পরীক্ষা করুন",
+      "testing": "পরীক্ষা করা হচ্ছে...",
+      "connected": "সংযোগ সফল",
+      "failed": "সংযোগ ব্যর্থ",
+      "productsFound": "{{count}} টি পণ্য পাওয়া গেছে",
+      "success": "সংযোগ সফল! {{count}} টি পণ্য পাওয়া গেছে।",
+      "error": "সংযোগ পরীক্ষা ব্যর্থ হয়েছে"
+    },
+    "tab": {
+      "title": "Shopify ইন্টিগ্রেশন",
+      "description": "এই AI মডেলের জন্য রিয়েল-টাইম পণ্যের তথ্য সক্ষম করতে আপনার Shopify স্টোর সংযুক্ত করুন।"
+    },
+    "instructions": {
+      "title": "Shopify Admin API অ্যাক্সেস টোকেন কীভাবে পাবেন?",
+      "subtitle": "আপনার স্টোর সংযুক্ত করার ধাপে ধাপে নির্দেশিকা",
+      "step1": "আপনার Shopify অ্যাডমিনে লগইন করুন",
+      "step2": "Settings → Apps and sales channels → Develop apps-এ যান",
+      "step3": "একটি অ্যাপ তৈরি করুন অথবা বিদ্যমান অ্যাপ খুলুন",
+      "step4": "Admin API স্কোপ কনফিগার করুন (যেমন read_products)",
+      "step5": "অ্যাপ ইন্সটল করুন এবং Admin API অ্যাক্সেস টোকেন জেনারেট করুন",
+      "step6": "টোকেন কপি করে নীচের ফর্মে পেস্ট করুন",
+      "step7": "স্টোর ডোমেইন: আপনার স্টোরের নাম ব্যবহার করুন (যেমন mystore) অথবা mystore.myshopify.com",
+      "important": "গুরুত্বপূর্ণ:",
+      "warning": "আপনার অ্যাক্সেস টোকেন নিরাপদে রাখুন। পাবলিকভাবে শেয়ার করবেন না।",
+      "documentation": "Shopify Admin API ডকুমেন্টেশন"
+    },
+    "products": {
+      "title": "স্টোরের পণ্য",
+      "description": "আপনার Shopify স্টোরের পণ্য (ক্যাশ করা, আপডেট করতে রিফ্রেশ করুন)",
+      "previous": "আগে",
+      "next": "পরবর্তী",
+      "refresh": "রিফ্রেশ",
+      "pageInfo": "এই পেজে {{count}} টি পণ্য",
+      "empty": "এই স্টোরে এখনও কোনো পণ্য নেই।",
+      "viewInStore": "স্টোরে দেখুন",
+      "price": "{{price}}"
     }
   },
   "apply": "প্রয়োগ করুন",
