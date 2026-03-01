@@ -1084,7 +1084,8 @@
       "thursday": "বৃহস্পতিবার",
       "friday": "শুক্রবার",
       "saturday": "শনিবার"
-    }
+    },
+    "closed": "বন্ধ"
   },
   "businessForm": {
     "title": "ব্যবসার তথ্য",

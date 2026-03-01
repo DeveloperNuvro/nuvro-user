@@ -115,8 +115,9 @@ export const fetchUnipileConnections = createAsyncThunk(
         normalizedStatus = statusMap[normalizedStatus] || normalizedStatus;
         
         return {
-          id: conn.id,
-          connectionId: conn.connectionId || conn.id,
+          id: conn.id || conn._id?.toString?.(),
+          _id: conn._id?.toString?.() ?? conn.id,
+          connectionId: conn.connectionId || conn.id || conn._id?.toString?.(),
           platform: conn.platform?.toLowerCase() || 'unknown',
           name: conn.name || conn.connectionName || `${conn.platform} Connection`,
           status: normalizedStatus,

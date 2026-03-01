@@ -197,6 +197,8 @@
     "name": "Workflow name",
     "namePlaceholder": "e.g. Welcome and category",
     "nameRequired": "Name is required",
+    "channelAlreadyInWorkflow": "This channel is already connected to another workflow. Remove it from that workflow first.",
+    "agentAlreadyInWorkflow": "This AI agent is already connected to another workflow. Remove it from that workflow first.",
     "agentLabel": "AI Agent",
     "selectAgent": "Select an agent",
     "agentHelp": "Workflows are per agent. The widget shows this agent's workflow when connected.",
@@ -1036,7 +1038,8 @@
       "thursday": "Thursday",
       "friday": "Friday",
       "saturday": "Saturday"
-    }
+    },
+    "closed": "Closed"
   },
   "businessForm": {
     "title": "Business Information",

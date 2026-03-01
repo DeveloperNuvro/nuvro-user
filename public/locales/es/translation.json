@@ -1013,7 +1013,8 @@
       "thursday": "Jueves",
       "friday": "Viernes",
       "saturday": "Sábado"
-    }
+    },
+    "closed": "Cerrado"
   },
   "businessForm": {
     "title": "Información del Negocio",

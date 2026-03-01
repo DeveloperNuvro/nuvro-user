@@ -123,8 +123,13 @@ const ALL_TIMEZONES = moment.tz.names();
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+/** All 7 days: Mon–Fri 09:00–17:00, Sat & Sun closed (empty) by default. */
 const defaultBusinessHoursSchedule = (): { dayOfWeek: number; start: string; end: string }[] =>
-  [1, 2, 3, 4, 5].map((dayOfWeek) => ({ dayOfWeek, start: '09:00', end: '17:00' }));
+  [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) =>
+    dayOfWeek === 0 || dayOfWeek === 6
+      ? { dayOfWeek, start: '', end: '' }
+      : { dayOfWeek, start: '09:00', end: '17:00' }
+  );
 
 const ASK_LANGUAGE_OPTIONS = [
   { value: 'en', label: 'English' },
@@ -291,7 +296,11 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
       if (bh && bh.timezone) {
         setBusinessHours24_7(bh.enabled === false);
         setBusinessHoursTimezone(bh.timezone || 'UTC');
-        setBusinessHoursSchedule(Array.isArray(bh.schedule) && bh.schedule.length ? bh.schedule : defaultBusinessHoursSchedule());
+        const fromServer = Array.isArray(bh.schedule) ? bh.schedule : [];
+        const merged = defaultBusinessHoursSchedule().map(
+          (d) => fromServer.find((s: { dayOfWeek: number }) => s.dayOfWeek === d.dayOfWeek) ?? d
+        );
+        setBusinessHoursSchedule(merged);
       } else {
         setBusinessHours24_7(true);
         setBusinessHoursTimezone('UTC');
@@ -620,24 +629,31 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">{t('workflow.businessHoursSchedule')}</Label>
                     <div className="grid gap-2 text-xs">
-                      {DAY_NAMES.map((_, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="w-8">{DAY_NAMES[i]}</span>
-                          <Input
-                            type="time"
-                            className="h-8 w-28"
-                            value={getScheduleSlot(i).start}
-                            onChange={(e) => updateScheduleSlot(i, 'start', e.target.value)}
-                          />
-                          <span className="text-muted-foreground">–</span>
-                          <Input
-                            type="time"
-                            className="h-8 w-28"
-                            value={getScheduleSlot(i).end}
-                            onChange={(e) => updateScheduleSlot(i, 'end', e.target.value)}
-                          />
-                        </div>
-                      ))}
+                      {DAY_NAMES.map((_, i) => {
+                        const slot = getScheduleSlot(i);
+                        const isClosed = !slot.start && !slot.end;
+                        return (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="w-20">
+                              {DAY_NAMES[i]}
+                              {isClosed && <span className="ml-1 text-muted-foreground">({t('companyDefaults.closed')})</span>}
+                            </span>
+                            <Input
+                              type="time"
+                              className="h-8 w-28"
+                              value={slot.start}
+                              onChange={(e) => updateScheduleSlot(i, 'start', e.target.value)}
+                            />
+                            <span className="text-muted-foreground">–</span>
+                            <Input
+                              type="time"
+                              className="h-8 w-28"
+                              value={slot.end}
+                              onChange={(e) => updateScheduleSlot(i, 'end', e.target.value)}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </>

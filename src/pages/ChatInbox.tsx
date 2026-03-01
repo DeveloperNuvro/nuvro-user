@@ -1775,7 +1775,7 @@ export default function ChatInbox() {
                       <>
                         {whatsappSession.withinWindow ? (
                           <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
-                            <Clock className="h-3 w-3" /> Within 24h • {whatsappSession.hoursRemaining.toFixed(1)}h left to reply freely
+                            <Clock className="h-3 w-3" /> Within 24h{whatsappSession.hoursRemaining != null ? ` • ${Number(whatsappSession.hoursRemaining).toFixed(1)}h left to reply freely` : ' • Reply freely'}
                           </p>
                         ) : (
                           <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20 p-2 space-y-2">

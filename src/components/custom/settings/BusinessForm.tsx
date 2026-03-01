@@ -26,8 +26,13 @@ export const BusinessForm = () => {
     const [defaultWorkingHours, setDefaultWorkingHours] = useState<DefaultWorkingHours | null>(null);
     const [defaultOutsideHoursBehavior, setDefaultOutsideHoursBehavior] = useState<DefaultOutsideHoursBehavior | null>(null);
 
+    /** All 7 days: Mon–Fri 09:00–17:00, Sat & Sun closed (empty) by default. */
     const defaultSchedule = (): { dayOfWeek: number; start: string; end: string }[] =>
-        [1, 2, 3, 4, 5].map((dayOfWeek) => ({ dayOfWeek, start: '09:00', end: '17:00' }));
+        [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) =>
+            dayOfWeek === 0 || dayOfWeek === 6
+                ? { dayOfWeek, start: '', end: '' }
+                : { dayOfWeek, start: '09:00', end: '17:00' }
+        );
     const updateScheduleSlot = (dayOfWeek: number, field: 'start' | 'end', value: string) => {
         setDefaultWorkingHours((prev) => {
             const schedule = prev?.schedule ?? defaultSchedule();
@@ -65,17 +70,28 @@ export const BusinessForm = () => {
             setWidgetColor(profile.widgetColor || '#ff21b0');
             setLogoPreview(profile.businessLogo || null);
             const wh = profile.defaultWorkingHours ?? null;
-            if (wh && Array.isArray(wh.schedule) && wh.schedule.length) {
-                setDefaultWorkingHours(wh);
+            if (wh) {
+                const base = defaultSchedule();
+                const fromServer = Array.isArray(wh.schedule) ? wh.schedule : [];
+                const merged = base.map((d) => fromServer.find((s) => s.dayOfWeek === d.dayOfWeek) ?? d);
+                setDefaultWorkingHours({ ...wh, schedule: merged });
             } else {
-                setDefaultWorkingHours(wh ? { ...wh, schedule: defaultSchedule() } : null);
+                setDefaultWorkingHours(null);
             }
             setDefaultOutsideHoursBehavior(profile.defaultOutsideHoursBehavior ?? null);
         }
     }, [profile]);
 
-    const handleNameSave = () => {
-        dispatch(updateBusinessProfile({ businessName }));
+    const handleSaveAllChanges = () => {
+        const payload: Parameters<typeof updateBusinessProfile>[0] = {};
+        if (hasNameChanged) payload.businessName = businessName;
+        if (hasCompanyDefaultsChanged) {
+            payload.defaultWorkingHours = defaultWorkingHours
+                ? { ...defaultWorkingHours, schedule: (defaultWorkingHours.schedule ?? []).filter((s) => s.start && s.end) }
+                : null;
+            payload.defaultOutsideHoursBehavior = defaultOutsideHoursBehavior ?? null;
+        }
+        if (Object.keys(payload).length) dispatch(updateBusinessProfile(payload));
     };
 
     const handleColorSave = () => {
@@ -98,8 +114,13 @@ export const BusinessForm = () => {
         setDefaultOutsideHoursBehavior({ ...defaultOutsideHoursBehavior, options: next, showClosedMessage: defaultOutsideHoursBehavior?.showClosedMessage !== false });
     };
 
+    const normalizedWorkingHours = (wh: typeof defaultWorkingHours) => {
+        if (!wh) return null;
+        const schedule = (wh.schedule ?? []).filter((s) => s.start && s.end).sort((a, b) => a.dayOfWeek - b.dayOfWeek);
+        return { ...wh, schedule };
+    };
     const hasCompanyDefaultsChanged =
-        JSON.stringify(defaultWorkingHours ?? null) !== JSON.stringify(profile?.defaultWorkingHours ?? null) ||
+        JSON.stringify(normalizedWorkingHours(defaultWorkingHours)) !== JSON.stringify(normalizedWorkingHours(profile?.defaultWorkingHours ?? null)) ||
         JSON.stringify(defaultOutsideHoursBehavior ?? null) !== JSON.stringify(profile?.defaultOutsideHoursBehavior ?? null);
 
     const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,9 +278,13 @@ export const BusinessForm = () => {
                                         <tbody>
                                             {dayNames.map(({ dayOfWeek, labelKey }) => {
                                                 const slot = getScheduleSlot(dayOfWeek);
+                                                const isClosed = !slot.start && !slot.end;
                                                 return (
                                                     <tr key={dayOfWeek} className="border-t border-gray-200 dark:border-gray-700">
-                                                        <td className="py-2 px-3 text-gray-700 dark:text-gray-300">{t(labelKey)}</td>
+                                                        <td className="py-2 px-3 text-gray-700 dark:text-gray-300">
+                                                            {t(labelKey)}
+                                                            {isClosed && <span className="ml-1.5 text-xs text-muted-foreground">({t('companyDefaults.closed')})</span>}
+                                                        </td>
                                                         <td className="py-1 px-2">
                                                             <Input
                                                                 type="time"
@@ -330,7 +355,11 @@ export const BusinessForm = () => {
                 </div>
             </div>
             <div className="flex justify-end">
-                <Button className='cursor-pointer' onClick={handleNameSave} disabled={isUpdating || !hasNameChanged}>
+                <Button
+                    className="cursor-pointer"
+                    onClick={handleSaveAllChanges}
+                    disabled={isUpdating || (!hasNameChanged && !hasCompanyDefaultsChanged)}
+                >
                     {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isUpdating ? t('businessForm.savingButton') : t('businessForm.saveButton')}
                 </Button>
