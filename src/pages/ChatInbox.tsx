@@ -248,13 +248,14 @@ export default function ChatInbox() {
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
   
-  // META: 24h session + template + opt-in (WhatsApp Business policy)
+  // META: 24h session + template + opt-in (Meta WhatsApp Business only; hidden for Unipile WhatsApp)
   const [whatsappSession, setWhatsappSession] = useState<{
     withinWindow: boolean;
     hoursRemaining: number;
     lastMessageTimestamp: string | null;
     requiresTemplate: boolean;
     optIn?: { status: 'opted_in' | 'opted_out' | 'pending'; optedInAt?: string | null; optedOutAt?: string | null; optInSource?: string | null };
+    source?: 'meta' | 'unipile'; // 'unipile' = Unipile WhatsApp – don't show 24h/opt-in UI (Unipile doesn't use Meta policy)
   } | null>(null);
   const [whatsappTemplates, setWhatsappTemplates] = useState<{ id?: string; name: string; status?: string; language?: string }[]>([]);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
@@ -432,9 +433,11 @@ export default function ChatInbox() {
             lastMessageTimestamp: session.lastMessageTimestamp ?? null,
             requiresTemplate: session.requiresTemplate,
             optIn: session.optIn ?? undefined,
+            source: session.source,
           });
         }
-        if (connectionId && !cancelled) {
+        // Only fetch Meta WhatsApp templates when using Meta Business API (not Unipile)
+        if (connectionId && !cancelled && session.source !== 'unipile') {
           const res = await api.get(`/api/v1/whatsapp-business/templates?connectionId=${connectionId}`);
           const list = res.data?.data?.templates || [];
           const approved = list.filter((t: any) => (t.status || t.message_template_status || '').toLowerCase() === 'approved');
@@ -1771,8 +1774,9 @@ export default function ChatInbox() {
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" /> Checking session...
                       </p>
-                    ) : whatsappSession && (
+                    ) : whatsappSession && whatsappSession.source !== 'unipile' && (
                       <>
+                        {/* Meta WhatsApp Business only: 24h window + opt-in (Unipile WhatsApp does not use these) */}
                         {whatsappSession.withinWindow ? (
                           <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
                             <Clock className="h-3 w-3" /> Within 24h{whatsappSession.hoursRemaining != null ? ` • ${Number(whatsappSession.hoursRemaining).toFixed(1)}h left to reply freely` : ' • Reply freely'}
@@ -1832,6 +1836,7 @@ export default function ChatInbox() {
                                       lastMessageTimestamp: session.lastMessageTimestamp ?? null,
                                       requiresTemplate: session.requiresTemplate,
                                       optIn: session.optIn ?? undefined,
+                                      source: session.source,
                                     });
                                   } catch (err: any) {
                                     toast.error(err.response?.data?.message || err.message || 'Failed to send template');
@@ -1906,6 +1911,7 @@ export default function ChatInbox() {
                           </div>
                       </>
                     )}
+                    {/* Unipile WhatsApp: no 24h/opt-in section (Unipile docs do not require Meta policy UI) */}
                   </div>
                 )}
 

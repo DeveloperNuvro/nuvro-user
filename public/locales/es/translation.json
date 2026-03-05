@@ -654,6 +654,7 @@
       "agentUsage": "Uso de Agentes de IA",
       "modelTraining": "Entrenamiento de Modelos",
       "conversation": "Conversación",
+      "apiCalls": "Llamadas API",
       "notAvailable": "N/D"
     },
     "plans": {
@@ -663,37 +664,40 @@
       "featuresTitle": "Características",
       "basic": {
         "label": "Básico",
-        "priceDisplay": "USD $19/mes",
+        "priceDisplay": "USD $69/mes",
         "description": "Para individuos o pequeñas empresas que prueban el servicio con recursos reales (limitados).",
         "features": [
-          "Hasta 1,000 conversaciones al mes",
+          "Hasta 3,000 conversaciones al mes",
           "1 Agente de IA",
           "1 Modelo de Entrenamiento",
-          "Integración con Whatsapp",
+          "1 número de WhatsApp",
+          "1 Sitio web",
           "Soporte Básico"
         ]
       },
       "premium": {
         "label": "Premium",
-        "priceDisplay": "USD $70/mes",
+        "priceDisplay": "USD $209/mes",
         "description": "Para individuos y pequeñas a medianas empresas con crecientes necesidades de interacción con clientes.",
         "features": [
-          "Hasta 100,000 conversaciones al mes",
-          "3 Agentes de IA",
+          "Hasta 10,000 conversaciones al mes",
+          "5 Agentes de IA",
           "3 Modelos de Entrenamiento",
-          "Integración con Whatsapp",
+          "5 números de WhatsApp",
+          "5 Sitios web",
           "Soporte Prioritario"
         ]
       },
       "enterprise": {
         "label": "Empresarial",
-        "priceDisplay": "USD $400/mes",
+        "priceDisplay": "USD $549/mes",
         "description": "Grandes empresas o corporaciones con altos volúmenes de chat y operaciones complejas.",
         "features": [
-          "Hasta 1,000,000 de conversaciones al mes",
-          "10 Agentes de IA",
+          "Hasta 100,000 conversaciones al mes",
+          "15 Agentes de IA",
           "10 Modelos de Entrenamiento",
-          "Integración con Whatsapp",
+          "10 números de WhatsApp",
+          "15 Sitios web",
           "Soporte Dedicado 24/7"
         ]
       }

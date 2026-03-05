@@ -26,6 +26,7 @@ export interface IAiIntegrations {
       maxAgents?: number; // Optional for API integrations
       maxApiCalls: number;
       maxConversationsPerMonth: number;
+      maxWorkflows?: number;
     };
     usageStats: {
       websitesConnected: number;

@@ -16,6 +16,7 @@ import {
     EditAIAgentPayload 
 } from "../features/aiAgent/aiAgentSlice";
 import { fetchAiModelsByBusinessId } from "@/features/aiModel/trainModelSlice";
+import { fetchAiIntregationByBusinessId } from "@/features/business/businessSlice";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -49,6 +50,11 @@ export default function AiAgentPage() {
   } = useSelector((state: RootState) => state.aiAgent);
 
   const { aiModels, status: modelStatus } = useSelector((state: RootState) => state.trainModel);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { aiIntegrations } = useSelector((state: RootState) => state.business);
+  const limits = aiIntegrations?.integrationDetails?.limits;
+  const maxAgents = limits?.maxAgents ?? 0;
+  const atAgentLimit = maxAgents > 0 && aiAgents.length >= maxAgents;
 
   const [modalState, setModalState] = useState<{ isOpen: boolean; mode: 'edit' | 'delete' | null; agent: AIAgent | null }>({ isOpen: false, mode: null, agent: null });
   const [formData, setFormData] = useState<Partial<AIAgent>>({});
@@ -73,20 +79,18 @@ export default function AiAgentPage() {
     }
   }, [theme]);
 
-  // 🔧 FIX: Always fetch agents on mount, and refetch if status is idle or if we have no agents
+  // Fetch agents, models, and integration limits (for plan restrictions)
   useEffect(() => {
-    // Fetch agents if:
-    // 1. Status is idle (initial state)
-    // 2. We have no agents (might have been cleared or failed to load)
-    // 3. Status is failed (retry on mount)
     if (agentStatus === 'idle' || (agentStatus !== 'loading' && aiAgents.length === 0)) {
       dispatch(fetchAiAgentsByBusinessId());
     }
-    // Fetch models if status is idle
     if (modelStatus === 'idle') {
       dispatch(fetchAiModelsByBusinessId());
     }
-  }, [dispatch]); // Only depend on dispatch to run once on mount
+    if (user?.businessId) {
+      dispatch(fetchAiIntregationByBusinessId(user.businessId));
+    }
+  }, [dispatch, user?.businessId]);
 
   const handleAgentClick = (agent: AIAgent) => {
     navigate(`/main-menu/ai-agent/${agent._id}`);
@@ -172,12 +176,20 @@ export default function AiAgentPage() {
               {t('aiAgentPage.subtitle', 'Manage and configure your AI agents. Create, edit, and deploy intelligent assistants for your business.')}
             </p>
           </div>
-          <Link to="/main-menu/ai-agent/create">
-            <Button className="bg-pink-500 hover:bg-pink-600 text-white shadow-lg shadow-pink-500/25 hover:shadow-xl hover:shadow-pink-500/30 transition-all duration-200 flex items-center gap-2 px-6 py-2.5 cursor-pointer shrink-0 font-semibold">
-              <Plus className="h-4 w-4" />
-              {t('aiAgentPage.createButton') || 'Create Agent'}
-            </Button>
-          </Link>
+          {atAgentLimit ? (
+            <Link to="/main-menu/pricing">
+              <Button variant="outline" className="border-pink-500 text-pink-500 hover:bg-pink-50 dark:hover:bg-pink-950/30 flex items-center gap-2 px-6 py-2.5 cursor-pointer shrink-0 font-semibold">
+                {t('aiAgentPage.upgradeToAddMore', 'Upgrade to add more agents')}
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/main-menu/ai-agent/create">
+              <Button className="bg-pink-500 hover:bg-pink-600 text-white shadow-lg shadow-pink-500/25 hover:shadow-xl hover:shadow-pink-500/30 transition-all duration-200 flex items-center gap-2 px-6 py-2.5 cursor-pointer shrink-0 font-semibold">
+                <Plus className="h-4 w-4" />
+                {t('aiAgentPage.createButton') || 'Create Agent'}
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Stats Cards */}

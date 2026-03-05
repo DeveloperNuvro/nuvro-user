@@ -669,6 +669,7 @@
       "agentUsage": "AI Agent Usage",
       "modelTraining": "Model Training",
       "conversation": "Conversation",
+      "apiCalls": "API Calls",
       "notAvailable": "N/A"
     },
     "plans": {
@@ -678,37 +679,40 @@
       "featuresTitle": "Features",
       "basic": {
         "label": "Basic",
-        "priceDisplay": "USD $19/month",
+        "priceDisplay": "USD $69/month",
         "description": "For individuals or small businesses testing the service with real resources (limited).",
         "features": [
-          "Up to 1000 conversations per month",
+          "Up to 3,000 conversations per month",
           "1 AI Agent",
           "1 Training Model",
-          "Whatsapp Integration",
+          "1 WhatsApp number",
+          "1 Website",
           "Basic Support"
         ]
       },
       "premium": {
         "label": "Premium",
-        "priceDisplay": "USD $70/month",
+        "priceDisplay": "USD $209/month",
         "description": "For individuals, and small to medium-sized businesses with growing customer interaction needs.",
         "features": [
-          "Up to 100,000 conversations per month",
-          "3 AI Agents",
+          "Up to 10,000 conversations per month",
+          "5 AI Agents",
           "3 Training Models",
-          "Whatsapp Integration",
+          "5 WhatsApp numbers",
+          "5 Websites",
           "Priority Support"
         ]
       },
       "enterprise": {
         "label": "Enterprise",
-        "priceDisplay": "USD $400/month",
+        "priceDisplay": "USD $549/month",
         "description": "Large enterprises or corporations with high chat volumes and complex operations.",
         "features": [
-          "Up to 1,000,000 conversations per month",
-          "10 AI Agents",
+          "Up to 100,000 conversations per month",
+          "15 AI Agents",
           "10 Training Models",
-          "Whatsapp Integration",
+          "10 WhatsApp numbers",
+          "15 Websites",
           "24/7 Dedicated Support"
         ]
       }
@@ -1083,7 +1087,9 @@
     },
     "toast": {
       "connectionSuccess": "Connection completed. Status updated."
-    }
+    },
+    "planLimitReached": "Plan limit reached ({{max}} channel(s)). Upgrade to add more.",
+    "upgradePlan": "Upgrade plan"
   },
   "channelSettings": {
     "title": "Channel settings",

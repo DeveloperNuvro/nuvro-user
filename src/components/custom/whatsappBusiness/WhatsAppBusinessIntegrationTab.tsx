@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Plus, Trash2, CheckCircle, XCircle, Phone, Info, Eye, EyeOff, FileText, Settings } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
+import { fetchAiIntregationByBusinessId } from "@/features/business/businessSlice";
+import { Link } from "react-router-dom";
 import { 
   fetchWhatsAppConnections, 
   createWhatsAppConnection,
@@ -45,8 +47,12 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
   // const { t } = useTranslation(); // Reserved for future translations
   const dispatch = useDispatch<AppDispatch>();
   const { connections: rawConnections, status, error } = useSelector((state: RootState) => state.whatsappBusiness);
-  
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { aiIntegrations } = useSelector((state: RootState) => state.business);
+  const limits = aiIntegrations?.integrationDetails?.limits;
+  const maxWhatsappNumbers = limits?.maxWhatsappNumbers ?? 0;
   const allConnections = Array.isArray(rawConnections) ? rawConnections : [];
+  const atWhatsAppLimit = maxWhatsappNumbers > 0 && allConnections.length >= maxWhatsappNumbers;
   const agentIdString = agentId ? String(agentId) : undefined;
   
   const connections = useMemo(() => {
@@ -88,6 +94,9 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
     const agentIdString = agentId ? String(agentId) : undefined;
     dispatch(fetchWhatsAppConnections(agentIdString)).catch(() => {});
   }, [dispatch, agentId]);
+  useEffect(() => {
+    if (user?.businessId) dispatch(fetchAiIntregationByBusinessId(user.businessId));
+  }, [dispatch, user?.businessId]);
 
   useEffect(() => {
     if (error) {
@@ -374,7 +383,11 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-green-600 hover:bg-green-700 text-white border border-green-700 dark:border-green-500">
+            <Button
+              disabled={atWhatsAppLimit}
+              title={atWhatsAppLimit ? `Plan limit: ${maxWhatsappNumbers} WhatsApp number(s). Upgrade to add more.` : undefined}
+              className="bg-green-600 hover:bg-green-700 text-white border border-green-700 dark:border-green-500 disabled:opacity-60"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Connect WhatsApp Business
             </Button>
@@ -661,13 +674,22 @@ const WhatsAppBusinessIntegrationTab = ({ agentId }: WhatsAppBusinessIntegration
               <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
                 Connect your Meta WhatsApp Business account to start automating customer conversations
               </p>
+              {atWhatsAppLimit ? (
+                <p className="text-amber-600 dark:text-amber-400 text-sm mb-2">Plan limit reached ({maxWhatsappNumbers} number(s)). Upgrade to add more.</p>
+              ) : null}
               <Button 
                 onClick={() => setIsCreateDialogOpen(true)}
-                className="bg-green-600 hover:bg-green-700 text-white border border-green-700 dark:border-green-500"
+                disabled={atWhatsAppLimit}
+                className="bg-green-600 hover:bg-green-700 text-white border border-green-700 dark:border-green-500 disabled:opacity-60"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Connect Your First Account
               </Button>
+              {atWhatsAppLimit ? (
+                <Button asChild variant="outline" className="mt-2">
+                  <Link to="/main-menu/pricing">Upgrade plan</Link>
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         ) : (

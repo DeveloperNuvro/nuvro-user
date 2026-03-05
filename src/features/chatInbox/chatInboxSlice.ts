@@ -120,15 +120,25 @@ export const fetchCustomersByBusiness = createAsyncThunk<
     "chatInbox/fetchCustomersByBusiness",
     async ({ businessId, page, searchQuery, status, platform }, thunkAPI) => {
         try {
-            // Fetch conversations from the existing endpoint (now includes Unipile conversations)
+            // Fetch from chat-inbox (same as /api/v1/customer/by-business; includes Unipile/WhatsApp)
             const params: any = { businessId, page, limit: 15, search: searchQuery || "", status };
             if (platform && platform !== 'all') {
                 params.platform = platform;
             }
-            const res = await api.get("/api/v1/customer/by-business", { params });
+            const res = await api.get("/api/v1/chat-inbox/conversations", { params });
             const responsePayload = res.data.data;
-            const conversations: ConversationInList[] = responsePayload.data || [];
-            const totalPages = responsePayload.pagination?.totalPages || 1;
+            const rawList = responsePayload?.data || [];
+            // Normalize so id and customer.id are always strings (backend may send ObjectId)
+            const conversations: ConversationInList[] = rawList.map((c: any) => ({
+                ...c,
+                id: c.id != null ? String(c.id) : c._id != null ? String(c._id) : '',
+                customer: c.customer ? {
+                    id: c.customer.id != null ? String(c.customer.id) : c.customer._id != null ? String(c.customer._id) : '',
+                    name: c.customer.name ?? '',
+                } : { id: '', name: '' },
+            }));
+
+            const totalPages = responsePayload?.pagination?.totalPages ?? 1;
 
             return { page, conversations, totalPages };
         } catch (error: any) {

@@ -46,20 +46,20 @@ export const PricingPage = () => {
 
     const plans = useMemo(() => [
         {
-            name: "basic", label: t('pricingPage.plans.basic.label'), price: 19, priceDisplay: t('pricingPage.plans.basic.priceDisplay'),
+            name: "basic", label: t('pricingPage.plans.basic.label'), price: 69, priceDisplay: t('pricingPage.plans.basic.priceDisplay'),
             description: t('pricingPage.plans.basic.description'),
             features: t('pricingPage.plans.basic.features', { returnObjects: true }) as string[],
             priceId: import.meta.env.VITE_STRIPE_BASIC_PLAN_PRICE_ID,
         },
         {
-            name: "premium", label: t('pricingPage.plans.premium.label'), price: 70, priceDisplay: t('pricingPage.plans.premium.priceDisplay'),
+            name: "premium", label: t('pricingPage.plans.premium.label'), price: 209, priceDisplay: t('pricingPage.plans.premium.priceDisplay'),
             description: t('pricingPage.plans.premium.description'),
             recommended: true,
             features: t('pricingPage.plans.premium.features', { returnObjects: true }) as string[],
             priceId: import.meta.env.VITE_STRIPE_PREMIUM_PLAN_PRICE_ID,
         },
         {
-            name: "enterprise", label: t('pricingPage.plans.enterprise.label'), price: 400, priceDisplay: t('pricingPage.plans.enterprise.priceDisplay'),
+            name: "enterprise", label: t('pricingPage.plans.enterprise.label'), price: 549, priceDisplay: t('pricingPage.plans.enterprise.priceDisplay'),
             description: t('pricingPage.plans.enterprise.description'),
             features: t('pricingPage.plans.enterprise.features', { returnObjects: true }) as string[],
             priceId: import.meta.env.VITE_STRIPE_ENTERPRISE_PLAN_PRICE_ID,
@@ -154,11 +154,12 @@ export const PricingPage = () => {
                                 <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 sm:mt-0">{t('pricingPage.usage.nextPaymentOn', { date: format(parseISO(nextBillingDate), "dd/MM/yyyy", { locale: dateLocale }) })}</p>
                             )}
                         </div>
-                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
+                        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-x-6 gap-y-8">
                             <UsageProgressBar label={t('pricingPage.usage.expiration')} value={1} max={1} display={nextBillingDate ? format(parseISO(nextBillingDate), "dd/MM/yyyy", { locale: dateLocale }) : t('pricingPage.usage.notAvailable')} />
                             <UsageProgressBar label={t('pricingPage.usage.agentUsage')} value={usage?.agentsCreated ?? 0} max={limits?.maxAgents ?? 0} display={`${usage?.agentsCreated ?? 0}/${limits?.maxAgents ?? 0}`} />
                             <UsageProgressBar label={t('pricingPage.usage.modelTraining')} value={usage?.modelTrained ?? 0} max={limits?.maxModelTraining ?? 0} display={`${usage?.modelTrained ?? 0}/${limits?.maxModelTraining ?? 0}`} />
                             <UsageProgressBar label={t('pricingPage.usage.conversation')} value={usage?.monthlyConversations ?? 0} max={limits?.maxConversationsPerMonth ?? 0} display={`${usage?.monthlyConversations ?? 0}/${limits?.maxConversationsPerMonth ?? 0}`} />
+                            <UsageProgressBar label={t('pricingPage.usage.apiCalls', 'API calls')} value={usage?.apiCallsMade ?? 0} max={limits?.maxApiCalls ?? 0} display={`${usage?.apiCallsMade ?? 0}/${limits?.maxApiCalls ?? 0}`} />
                         </div>
                     </div>
                 )}

@@ -209,6 +209,23 @@ export default function AgentInbox() {
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
 
+  // META: 24h session + template + opt-in (Meta WhatsApp Business only; hidden for Unipile WhatsApp – same as ChatInbox)
+  const [whatsappSession, setWhatsappSession] = useState<{
+    withinWindow: boolean;
+    hoursRemaining: number;
+    lastMessageTimestamp: string | null;
+    requiresTemplate: boolean;
+    optIn?: { status: 'opted_in' | 'opted_out' | 'pending'; optedInAt?: string | null; optedOutAt?: string | null; optInSource?: string | null };
+    source?: 'meta' | 'unipile';
+  } | null>(null);
+  const [whatsappTemplates, setWhatsappTemplates] = useState<{ id?: string; name: string; status?: string; language?: string }[]>([]);
+  const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
+  const [templateBodyParam, setTemplateBodyParam] = useState('');
+  const [isCheckingSession, setIsCheckingSession] = useState(false);
+  const [optInUpdating, setOptInUpdating] = useState(false);
+  const [showOptInSource, setShowOptInSource] = useState(false);
+  const [optInSourceValue, setOptInSourceValue] = useState('');
+
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const prevScrollHeightRef = useRef<number>(0);
   const [isInitialMessageLoad, setIsInitialMessageLoad] = useState(true);
@@ -265,6 +282,52 @@ export default function AgentInbox() {
   
   useEffect(() => { if (agentId) { dispatch(resetAgentConversations()); dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); } }, [dispatch, agentId, debouncedSearchQuery, activeFilter, activePlatform]);
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
+
+  // META: Fetch WhatsApp 24h session (and templates for Meta only); hide 24h/opt-in UI for Unipile (same as ChatInbox)
+  useEffect(() => {
+    const conv = conversations.find((c) => c.customer?.id === selectedCustomer);
+    const platform = conv?.platformInfo?.platform;
+    const connectionId = conv?.platformInfo?.connectionId;
+    if (!conv?.id || platform !== 'whatsapp') {
+      setWhatsappSession(null);
+      setWhatsappTemplates([]);
+      setSelectedTemplateName('');
+      return;
+    }
+    let cancelled = false;
+    setIsCheckingSession(true);
+    setWhatsappSession(null);
+    (async () => {
+      try {
+        const { getWhatsAppSessionByConversation } = await import('@/api/chatApi');
+        const session = await getWhatsAppSessionByConversation(conv.id);
+        if (!cancelled) {
+          setWhatsappSession({
+            withinWindow: session.withinWindow,
+            hoursRemaining: session.hoursRemaining,
+            lastMessageTimestamp: session.lastMessageTimestamp ?? null,
+            requiresTemplate: session.requiresTemplate,
+            optIn: session.optIn ?? undefined,
+            source: session.source,
+          });
+        }
+        if (connectionId && !cancelled && session.source !== 'unipile') {
+          const res = await api.get(`/api/v1/whatsapp-business/templates?connectionId=${connectionId}`);
+          const list = res.data?.data?.templates || [];
+          const approved = list.filter((t: any) => (t.status || t.message_template_status || '').toLowerCase() === 'approved');
+          if (!cancelled) setWhatsappTemplates(approved.length ? approved : list);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setWhatsappSession(null);
+          setWhatsappTemplates([]);
+        }
+      } finally {
+        if (!cancelled) setIsCheckingSession(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [selectedCustomer, conversations]);
   
   // 🔧 NEW: Helper function for priority colors
   const getPriorityColor = (priority: string = 'normal') => {
@@ -1322,6 +1385,149 @@ export default function AgentInbox() {
                   );
                 })}
               </div>
+              {/* META: 24h session + opt-in for WhatsApp (hidden for Unipile – same logic as ChatInbox) */}
+              {currentConversation?.platformInfo?.platform === 'whatsapp' && (
+                <div className="px-3 sm:px-6 pt-2 space-y-2 border-t border-border/50">
+                  {isCheckingSession ? (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Checking session...
+                    </p>
+                  ) : whatsappSession && whatsappSession.source !== 'unipile' && (
+                    <>
+                      {whatsappSession.withinWindow ? (
+                        <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> Within 24h{whatsappSession.hoursRemaining != null ? ` • ${Number(whatsappSession.hoursRemaining).toFixed(1)}h left to reply freely` : ' • Reply freely'}
+                        </p>
+                      ) : (
+                        <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20 p-2 space-y-2">
+                          <p className="text-xs text-amber-800 dark:text-amber-200 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" /> Template required to message this customer
+                          </p>
+                          <div className="flex flex-wrap gap-2 items-end">
+                            <select
+                              value={selectedTemplateName}
+                              onChange={(e) => setSelectedTemplateName(e.target.value)}
+                              className="text-sm border rounded-md px-2 py-1.5 bg-background min-w-[160px]"
+                            >
+                              <option value="">Select template</option>
+                              {whatsappTemplates.map((t) => (
+                                <option key={t.id || t.name} value={t.name}>{t.name}</option>
+                              ))}
+                            </select>
+                            {selectedTemplateName && (
+                              <input
+                                type="text"
+                                placeholder="Body text (if template has variable)"
+                                value={templateBodyParam}
+                                onChange={(e) => setTemplateBodyParam(e.target.value)}
+                                className="text-sm border rounded-md px-2 py-1.5 bg-background flex-1 min-w-[120px]"
+                              />
+                            )}
+                            <Button
+                              size="sm"
+                              disabled={!selectedTemplateName || !currentConversation?.id || !businessId}
+                              onClick={async () => {
+                                if (!selectedTemplateName || !currentConversation?.id || !businessId) return;
+                                try {
+                                  const { sendMessageViaConversation, getWhatsAppSessionByConversation } = await import('@/api/chatApi');
+                                  const components = templateBodyParam.trim()
+                                    ? [{ type: 'body' as const, parameters: [{ type: 'text' as const, text: templateBodyParam.trim() }] }]
+                                    : undefined;
+                                  await sendMessageViaConversation({
+                                    conversationId: currentConversation.id,
+                                    message: '',
+                                    businessId: businessId!,
+                                    useTemplate: true,
+                                    templateName: selectedTemplateName,
+                                    templateLanguage: 'en',
+                                    templateComponents: components,
+                                  });
+                                  toast.success('Template sent');
+                                  setTemplateBodyParam('');
+                                  setSelectedTemplateName('');
+                                  const session = await getWhatsAppSessionByConversation(currentConversation.id);
+                                  setWhatsappSession({
+                                    withinWindow: session.withinWindow,
+                                    hoursRemaining: session.hoursRemaining,
+                                    lastMessageTimestamp: session.lastMessageTimestamp ?? null,
+                                    requiresTemplate: session.requiresTemplate,
+                                    optIn: session.optIn ?? undefined,
+                                    source: session.source,
+                                  });
+                                } catch (err: any) {
+                                  toast.error(err.response?.data?.message || err.message || 'Failed to send template');
+                                }
+                              }}
+                            >
+                              Send template
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                      <div className="rounded border border-gray-200 dark:border-gray-700 bg-muted/30 p-2 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-medium text-muted-foreground">Opt-in:</span>
+                          <span className={cn(
+                            "rounded px-2 py-0.5 text-xs font-medium",
+                            (whatsappSession.optIn?.status ?? 'pending') === 'opted_in' && "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+                            (whatsappSession.optIn?.status ?? 'pending') === 'opted_out' && "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+                            (whatsappSession.optIn?.status ?? 'pending') === 'pending' && "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                          )}>
+                            {(whatsappSession.optIn?.status ?? 'pending') === 'opted_in' ? 'Opted in' : (whatsappSession.optIn?.status ?? 'pending') === 'opted_out' ? 'Opted out' : 'Pending'}
+                          </span>
+                          {whatsappSession.optIn?.optInSource && <span className="text-xs text-muted-foreground">({whatsappSession.optIn.optInSource})</span>}
+                          {!showOptInSource && (
+                            <>
+                              {(whatsappSession.optIn?.status ?? 'pending') !== 'opted_in' && (
+                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowOptInSource(true)} disabled={optInUpdating}>Mark opted in</Button>
+                              )}
+                              {(whatsappSession.optIn?.status ?? 'pending') !== 'opted_out' && (
+                                <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={async () => {
+                                  if (!currentConversation?.id) return;
+                                  setOptInUpdating(true);
+                                  try {
+                                    const { setWhatsAppOptIn, getWhatsAppSessionByConversation } = await import('@/api/chatApi');
+                                    await setWhatsAppOptIn(currentConversation.id, { status: 'opted_out' });
+                                    const session = await getWhatsAppSessionByConversation(currentConversation.id);
+                                    setWhatsappSession(prev => prev ? { ...prev, optIn: session.optIn } : null);
+                                  } catch (e: any) { toast.error(e?.response?.data?.message || e?.message || 'Failed'); }
+                                  finally { setOptInUpdating(false); }
+                                }} disabled={optInUpdating}>Mark opted out</Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        {showOptInSource && (
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            <select value={optInSourceValue} onChange={(e) => setOptInSourceValue(e.target.value)} className="text-xs border rounded px-2 py-1 bg-background min-w-[140px]">
+                              <option value="">Source (optional)</option>
+                              <option value="website_form">Website form</option>
+                              <option value="in_store">In store</option>
+                              <option value="campaign">Campaign</option>
+                              <option value="other">Other</option>
+                            </select>
+                            <Button type="button" size="sm" className="h-7 text-xs" onClick={async () => {
+                              if (!currentConversation?.id) return;
+                              setOptInUpdating(true);
+                              try {
+                                const { setWhatsAppOptIn, getWhatsAppSessionByConversation } = await import('@/api/chatApi');
+                                await setWhatsAppOptIn(currentConversation.id, { status: 'opted_in', optInSource: optInSourceValue || undefined });
+                                const session = await getWhatsAppSessionByConversation(currentConversation.id);
+                                setWhatsappSession(prev => prev ? { ...prev, optIn: session.optIn } : null);
+                                setShowOptInSource(false);
+                                setOptInSourceValue('');
+                                toast.success('Opt-in updated');
+                              } catch (e: any) { toast.error(e?.response?.data?.message || e?.message || 'Failed'); }
+                              finally { setOptInUpdating(false); }
+                            }} disabled={optInUpdating}>Confirm opted in</Button>
+                            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setShowOptInSource(false); setOptInSourceValue(''); }}>Cancel</Button>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               <div className="flex-shrink-0 p-3 sm:p-6 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 {/* Image preview */}
                 {imagePreview && (
@@ -1359,6 +1565,7 @@ export default function AgentInbox() {
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
                     className="w-full resize-none p-3 sm:p-4 pr-24 sm:pr-28 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
                     rows={1} 
+                    disabled={currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && whatsappSession?.source !== 'unipile'}
                   />
                   {/* 🔧 NEW: Image upload button */}
                   <Button
@@ -1378,7 +1585,7 @@ export default function AgentInbox() {
                   <Button 
                     onClick={handleSendMessage} 
                     size="icon" 
-                    disabled={isUploadingImage || (!newMessage.trim() && !selectedImageFile)}
+                    disabled={isUploadingImage || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && whatsappSession?.source !== 'unipile') || (!newMessage.trim() && !selectedImageFile)}
                     className="absolute right-2 sm:right-3 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9 bg-primary cursor-pointer hover:bg-primary/90 disabled:opacity-50"
                   >
                     {isUploadingImage ? (

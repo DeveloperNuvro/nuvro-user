@@ -20,11 +20,11 @@ import { useState, useEffect } from "react";
 
 import { useDispatch } from "react-redux";
 import { createAIAgent } from "../../../features/aiAgent/aiAgentSlice";
-
+import { fetchAiIntregationByBusinessId } from "@/features/business/businessSlice";
 import { fetchAiModelsByBusinessId } from "@/features/aiModel/trainModelSlice";
 import { RootState, AppDispatch } from "../../../app/store";
 import { useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
@@ -143,11 +143,21 @@ export default function CreateAiAgent() {
   }, [watchedName, errors.name]);
 
   const { aiModels } = useSelector((state: RootState) => state.trainModel);
-  const {status} = useSelector((state: RootState) => state.aiAgent);
+  const { status } = useSelector((state: RootState) => state.aiAgent);
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { aiIntegrations } = useSelector((state: RootState) => state.business);
+  const limits = aiIntegrations?.integrationDetails?.limits;
+  const usageStats = aiIntegrations?.integrationDetails?.usageStats;
+  const maxAgents = limits?.maxAgents ?? 0;
+  const agentsCreated = usageStats?.agentsCreated ?? 0;
+  const atAgentLimit = maxAgents > 0 && agentsCreated >= maxAgents;
 
   useEffect(() => {
     dispatch(fetchAiModelsByBusinessId());
   }, [dispatch]);
+  useEffect(() => {
+    if (user?.businessId) dispatch(fetchAiIntregationByBusinessId(user.businessId));
+  }, [dispatch, user?.businessId]);
 
   const onSubmit = async (data: AgentFormData) => {
     try {
@@ -175,6 +185,31 @@ export default function CreateAiAgent() {
       toast.error(`❌ ${err}`);
     }
   };
+
+  if (atAgentLimit) {
+    return (
+      <div className="w-full min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md border-2 border-pink-200 dark:border-pink-800 bg-pink-50/50 dark:bg-pink-950/20">
+          <CardHeader>
+            <CardTitle>{t('createAiAgentPage.limitReached', 'Agent limit reached')}</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <p className="text-muted-foreground mb-4">
+              {t('createAiAgentPage.upgradeToAddMore', 'Your plan allows {{max}} agent(s). Upgrade to add more agents.', { max: maxAgents })}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/main-menu/ai-agent/setup')} className="cursor-pointer">
+                {t('createAiAgentPage.backToAgents', 'Back to Agents')}
+              </Button>
+              <Button asChild className="cursor-pointer bg-pink-500 hover:bg-pink-600">
+                <Link to="/main-menu/pricing">{t('createAiAgentPage.upgradePlan', 'Upgrade plan')}</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full min-h-screen bg-background">

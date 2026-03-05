@@ -11,7 +11,8 @@ export const getConversationsForInbox = async (params?: {
   platform?: string;
 }) => {
   const response = await api.get('/api/v1/chat-inbox/conversations', { params });
-  return response.data.data;
+  const payload = response.data?.data;
+  return payload?.data ?? payload ?? [];
 };
 
 export const getMessagesByCustomer = async (
@@ -38,6 +39,8 @@ export type WhatsAppSessionInfo = {
   lastMessageTimestamp: string | null;
   requiresTemplate: boolean;
   optIn?: WhatsAppOptIn;
+  /** 'unipile' = Unipile WhatsApp (no Meta 24h/opt-in UI); omit or 'meta' = Meta WhatsApp Business */
+  source?: 'meta' | 'unipile';
 };
 
 export const getWhatsAppSessionByConversation = async (conversationId: string): Promise<WhatsAppSessionInfo> => {

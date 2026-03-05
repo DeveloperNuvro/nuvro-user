@@ -16,6 +16,8 @@ import {
 import { fetchAiAgentsByBusinessId } from '@/features/aiAgent/aiAgentSlice';
 import { fetchWhatsAppConnections } from '@/features/whatsappBusiness/whatsappBusinessSlice';
 import { fetchUnipileConnections } from '@/features/unipile/unipileSlice';
+import { fetchAiIntregationByBusinessId } from '@/features/business/businessSlice';
+import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -108,6 +110,10 @@ export default function WorkflowPage() {
   const user = useSelector((state: RootState) => state.auth.user);
   const businessId = user?.businessId ?? '';
   const { workflows, status, error } = useSelector((state: RootState) => state.workflow);
+  const { aiIntegrations } = useSelector((state: RootState) => state.business);
+  const limits = aiIntegrations?.integrationDetails?.limits;
+  const maxWorkflows = limits?.maxWorkflows ?? 0;
+  const atWorkflowLimit = maxWorkflows > 0 && workflows.length >= maxWorkflows;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -123,6 +129,9 @@ export default function WorkflowPage() {
 
   useEffect(() => {
     if (businessId) dispatch(fetchWorkflows({ businessId }));
+  }, [businessId, dispatch]);
+  useEffect(() => {
+    if (businessId) dispatch(fetchAiIntregationByBusinessId(businessId));
   }, [businessId, dispatch]);
 
   const openCreate = () => {
@@ -282,10 +291,18 @@ export default function WorkflowPage() {
             {t('workflow.subtitleHybrid') || ' Workflows can run without an AI agent (human-only). Add an agent in edit to enable AI replies on website and WhatsApp.'}
           </p>
         </div>
-        <Button onClick={openCreate} className="bg-[var(--accent-color)] hover:opacity-90 text-white shadow-md shrink-0">
-          <Plus className="h-4 w-4 mr-2" />
-          {t('workflow.addWorkflow')}
-        </Button>
+        {atWorkflowLimit ? (
+          <Link to="/main-menu/pricing">
+            <Button variant="outline" className="shrink-0 border-[var(--accent-color)] text-[var(--accent-color)]">
+              {t('workflow.upgradeToAddMore', 'Upgrade to add more workflows')}
+            </Button>
+          </Link>
+        ) : (
+          <Button onClick={openCreate} className="bg-[var(--accent-color)] hover:opacity-90 text-white shadow-md shrink-0">
+            <Plus className="h-4 w-4 mr-2" />
+            {t('workflow.addWorkflow')}
+          </Button>
+        )}
       </div>
 
       {error && (
@@ -306,10 +323,20 @@ export default function WorkflowPage() {
             <p className="text-sm text-muted-foreground max-w-sm mb-6">
               {t('workflow.subtitle')} {t('workflow.subtitleHybrid') || 'Create your first workflow to automate conversations.'}
             </p>
-            <Button onClick={openCreate} className="bg-[var(--accent-color)] hover:opacity-90 text-white shadow-md">
+            {atWorkflowLimit && (
+              <p className="text-amber-600 dark:text-amber-400 text-sm mb-2">
+                {t('workflow.planLimitReached', { max: maxWorkflows, defaultValue: `Plan limit reached (${maxWorkflows} workflow(s)). Upgrade to add more.` })}
+              </p>
+            )}
+            <Button onClick={openCreate} disabled={atWorkflowLimit} className="bg-[var(--accent-color)] hover:opacity-90 text-white shadow-md disabled:opacity-60">
               <Plus className="h-4 w-4 mr-2" />
               {t('workflow.addWorkflow')}
             </Button>
+            {atWorkflowLimit && (
+              <Button asChild variant="outline" className="mt-2">
+                <Link to="/main-menu/pricing">{t('workflow.upgradePlan', 'Upgrade plan')}</Link>
+              </Button>
+            )}
           </div>
         </Card>
       ) : (

@@ -27,8 +27,11 @@ import {
   type ChannelFallbackBehavior,
 } from "@/features/unipile/unipileSlice";
 import { fetchWorkflows } from "@/features/workflow/workflowSlice";
+import { fetchAiIntregationByBusinessId } from "@/features/business/businessSlice";
+import { fetchWhatsAppConnections } from "@/features/whatsappBusiness/whatsappBusinessSlice";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 // Platform config will be created inside component to access translations
 
@@ -48,7 +51,14 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
   const { connections: rawConnections, status, error } = useSelector((state: RootState) => state.unipile);
-  
+  const { connections: whatsappConnections } = useSelector((state: RootState) => state.whatsappBusiness);
+  const { aiIntegrations } = useSelector((state: RootState) => state.business);
+  const limits = aiIntegrations?.integrationDetails?.limits;
+  const maxWhatsappNumbers = limits?.maxWhatsappNumbers ?? 0;
+  const whatsappOnlyUnipile = Array.isArray(rawConnections) ? rawConnections.filter((c: any) => String(c.platform || '').toLowerCase() === 'whatsapp') : [];
+  const totalChannelCount = (Array.isArray(whatsappConnections) ? whatsappConnections.length : 0) + whatsappOnlyUnipile.length;
+  const atChannelLimit = maxWhatsappNumbers > 0 && totalChannelCount >= maxWhatsappNumbers;
+
   // 🔧 SECURITY FIX: Filter connections by agentId on frontend as well (safety measure)
   // This ensures that even if backend returns wrong data, frontend won't show it
   const allConnections = Array.isArray(rawConnections) ? rawConnections : [];
@@ -137,11 +147,16 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
   const businessId = user?.businessId ?? '';
 
   useEffect(() => {
-    // 🔧 NEW: Pass agentId when fetching connections (convert to string if it's an ObjectId)
     const agentIdString = agentId ? String(agentId) : undefined;
     console.log(`🔍 UnipileIntegrationTab: Fetching connections for agentId: ${agentIdString}`);
     dispatch(fetchUnipileConnections(agentIdString)).catch(() => {});
   }, [dispatch, agentId]);
+  useEffect(() => {
+    if (businessId) {
+      dispatch(fetchAiIntregationByBusinessId(businessId));
+      dispatch(fetchWhatsAppConnections()).catch(() => {});
+    }
+  }, [dispatch, businessId]);
 
   useEffect(() => {
     if (error) {
@@ -573,7 +588,11 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 dark:border-blue-500">
+            <Button
+              disabled={atChannelLimit}
+              title={atChannelLimit ? t('integrationsPage.planLimitReached', { max: maxWhatsappNumbers, defaultValue: `Plan limit: ${maxWhatsappNumbers} channel(s). Upgrade to add more.` }) : undefined}
+              className="bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 dark:border-blue-500 disabled:opacity-60"
+            >
               <Plus className="w-4 h-4 mr-2" />
               {t('singleAiAgentPage.multiPlatform.connectPlatform')}
             </Button>
@@ -823,13 +842,24 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
               <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
                 {t('singleAiAgentPage.multiPlatform.noConnectionsSubtitle')}
               </p>
+              {atChannelLimit && (
+                <p className="text-amber-600 dark:text-amber-400 text-sm mb-2">
+                  {t('integrationsPage.planLimitReached', { max: maxWhatsappNumbers, defaultValue: `Plan limit reached (${maxWhatsappNumbers} channel(s)). Upgrade to add more.` })}
+                </p>
+              )}
               <Button 
                 onClick={() => setIsCreateDialogOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 dark:border-blue-500"
+                disabled={atChannelLimit}
+                className="bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 dark:border-blue-500 disabled:opacity-60"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 {t('singleAiAgentPage.multiPlatform.connectFirstPlatform')}
               </Button>
+              {atChannelLimit && (
+                <Button asChild variant="outline" className="mt-2">
+                  <Link to="/main-menu/pricing">{t('integrationsPage.upgradePlan', 'Upgrade plan')}</Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
