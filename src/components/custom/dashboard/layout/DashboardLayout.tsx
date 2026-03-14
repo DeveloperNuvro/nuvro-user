@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState, store } from '@/app/store'; 
 import { logoutUser, User as AuthUser } from '@/features/auth/authSlice';
-import { fetchBusinessById } from "@/features/business/businessSlice";
+import { fetchBusinessById, fetchAiIntregationByBusinessId } from "@/features/business/businessSlice";
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { menuRoutes } from "@/appRoutes";
@@ -51,7 +51,7 @@ export default function DashboardLayout() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const { user, accessToken }: any = useSelector((state: RootState) => state.auth as { user: AuthUser | null; accessToken: string | null });
-  const { selectedBusiness } = useSelector((state: RootState) => state.business);
+  const { selectedBusiness, aiIntegrations } = useSelector((state: RootState) => state.business);
   
   const [isConnected, setIsConnected] = useState(getSocket()?.connected || false);
 
@@ -220,6 +220,7 @@ export default function DashboardLayout() {
   useEffect(() => {
     if (businessId && user?.role === 'business') {
       dispatch(fetchBusinessById(businessId));
+      dispatch(fetchAiIntregationByBusinessId(businessId));
     }
   }, [dispatch, businessId, user?.role]);
 
@@ -255,6 +256,45 @@ export default function DashboardLayout() {
 
   const endDateRaw = selectedBusiness?.currentPeriodEnd || selectedBusiness?.trialEndDate;
   const endDate = endDateRaw ? format(new Date(endDateRaw), 'MMMM d, yyyy, h:mm a') : 'N/A';
+
+  const currentPlanKey = selectedBusiness?.subscriptionPlan as 'basic' | 'premium' | 'enterprise' | undefined;
+  const currentPlanLabel = currentPlanKey
+    ? t(`pricingPage.plans.${currentPlanKey}.label`)
+    : t('pricingPage.usage.noPlan');
+
+  const limits = aiIntegrations?.integrationDetails?.limits;
+  const usage = aiIntegrations?.integrationDetails?.usageStats;
+  const seatsUsed = (aiIntegrations as any)?.seatsUsed ?? 0;
+  const seatsMax = limits?.maxSeats ?? 0;
+  const aiCreditsUsed = usage?.monthlyAiTurnsUsed ?? 0;
+  const aiCreditsMax = limits?.maxMonthlyAiTurns ?? 0;
+  const headerUsageParts: string[] = [];
+  if (seatsMax > 0) headerUsageParts.push(t('pricingPage.usage.headerSeats', { used: seatsUsed, max: seatsMax, defaultValue: '{{used}}/{{max}} seats' }));
+  if (aiCreditsMax > 0) headerUsageParts.push(t('pricingPage.usage.headerAiCredits', { used: aiCreditsUsed, max: aiCreditsMax, defaultValue: '{{used}}/{{max}} AI credits' }));
+  if (limits?.maxAgents) headerUsageParts.push(`${limits.maxAgents} AI agents`);
+  if (limits?.maxWhatsappNumbers) headerUsageParts.push(`${limits.maxWhatsappNumbers} WhatsApp`);
+  if (limits?.maxWebsites) headerUsageParts.push(`${limits.maxWebsites} website`);
+  const headerUsage = headerUsageParts.join(' • ');
+
+  // --- SUBSCRIPTION RESTRICTION COMMENTED OUT: no banner ---
+  // let subscriptionBanner: string | null = null;
+  // if (selectedBusiness) {
+  //   const status = selectedBusiness.subscriptionStatus as string | undefined;
+  //   const trialEnd = selectedBusiness.trialEndDate ? new Date(selectedBusiness.trialEndDate) : null;
+  //   if (status === 'trial') {
+  //     if (trialEnd && trialEnd < new Date()) {
+  //       subscriptionBanner = t('pricingPage.trial.ended');
+  //     } else if (trialEnd) {
+  //       const days = Math.max(0, differenceInDays(trialEnd, new Date()));
+  //       subscriptionBanner = t('pricingPage.trial.endsIn', { count: days });
+  //     }
+  //   } else if (status === 'past_due' || status === 'incomplete') {
+  //     subscriptionBanner = 'Payment issue: please update your billing in Plan & Payment.';
+  //   } else if (status === 'canceled' || status === 'unpaid' || status === 'incomplete_expired') {
+  //     subscriptionBanner = 'Subscription ended: please renew your plan to restore full access.';
+  //   }
+  // }
+  const subscriptionBanner: string | null = null;
 
   const SidebarContent = menuItems.length > 0 ? (
     <div className="w-[300px] bg-gradient-to-b from-white to-gray-50 dark:from-[#1B1B20] dark:to-[#151519] scrollbar-hide overflow-y-auto h-full fixed inset-y-0 left-0 border-r border-gray-200 dark:border-[#2C3139] z-40 shadow-sm dark:shadow-[#0F0F12]" >
@@ -360,15 +400,25 @@ export default function DashboardLayout() {
           </div>
           <div className="flex items-center gap-3">
             {user?.role === 'business' && (
-              <div className="hidden md:flex flex-col items-start bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/30 dark:to-rose-900/30 border border-pink-200 dark:border-pink-800/50 px-4 py-2 rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 group">
+              <div
+                className="hidden md:flex flex-col items-start bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/30 dark:to-rose-900/30 border border-pink-200 dark:border-pink-800/50 px-4 py-2 rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 group"
+                onClick={() => navigate('/main-menu/pricing')}
+              >
                 <div className="flex items-center text-sm font-semibold text-[#ff21b0] dark:text-pink-300">
                   <MdOutlinePayment className="mr-2 h-4 w-4 group-hover:scale-110 transition-transform" /> 
-                  {t('currentSubscription')} 
+                  <span className="mr-1">{currentPlanLabel}</span>
                   <ChevronDown size={14} className="ml-1 group-hover:rotate-180 transition-transform" /> 
                 </div>
                 <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                  {t('subscriptionDetails', { plan: selectedBusiness?.subscriptionPlan, endDate: endDate })}
+                  {headerUsage
+                    ? headerUsage
+                    : t('subscriptionDetails', { plan: currentPlanLabel, endDate })}
                 </div>
+                {subscriptionBanner && (
+                  <div className="mt-1 text-[10px] text-amber-700 dark:text-amber-300 font-medium">
+                    {subscriptionBanner}
+                  </div>
+                )}
               </div>
             )}
             <div className={cn(

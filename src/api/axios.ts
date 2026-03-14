@@ -31,10 +31,11 @@ api.interceptors.response.use(
     console.log("⛔️ Interceptor caught error:", error.response?.status);
     const originalRequest = error.config;
 
-    if (originalRequest.url?.includes('/refresh-token')) {
+    if (originalRequest?.url?.includes('/refresh-token')) {
       return Promise.reject(error);
     }
 
+    // Handle auth expiry (refresh token -> logout)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 

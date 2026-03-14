@@ -15,9 +15,9 @@ interface SessionResponse {
   url: string;
 }
 
-// The payload for creating a new checkout session
+// The payload for creating a new checkout session (send plan so backend uses its env Price ID)
 interface CreateCheckoutPayload {
-  priceId: string;
+  plan: 'basic' | 'premium' | 'enterprise';
 }
 
 // --- INITIAL STATE ---
@@ -31,7 +31,7 @@ const initialState: SubscriptionState = {
 
 /**
  * Thunk to create a Stripe Checkout session.
- * It takes a priceId and returns a URL to redirect the user to.
+ * Sends plan name; backend uses its env Price ID for that plan.
  */
 export const createCheckoutSession = createAsyncThunk<
   SessionResponse,          // Type of the return value on success

@@ -647,14 +647,27 @@
       "ended": "Tu prueba ha finalizado. Por favor, selecciona un plan para continuar."
     },
     "usage": {
+      "subtitle": "Uso este periodo de facturación según tu plan",
       "noPlan": "Sin Plan",
       "currentPlan": "Plan Actual",
       "nextPaymentOn": "Próximo Pago el {{date}}",
       "expiration": "Expiración del Plan",
+      "websites": "Sitios web",
+      "whatsappNumbers": "Números de WhatsApp",
       "agentUsage": "Uso de Agentes de IA",
       "modelTraining": "Entrenamiento de Modelos",
       "conversation": "Conversación",
+      "conversationsThisMonth": "{{count}} este mes",
       "apiCalls": "Llamadas API",
+      "aiCredits": "Créditos de IA",
+      "aiCreditsUsedOnly": "{{used}} usados",
+      "seats": "Asientos de equipo",
+      "headerSeats": "{{used}}/{{max}} asientos",
+      "headerAiCredits": "{{used}}/{{max}} créditos IA",
+      "usedOf": "{{used}} de {{max}}",
+      "remaining": "{{count}} restantes",
+      "loadFailed": "No se pudo cargar el uso. Intenta de nuevo.",
+      "retry": "Reintentar",
       "notAvailable": "N/D"
     },
     "plans": {
@@ -662,12 +675,15 @@
       "subtitle": "Desbloquea todo el potencial de tu chatbot de IA con el plan adecuado.",
       "recommended": "Recomendado",
       "featuresTitle": "Características",
+      "priceFormat": "USD ${{amount}}/mes",
       "basic": {
         "label": "Básico",
         "priceDisplay": "USD $69/mes",
         "description": "Para individuos o pequeñas empresas que prueban el servicio con recursos reales (limitados).",
         "features": [
-          "Hasta 3,000 conversaciones al mes",
+          "2 asientos de equipo",
+          "5,000 créditos de IA al mes",
+          "Conversaciones ilimitadas",
           "1 Agente de IA",
           "1 Modelo de Entrenamiento",
           "1 número de WhatsApp",
@@ -680,11 +696,13 @@
         "priceDisplay": "USD $209/mes",
         "description": "Para individuos y pequeñas a medianas empresas con crecientes necesidades de interacción con clientes.",
         "features": [
-          "Hasta 10,000 conversaciones al mes",
+          "5 asientos de equipo",
+          "25,000 créditos de IA al mes",
+          "Conversaciones ilimitadas",
           "5 Agentes de IA",
           "3 Modelos de Entrenamiento",
           "5 números de WhatsApp",
-          "5 Sitios web",
+          "1 Sitio web",
           "Soporte Prioritario"
         ]
       },
@@ -693,11 +711,13 @@
         "priceDisplay": "USD $549/mes",
         "description": "Grandes empresas o corporaciones con altos volúmenes de chat y operaciones complejas.",
         "features": [
-          "Hasta 100,000 conversaciones al mes",
+          "15 asientos de equipo",
+          "200,000 créditos de IA al mes",
+          "Conversaciones ilimitadas",
           "15 Agentes de IA",
           "10 Modelos de Entrenamiento",
           "10 números de WhatsApp",
-          "15 Sitios web",
+          "1 Sitio web",
           "Soporte Dedicado 24/7"
         ]
       }
@@ -934,6 +954,11 @@
       "noOptions": "No hay opciones de transferencia disponibles",
       "closeConversation": "Cerrar Conversación"
     },
+    "aiSummary": "Resumen con IA",
+    "loadingSummary": "Cargando...",
+    "internalNote": "Nota interna",
+    "improveTone": "Mejorar redacción y tono",
+    "improveFailed": "No se pudo mejorar el mensaje",
     "loadMoreMessages": "Cargar más mensajes",
     "messagePlaceholder": "Escribe tu mensaje...",
     "aCustomer": "Un cliente",

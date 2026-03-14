@@ -6,6 +6,7 @@ import { Workflow, Plus, Edit, Trash2, MessageSquare, Globe, Loader2, Zap } from
 import toast from 'react-hot-toast';
 import {
   fetchWorkflows,
+  fetchWorkflowById,
   createWorkflowThunk,
   updateWorkflowThunk,
   deleteWorkflowThunk,
@@ -286,53 +287,57 @@ export default function AgentWorkflowTab({ businessId, agentId }: AgentWorkflowT
   };
 
   const openEdit = (w: ConversationWorkflow) => {
-    try {
-      setEditingWorkflow(w);
-      setName(w.name ?? '');
-      setTrigger(w.trigger ?? 'conversation_opened');
-      setActive(w.active ?? true);
-      setDefaultLanguage(w.defaultLanguage || 'es');
-      const bh = (w as any).businessHours;
-      if (bh && bh.timezone) {
-        setBusinessHours24_7(bh.enabled === false);
-        setBusinessHoursTimezone(bh.timezone || 'UTC');
-        const fromServer = Array.isArray(bh.schedule) ? bh.schedule : [];
-        const merged = defaultBusinessHoursSchedule().map(
-          (d) => fromServer.find((s: { dayOfWeek: number }) => s.dayOfWeek === d.dayOfWeek) ?? d
-        );
-        setBusinessHoursSchedule(merged);
-      } else {
-        setBusinessHours24_7(true);
-        setBusinessHoursTimezone('UTC');
-        setBusinessHoursSchedule(defaultBusinessHoursSchedule());
-      }
-      const base = w.translations && typeof w.translations === 'object'
-        ? JSON.parse(JSON.stringify(w.translations))
-        : JSON.parse(JSON.stringify(DEFAULT_TRANSLATIONS));
-      for (const lang of Object.keys(base)) {
-        const def = (DEFAULT_TRANSLATIONS as any)[lang]?.steps;
-        (base[lang] as any).steps = { ...(base[lang] as any)?.steps };
-        if (!(base[lang] as any).steps.ask_language) {
-          (base[lang] as any).steps.ask_language = { message: def?.ask_language?.message ?? 'Which language?', options: ASK_LANGUAGE_OPTIONS };
+    if (!businessId || !w._id || !agentId) return;
+    dispatch(fetchWorkflowById({ businessId, workflowId: w._id }))
+      .unwrap()
+      .then((wFull) => {
+        setEditingWorkflow(wFull);
+        setName(wFull.name ?? '');
+        setTrigger(wFull.trigger ?? 'conversation_opened');
+        setActive(wFull.active ?? true);
+        setDefaultLanguage(wFull.defaultLanguage || 'es');
+        const bh = (wFull as any).businessHours;
+        if (bh && bh.timezone) {
+          setBusinessHours24_7(bh.enabled === false);
+          setBusinessHoursTimezone(bh.timezone || 'UTC');
+          const fromServer = Array.isArray(bh.schedule) ? bh.schedule : [];
+          const merged = defaultBusinessHoursSchedule().map(
+            (d) => fromServer.find((s: { dayOfWeek: number }) => s.dayOfWeek === d.dayOfWeek) ?? d
+          );
+          setBusinessHoursSchedule(merged);
+        } else {
+          setBusinessHours24_7(true);
+          setBusinessHoursTimezone('UTC');
+          setBusinessHoursSchedule(defaultBusinessHoursSchedule());
         }
-        if (!(base[lang] as any).steps.ask_channel) {
-          (base[lang] as any).steps.ask_channel = def?.ask_channel ?? { message: 'Choose a department:', options: DEFAULT_CHANNEL_OPTIONS };
-        }
-        ['ask_sales_options', 'ask_support_options', 'ask_technical_options'].forEach((stepId) => {
-          if (!(base[lang] as any).steps[stepId]) {
-            (base[lang] as any).steps[stepId] = def?.ask_sales_options ?? { message: 'How can we help you?', options: DEFAULT_SUB_OPTIONS_EN };
+        const base = wFull.translations && typeof wFull.translations === 'object'
+          ? JSON.parse(JSON.stringify(wFull.translations))
+          : JSON.parse(JSON.stringify(DEFAULT_TRANSLATIONS));
+        for (const lang of Object.keys(base)) {
+          const def = (DEFAULT_TRANSLATIONS as any)[lang]?.steps;
+          (base[lang] as any).steps = { ...(base[lang] as any)?.steps };
+          if (!(base[lang] as any).steps.ask_language) {
+            (base[lang] as any).steps.ask_language = { message: def?.ask_language?.message ?? 'Which language?', options: ASK_LANGUAGE_OPTIONS };
           }
-        });
-        if (!(base[lang] as any).steps.ask_product_intent) {
-          (base[lang] as any).steps.ask_product_intent = def?.ask_product_intent ?? { message: 'What do you need?', options: DEFAULT_PRODUCT_INTENT_OPTIONS_EN };
+          if (!(base[lang] as any).steps.ask_channel) {
+            (base[lang] as any).steps.ask_channel = def?.ask_channel ?? { message: 'Choose a department:', options: DEFAULT_CHANNEL_OPTIONS };
+          }
+          ['ask_sales_options', 'ask_support_options', 'ask_technical_options'].forEach((stepId) => {
+            if (!(base[lang] as any).steps[stepId]) {
+              (base[lang] as any).steps[stepId] = def?.ask_sales_options ?? { message: 'How can we help you?', options: DEFAULT_SUB_OPTIONS_EN };
+            }
+          });
+          if (!(base[lang] as any).steps.ask_product_intent) {
+            (base[lang] as any).steps.ask_product_intent = def?.ask_product_intent ?? { message: 'What do you need?', options: DEFAULT_PRODUCT_INTENT_OPTIONS_EN };
+          }
         }
-      }
-      setTranslations(base);
-      setIsModalOpen(true);
-    } catch (e) {
-      console.error('openEdit failed', e);
-      toast.error(t('workflow.errorOpening') || 'Could not open workflow editor');
-    }
+        setTranslations(base);
+        setIsModalOpen(true);
+      })
+      .catch((e) => {
+        console.error('openEdit failed', e);
+        toast.error(t('workflow.errorOpening') || 'Could not open workflow editor');
+      });
   };
 
   const handleSubmit = () => {

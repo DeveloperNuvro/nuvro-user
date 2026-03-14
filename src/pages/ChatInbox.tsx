@@ -1,4 +1,5 @@
 // src/pages/ChatInbox.tsx
+// 10-item fix: (6) internal note shown as message in conversation flow
 
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fragment } from "react";
 import { Button } from "@/components/ui/button";
@@ -1389,6 +1390,15 @@ export default function ChatInbox() {
                   {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
                   {messagesData?.hasMore && messagesData.status !== 'loading' && (<Button variant="link" onClick={handleLoadMoreMessages}>{t('chatInbox.loadMoreMessages')}</Button>)}
                 </div>
+                {/* Internal note as message in conversation flow (agent-only, never sent to customer) */}
+                {currentConversation?.notes && (
+                  <div className="flex justify-center my-3">
+                    <div className="max-w-[85%] rounded-xl border-2 border-amber-500/40 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 shadow-sm">
+                      <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide mb-1.5">{t('chatInbox.internalNote', 'Internal note')}</p>
+                      <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words"><FormattedText text={currentConversation.notes} /></p>
+                    </div>
+                  </div>
+                )}
                 {Object.entries(groupedMessages).map(([date, group]) => {
                   const platform = currentConversation?.platformInfo?.platform || 'website';
                   const connectionIdFromConversation = currentConversation?.platformInfo?.connectionId;
@@ -1474,10 +1484,13 @@ export default function ChatInbox() {
                       }
                       
                       // 🔧 CRITICAL: Only use HTTP/HTTPS URLs, never att:// URLs
-                      // For audio messages, prioritize cloudinaryUrl (most reliable for audio playback)
+                      // For image/video: prefer cloudinaryUrl then mediaUrl then proxyUrl so inbox always shows WhatsApp/Unipile images
+                      const validMediaUrl = mediaUrl && typeof mediaUrl === 'string' && !mediaUrl.startsWith('att://') ? mediaUrl : null;
                       const displayUrl = messageType === 'audio'
-                        ? (msg.cloudinaryUrl || (mediaUrl && typeof mediaUrl === 'string' && !mediaUrl.startsWith('att://') ? mediaUrl : null) || proxyUrl || null)
-                        : ((mediaUrl && typeof mediaUrl === 'string' && !mediaUrl.startsWith('att://')) ? mediaUrl : (proxyUrl || null));
+                        ? (msg.cloudinaryUrl || validMediaUrl || proxyUrl || null)
+                        : (messageType === 'image' || messageType === 'video' || messageType === 'document'
+                            ? (msg.cloudinaryUrl || validMediaUrl || proxyUrl || null)
+                            : (validMediaUrl || proxyUrl || null));
                       
                       // 🔧 FIX: Detect media message from messageType OR if message text contains "Image:" or "att://"
                       const isMediaMessage = ['image', 'video', 'audio', 'document'].includes(messageType) || 

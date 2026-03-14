@@ -47,6 +47,11 @@ export interface WorkflowBusinessHours {
   schedule: WorkflowBusinessHoursSchedule[];
 }
 
+/** Step content in one language (from backend GET workflow stepsInDefaultLanguage). */
+export interface StepsInDefaultLanguage {
+  [stepId: string]: { message?: string; options?: { value: string; label: string }[] };
+}
+
 export interface ConversationWorkflow {
   _id: string;
   businessId: string;
@@ -60,6 +65,8 @@ export interface ConversationWorkflow {
   businessHours?: WorkflowBusinessHours;
   steps: WorkflowStep[];
   translations: Record<string, WorkflowLanguageContent>;
+  /** From GET only: step content in workflow default language so UI can show correct language after editing. */
+  stepsInDefaultLanguage?: StepsInDefaultLanguage;
   createdAt?: string;
   updatedAt?: string;
 }

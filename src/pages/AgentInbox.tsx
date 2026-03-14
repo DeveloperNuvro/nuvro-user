@@ -1,10 +1,11 @@
 // src/pages/AgentInbox.tsx
+// 10-item fix: (2) realtime inbox no-refresh, (6) internal note in chat, (8) AI Summary, (9) Improve message button, (10) spellCheck on textarea
 
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -21,7 +22,7 @@ import { api } from "@/api/axios";
 import { fetchAgentConversations, resetAgentConversations, updateConversationEnhanced, addAssignedConversation, removeConversation } from "../features/humanAgent/humanAgentInboxSlice";
 import { ConversationInList } from "../features/chatInbox/chatInboxSlice";
 import { fetchMessagesByCustomer, sendHumanMessage, closeConversation } from "../features/chatInbox/chatInboxSlice";
-import { uploadImage as uploadImageApi } from "@/api/chatApi";
+import { uploadImage as uploadImageApi, getConversationSummary as getConversationSummaryApi, improveMessage as improveMessageApi } from "@/api/chatApi";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -208,6 +209,10 @@ export default function AgentInbox() {
   const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
+  const [summaryText, setSummaryText] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [improveLoading, setImproveLoading] = useState(false);
 
   // META: 24h session + template + opt-in (Meta WhatsApp Business only; hidden for Unipile WhatsApp – same as ChatInbox)
   const [whatsappSession, setWhatsappSession] = useState<{
@@ -463,23 +468,20 @@ export default function AgentInbox() {
     }
   }, [agentId, conversations, dispatch]);
 
-  // 🔧 OPTIMIZED: Handle conversation assignment
+  // 🔧 OPTIMIZED: Handle conversation assignment — ensure inbox updates in real time without refresh
   const handleConversationAssigned = useCallback((data: any) => {
     const { conversationId, assignedAgentId, previousAgentId } = data;
     console.log('🔔 AgentInbox: Received conversationAssigned event:', data);
-    console.log('Current agentId:', agentId);
     
     // If this conversation was transferred away from this agent, remove it
     if (previousAgentId === agentId && assignedAgentId !== agentId) {
-      console.log('❌ AgentInbox: Conversation transferred away, removing from list');
       dispatch(removeConversation({ conversationId }));
+      return;
     }
     // If this conversation was assigned to this agent, update it or add it
     if (assignedAgentId === agentId) {
-      console.log('✅ AgentInbox: Conversation assigned to this agent');
       const conversation = conversations.find(c => c.id === conversationId);
       if (conversation) {
-        // Update existing conversation silently (no toast, newChatAssigned will handle it)
         dispatch(updateConversationEnhanced({
           conversationId,
           assignedAgentId,
@@ -487,9 +489,8 @@ export default function AgentInbox() {
           unreadCount: 0
         }));
       } else {
-        // Conversation not in list yet, newChatAssigned event should handle adding it
-        // Don't show toast here to avoid duplicate - newChatAssigned will show it
-        console.log('⚠️ AgentInbox: Conversation assigned but not in list, waiting for newChatAssigned event');
+        // Not in list yet: refetch agent conversations so the new assignment appears immediately (no manual refresh)
+        dispatch(fetchAgentConversations({ page: 1, status: 'open' }));
       }
     }
   }, [agentId, conversations, dispatch]);
@@ -1012,6 +1013,24 @@ export default function AgentInbox() {
                       <FileText className="mr-2 h-4 w-4" />
                       {currentConversation?.notes ? 'Edit Notes' : 'Add Notes'}
                     </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={async () => {
+                      if (!currentConversation?.id) return;
+                      setSummaryDialogOpen(true);
+                      setSummaryLoading(true);
+                      setSummaryText(null);
+                      try {
+                        const data = await getConversationSummaryApi(currentConversation.id);
+                        setSummaryText(data?.summary ?? 'No summary available.');
+                      } catch (err: any) {
+                        const msg = err?.response?.data?.message || err?.message || 'Failed to load summary.';
+                        setSummaryText(msg);
+                      } finally {
+                        setSummaryLoading(false);
+                      }
+                    }}>
+                      <MessageSquareText className="mr-2 h-4 w-4" />
+                      {t('agentInbox.aiSummary', 'AI Summary')}
+                    </DropdownMenuItem>
                     {!currentConversation?.assignedAgentId && (
                       <>
                         <DropdownMenuSeparator />
@@ -1106,6 +1125,16 @@ export default function AgentInbox() {
                     />
                   </DialogContent>
                 </Dialog>
+                <Dialog open={summaryDialogOpen} onOpenChange={setSummaryDialogOpen}>
+                  <DialogContent>
+                    <h3 className="text-lg font-semibold mb-4">{t('agentInbox.aiSummary', 'AI Summary')}</h3>
+                    {summaryLoading ? (
+                      <div className="flex items-center gap-2 py-4"><Loader2 className="h-5 w-5 animate-spin" /> {t('agentInbox.loadingSummary', 'Loading...')}</div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{summaryText ?? '—'}</p>
+                    )}
+                  </DialogContent>
+                </Dialog>
                 
                 <Tooltip><TooltipTrigger asChild><Button className="cursor-pointer" variant="ghost" size="icon" onClick={handleCloseConversation}><XCircle className="h-5 w-5 text-red-500" /></Button></TooltipTrigger><TooltipContent><p>{t('agentInbox.transfer.closeConversation')}</p></TooltipContent></Tooltip>
               </div>
@@ -1128,6 +1157,15 @@ export default function AgentInbox() {
                 {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
                 {messagesData?.hasMore && messagesData.status !== 'loading' && (<Button variant="link" onClick={handleLoadMoreMessages}>{t('agentInbox.loadMoreMessages')}</Button>)}
               </div>
+              {/* Internal note shown as a message in the conversation flow (agent-only, never sent to customer) */}
+              {currentConversation?.notes && (
+                <div className="flex justify-center my-3">
+                  <div className="max-w-[85%] rounded-xl border-2 border-amber-500/40 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 shadow-sm">
+                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide mb-1.5">{t('agentInbox.internalNote', 'Internal note')}</p>
+                    <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words"><FormattedText text={currentConversation.notes} /></p>
+                  </div>
+                </div>
+              )}
               {Object.entries(groupedMessages).map(([date, group]) => {
                 const platform = currentConversation?.platformInfo?.platform || 'website';
                 const connectionIdFromConversation = currentConversation?.platformInfo?.connectionId;
@@ -1563,10 +1601,34 @@ export default function AgentInbox() {
                     onFocus={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentTyping', { customerId: selectedCustomer }); }}
                     onBlur={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentStoppedTyping', { customerId: selectedCustomer }); }}
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
-                    className="w-full resize-none p-3 sm:p-4 pr-24 sm:pr-28 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
+                    className="w-full resize-none p-3 sm:p-4 pr-28 sm:pr-32 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
                     rows={1} 
+                    spellCheck={true}
                     disabled={currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && whatsappSession?.source !== 'unipile'}
                   />
+                  {/* Improve wording/tone (no send); spelling suggestions via browser spellCheck */}
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    disabled={!newMessage.trim() || improveLoading}
+                    onClick={async () => {
+                      if (!newMessage.trim()) return;
+                      setImproveLoading(true);
+                      try {
+                        const data = await improveMessageApi(newMessage);
+                        if (data?.improvedText) setNewMessage(data.improvedText);
+                      } catch {
+                        toast.error(t('agentInbox.improveFailed', 'Could not improve message'));
+                      } finally {
+                        setImproveLoading(false);
+                      }
+                    }}
+                    className="absolute right-20 sm:right-24 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9"
+                    title={t('agentInbox.improveTone', 'Improve wording and tone')}
+                  >
+                    {improveLoading ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />}
+                  </Button>
                   {/* 🔧 NEW: Image upload button */}
                   <Button
                     type="button"

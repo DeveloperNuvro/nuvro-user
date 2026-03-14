@@ -1,4 +1,5 @@
 // src/features/chatInbox/chatInboxSlice.ts
+// 10-item fix: (5) addRealtimeMessage dedupe by _id to prevent image showing 3x
 
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/api/axios";
@@ -190,17 +191,18 @@ export const fetchMessagesByCustomer = createAsyncThunk<
             return thunkAPI.rejectWithValue("Message data from API was not an array");
         }
         const formatted = messagesArray.map((msg: any) => ({
-           _id: msg._id, 
-           text: msg.message, 
-           time: msg.timestamp, 
-           sentBy: msg.sender,
-           // 🔧 NEW: Include media metadata
+           _id: msg._id,
+           // Backend may send transformed fields (text, time, sentBy) or raw (message, timestamp, sender)
+           text: msg.text ?? msg.message ?? '',
+           time: msg.time ?? msg.timestamp ?? new Date().toISOString(),
+           sentBy: msg.sentBy ?? msg.sender ?? 'customer',
+           // 🔧 Include media metadata so WhatsApp/Unipile image messages show on frontend
            messageType: msg.messageType || msg.metadata?.messageType || 'text',
-           mediaUrl: msg.mediaUrl || msg.metadata?.mediaUrl || msg.metadata?.cloudinaryUrl || null,
-           cloudinaryUrl: msg.cloudinaryUrl || msg.metadata?.cloudinaryUrl || null,
-           originalMediaUrl: msg.originalMediaUrl || msg.metadata?.originalMediaUrl || null,
-           proxyUrl: msg.proxyUrl || msg.metadata?.proxyUrl || null,
-           attachmentId: msg.attachmentId || msg.metadata?.attachmentId || null,
+           mediaUrl: msg.mediaUrl ?? msg.metadata?.mediaUrl ?? msg.metadata?.cloudinaryUrl ?? null,
+           cloudinaryUrl: msg.cloudinaryUrl ?? msg.metadata?.cloudinaryUrl ?? null,
+           originalMediaUrl: msg.originalMediaUrl ?? msg.metadata?.originalMediaUrl ?? null,
+           proxyUrl: msg.proxyUrl ?? msg.metadata?.proxyUrl ?? null,
+           attachmentId: msg.attachmentId ?? msg.metadata?.attachmentId ?? null,
            metadata: msg.metadata || {}
         })).reverse();
         return {
@@ -264,18 +266,33 @@ const chatInboxSlice = createSlice({
                 time: rawMessage.time || rawMessage.createdAt || rawMessage.timestamp || new Date().toISOString(),
                 sentBy: rawMessage.sentBy || rawMessage.sender || 'customer',
                 status: rawMessage.status,
-                // 🔧 NEW: Include media metadata from socket message
+                // 🔧 Include media metadata so WhatsApp/Unipile images show in inbox
                 messageType: rawMessage.messageType || rawMessage.metadata?.messageType || 'text',
-                mediaUrl: rawMessage.mediaUrl || rawMessage.metadata?.mediaUrl || rawMessage.metadata?.cloudinaryUrl || null,
-                cloudinaryUrl: rawMessage.cloudinaryUrl || rawMessage.metadata?.cloudinaryUrl || null,
-                originalMediaUrl: rawMessage.originalMediaUrl || rawMessage.metadata?.originalMediaUrl || null,
-                proxyUrl: rawMessage.proxyUrl || rawMessage.metadata?.proxyUrl || null,
-                attachmentId: rawMessage.attachmentId || rawMessage.metadata?.attachmentId || null,
+                mediaUrl: rawMessage.mediaUrl ?? rawMessage.metadata?.mediaUrl ?? rawMessage.cloudinaryUrl ?? rawMessage.metadata?.cloudinaryUrl ?? null,
+                cloudinaryUrl: rawMessage.cloudinaryUrl ?? rawMessage.metadata?.cloudinaryUrl ?? null,
+                originalMediaUrl: rawMessage.originalMediaUrl ?? rawMessage.metadata?.originalMediaUrl ?? null,
+                proxyUrl: rawMessage.proxyUrl ?? rawMessage.metadata?.proxyUrl ?? null,
+                attachmentId: rawMessage.attachmentId ?? rawMessage.metadata?.attachmentId ?? null,
                 metadata: rawMessage.metadata || {}
             };
             
-            if (state.chatData[customerId]) {
-                state.chatData[customerId].list.push(transformedMessage);
+            // 🔧 Ensure chatData[customerId] exists so realtime message is never dropped (e.g. image from WhatsApp)
+            if (!state.chatData[customerId]) {
+                state.chatData[customerId] = {
+                    list: [],
+                    currentPage: 1,
+                    totalPages: 1,
+                    hasMore: false,
+                    status: 'succeeded',
+                };
+            }
+            const list = state.chatData[customerId].list;
+            const existingIndex = list.findIndex((m) => m._id === transformedMessage._id);
+            if (existingIndex !== -1) {
+                // Dedupe: same message already in list (e.g. from optimistic + socket, or multiple socket listeners) – update in place with any extra fields
+                list[existingIndex] = { ...list[existingIndex], ...transformedMessage, _id: list[existingIndex]._id };
+            } else {
+                list.push(transformedMessage);
             }
             const convoIndex = state.conversations.findIndex(c => c.customer.id === customerId);
             if (convoIndex !== -1) {

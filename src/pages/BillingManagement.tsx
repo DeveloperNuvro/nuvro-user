@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-
+import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
-import { useSubscription } from '@/hooks/useSubscription'; // Import the hook we just created
+import { useSubscription } from '@/hooks/useSubscription';
+import { handleCheckoutSuccess } from '@/features/business/businessSlice';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent,  CardHeader, } from '@/components/ui/card';
@@ -15,27 +16,39 @@ import { format } from 'date-fns';
 export const BillingManagement = () => {
 
 
-  // Use our custom hook to get live subscription data and loading state
   const { plan, status, isCanceled, currentPeriodEnd, isLoading: isBusinessLoading } = useSubscription();
-
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const hasHandledSuccess = useRef(false);
 
-  // This effect runs once to check for status messages from Stripe redirects
+  // On Stripe redirect: sync subscription with backend and update Redux so plan shows everywhere
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const statusParam = queryParams.get('status');
+    const sessionId = queryParams.get('session_id');
 
-    if (statusParam) {
-      if (statusParam === 'success') {
-        toast.success('Your subscription has been successfully updated!');
-      } else if (statusParam === 'canceled') {
-        toast.error('The subscription process was canceled.');
-      }
-      // Clean the URL to remove the query parameters after showing the message
+    if (statusParam === 'success' && sessionId && !hasHandledSuccess.current) {
+      hasHandledSuccess.current = true;
+      dispatch(handleCheckoutSuccess(sessionId) as any)
+        .unwrap()
+        .then(() => {
+          toast.success('Your subscription has been successfully updated!');
+          navigate(location.pathname, { replace: true });
+        })
+        .catch((err: string) => {
+          toast.error(err || 'Could not update subscription. Please refresh the page.');
+          navigate(location.pathname, { replace: true });
+        });
+      return;
+    }
+
+    if (statusParam && !sessionId) {
+      if (statusParam === 'success') toast.success('Your subscription has been successfully updated!');
+      else if (statusParam === 'canceled') toast.error('The subscription process was canceled.');
       navigate(location.pathname, { replace: true });
     }
-  }, [location, navigate]);
+  }, [location.search, location.pathname, navigate, dispatch]);
 
 
 

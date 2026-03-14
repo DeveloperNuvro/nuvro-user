@@ -51,13 +51,12 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
   const { connections: rawConnections, status, error } = useSelector((state: RootState) => state.unipile);
-  const { connections: whatsappConnections } = useSelector((state: RootState) => state.whatsappBusiness);
+  useSelector((state: RootState) => state.whatsappBusiness);
   const { aiIntegrations } = useSelector((state: RootState) => state.business);
   const limits = aiIntegrations?.integrationDetails?.limits;
   const maxWhatsappNumbers = limits?.maxWhatsappNumbers ?? 0;
-  const whatsappOnlyUnipile = Array.isArray(rawConnections) ? rawConnections.filter((c: any) => String(c.platform || '').toLowerCase() === 'whatsapp') : [];
-  const totalChannelCount = (Array.isArray(whatsappConnections) ? whatsappConnections.length : 0) + whatsappOnlyUnipile.length;
-  const atChannelLimit = maxWhatsappNumbers > 0 && totalChannelCount >= maxWhatsappNumbers;
+  // --- SUBSCRIPTION / PLAN LIMIT COMMENTED OUT: allow unlimited channels ---
+  const atChannelLimit = false;
 
   // 🔧 SECURITY FIX: Filter connections by agentId on frontend as well (safety measure)
   // This ensures that even if backend returns wrong data, frontend won't show it

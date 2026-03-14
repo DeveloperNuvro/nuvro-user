@@ -1,4 +1,5 @@
 // 🔧 NEW: Chat API functions for Unipile features
+// 10-item fix: (8) getConversationSummary, (9) improveMessage for AI Summary & Improve tone
 import { api } from './axios';
 
 // Chat Inbox API
@@ -113,6 +114,16 @@ export const updateConversationNotes = async (
   notes: string
 ) => {
   const response = await api.patch(`/api/v1/chat-inbox/conversations/${conversationId}/notes`, { notes });
+  return response.data.data;
+};
+
+export const getConversationSummary = async (conversationId: string): Promise<{ summary: string }> => {
+  const response = await api.get(`/api/v1/chat-inbox/conversations/${conversationId}/summary`);
+  return response.data.data;
+};
+
+export const improveMessage = async (text: string): Promise<{ improvedText: string }> => {
+  const response = await api.post('/api/v1/chat-inbox/improve-message', { text });
   return response.data.data;
 };
 

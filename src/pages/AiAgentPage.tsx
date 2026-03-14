@@ -51,10 +51,8 @@ export default function AiAgentPage() {
 
   const { aiModels, status: modelStatus } = useSelector((state: RootState) => state.trainModel);
   const { user } = useSelector((state: RootState) => state.auth);
-  const { aiIntegrations } = useSelector((state: RootState) => state.business);
-  const limits = aiIntegrations?.integrationDetails?.limits;
-  const maxAgents = limits?.maxAgents ?? 0;
-  const atAgentLimit = maxAgents > 0 && aiAgents.length >= maxAgents;
+  // --- SUBSCRIPTION / PLAN LIMIT COMMENTED OUT: allow unlimited AI agents (aiIntegrations no longer needed) ---
+  const atAgentLimit = false;
 
   const [modalState, setModalState] = useState<{ isOpen: boolean; mode: 'edit' | 'delete' | null; agent: AIAgent | null }>({ isOpen: false, mode: null, agent: null });
   const [formData, setFormData] = useState<Partial<AIAgent>>({});

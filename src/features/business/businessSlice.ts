@@ -22,23 +22,28 @@ export interface IAiIntegrations {
     limits: {
       maxWebsites: number;
       maxWhatsappNumbers: number;
-      maxModelTraining?: number; // Optional for API integrations
-      maxAgents?: number; // Optional for API integrations
+      maxModelTraining?: number;
+      maxAgents?: number;
       maxApiCalls: number;
-      maxConversationsPerMonth: number;
+      maxConversationsPerMonth?: number;
       maxWorkflows?: number;
+      maxSeats?: number;
+      maxMonthlyAiTurns?: number;
     };
     usageStats: {
       websitesConnected: number;
       whatsappNumbersConnected: number;
       apiCallsMade: number;
-      monthlyConversations: number;
-      modelTrained:  number,
-      agentsCreated: number, 
+      monthlyConversations?: number;
+      modelTrained: number;
+      agentsCreated: number;
+      monthlyAiTurnsUsed?: number;
     };
     existingDomains: string[];
     expiresAt?: Date;
   };
+  /** Current number of users (seats) for this business; returned by GET integrations for billing UI */
+  seatsUsed?: number;
   createdAt: Date;
   updatedAt: Date;
 }

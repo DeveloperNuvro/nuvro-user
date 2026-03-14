@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 
 import {
   fetchWorkflows,
+  fetchWorkflowById,
   createWorkflowThunk,
   updateWorkflowThunk,
   deleteWorkflowThunk,
@@ -113,7 +114,9 @@ export default function WorkflowPage() {
   const { aiIntegrations } = useSelector((state: RootState) => state.business);
   const limits = aiIntegrations?.integrationDetails?.limits;
   const maxWorkflows = limits?.maxWorkflows ?? 0;
-  const atWorkflowLimit = maxWorkflows > 0 && workflows.length >= maxWorkflows;
+  // --- SUBSCRIPTION / PLAN LIMIT COMMENTED OUT: allow unlimited workflows ---
+  // const atWorkflowLimit = maxWorkflows > 0 && workflows.length >= maxWorkflows;
+  const atWorkflowLimit = false;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -152,29 +155,31 @@ export default function WorkflowPage() {
   };
 
   const openEdit = (w: ConversationWorkflow) => {
-    try {
-      if (businessId) {
-        dispatch(fetchAiAgentsByBusinessId());
-        dispatch(fetchWhatsAppConnections(undefined));
-        dispatch(fetchUnipileConnections(undefined));
-      }
-      setEditingWorkflow(w);
-      setName(w.name ?? '');
-      setTrigger(w.trigger ?? 'conversation_opened');
-      setActive(w.active ?? true);
-      setDefaultLanguage(w.defaultLanguage || 'es');
-      setSelectedAgentId(w.agentId ?? '');
-      setSelectedChannelIds(Array.isArray(w.channelIds) ? [...w.channelIds] : []);
-      setTranslations(
-        w.translations && typeof w.translations === 'object'
-          ? JSON.parse(JSON.stringify(w.translations))
-          : JSON.parse(JSON.stringify(DEFAULT_TRANSLATIONS))
-      );
-      setIsModalOpen(true);
-    } catch (e) {
-      console.error('openEdit failed', e);
-      toast.error(t('workflow.errorOpening') || 'Could not open workflow editor');
-    }
+    if (!businessId || !w._id) return;
+    dispatch(fetchAiAgentsByBusinessId());
+    dispatch(fetchWhatsAppConnections(undefined));
+    dispatch(fetchUnipileConnections(undefined));
+    dispatch(fetchWorkflowById({ businessId, workflowId: w._id }))
+      .unwrap()
+      .then((wFull) => {
+        setEditingWorkflow(wFull);
+        setName(wFull.name ?? '');
+        setTrigger(wFull.trigger ?? 'conversation_opened');
+        setActive(wFull.active ?? true);
+        setDefaultLanguage(wFull.defaultLanguage || 'es');
+        setSelectedAgentId(wFull.agentId ?? '');
+        setSelectedChannelIds(Array.isArray(wFull.channelIds) ? [...wFull.channelIds] : []);
+        setTranslations(
+          wFull.translations && typeof wFull.translations === 'object'
+            ? JSON.parse(JSON.stringify(wFull.translations))
+            : JSON.parse(JSON.stringify(DEFAULT_TRANSLATIONS))
+        );
+        setIsModalOpen(true);
+      })
+      .catch((e) => {
+        console.error('openEdit failed', e);
+        toast.error(t('workflow.errorOpening') || 'Could not open workflow editor');
+      });
   };
 
   const [selectedAgentId, setSelectedAgentId] = useState('');
@@ -225,6 +230,7 @@ export default function WorkflowPage() {
         .then(() => {
           toast.success(t('workflow.updated'));
           setIsModalOpen(false);
+          dispatch(fetchWorkflows({ businessId }));
         })
         .catch((err) => toast.error(err));
     } else {
