@@ -167,7 +167,7 @@ export const createUnipileConnection = createAsyncThunk(
       } else if (error.response?.status === 401) {
         errorMessage = 'Authentication required. Please log in again.';
       } else if (error.response?.status === 403) {
-        errorMessage = 'You do not have permission to create connections';
+        errorMessage = error.response?.data?.message || error.response?.data?.error || 'You do not have permission to create connections';
       } else if (error.response?.status === 404) {
         errorMessage = 'Integration service not available. Please contact support.';
       } else if (error.response?.status === 409) {
