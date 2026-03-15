@@ -451,16 +451,22 @@ export default function AgentInbox() {
     
     // Update if conversation is in list OR if it's assigned to this agent (might not be in list yet)
     if (conversation || assignedAgentId === agentId) {
-      console.log('✅ AgentInbox: Conversation found or assigned to this agent, updating...');
-      dispatch(updateConversationEnhanced({
-        conversationId,
-        unreadCount,
-        priority,
-        tags,
-        notes,
-        assignedAgentId,
-        status,
-      }));
+      if (conversation) {
+        console.log('✅ AgentInbox: Conversation found, updating...');
+        dispatch(updateConversationEnhanced({
+          conversationId,
+          unreadCount,
+          priority,
+          tags,
+          notes,
+          assignedAgentId,
+          status,
+        }));
+      } else {
+        // Not in list (e.g. was closed and just reopened by customer message) — refetch open list so it appears
+        console.log('✅ AgentInbox: Conversation not in list (reopened?), refetching open list');
+        dispatch(fetchAgentConversations({ page: 1, status: 'open' }));
+      }
     } else {
       console.log('⚠️ AgentInbox: Conversation not found in list and not assigned to this agent');
       console.log('Conversation ID:', conversationId);
@@ -529,13 +535,19 @@ export default function AgentInbox() {
     };
     dispatch(addRealtimeMessage({ customerId: String(customerId), message: formattedMessage }));
     if (conversationId) {
-      dispatch(updateConversationPreview({
-        conversationId: String(conversationId),
-        preview: messageText,
-        latestMessageTimestamp: data.createdAt ?? data.timestamp ?? new Date().toISOString(),
-      }));
+      const inList = conversations.some(c => c.id === String(conversationId));
+      if (inList) {
+        dispatch(updateConversationPreview({
+          conversationId: String(conversationId),
+          preview: messageText,
+          latestMessageTimestamp: data.createdAt ?? data.timestamp ?? new Date().toISOString(),
+        }));
+      } else {
+        // Conversation not in list (e.g. closed chat reopened by customer) — refetch open list so it appears
+        dispatch(fetchAgentConversations({ page: 1, status: 'open' }));
+      }
     }
-  }, [dispatch]);
+  }, [conversations, dispatch]);
 
   // 🔧 OPTIMIZED: Real-time event listeners for conversation updates and transfers
   useEffect(() => {
@@ -903,6 +915,22 @@ export default function AgentInbox() {
                         )}
                       </div>
                     </div>
+                    {/* 🔧 WhatsApp connection name: responsive row so it never cramps the title row */}
+                    {convo.platformInfo?.platform === 'whatsapp' && (convo.whatsappConnection?.displayName || convo.whatsappConnection?.id) && (
+                      <div className="mt-1 flex items-center min-w-0">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center max-w-full min-w-0 rounded-md bg-[#dcf8c6]/60 dark:bg-[#25D366]/20 text-[10px] sm:text-xs font-medium text-[#128C7E] dark:text-[#25D366] px-1.5 sm:px-2 py-0.5 truncate border border-[#25D366]/20 dark:border-[#25D366]/30">
+                              {convo.whatsappConnection?.displayName ?? convo.whatsappConnection?.id ?? 'WhatsApp'}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[200px]">
+                            <p className="font-medium">Connection</p>
+                            <p className="text-muted-foreground break-words">{convo.whatsappConnection?.displayName ?? convo.whatsappConnection?.id ?? 'WhatsApp'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
                     <div className="flex justify-between items-center mt-0.5 gap-2">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm text-muted-foreground truncate min-w-0">
@@ -987,6 +1015,12 @@ export default function AgentInbox() {
                   <h2 className="font-semibold text-sm sm:text-base truncate">{currentConversation?.customer?.name}</h2>
                   {currentConversation?.platformInfo?.platform && (
                     <PlatformBadge platform={currentConversation.platformInfo.platform} />
+                  )}
+                  {/* 🔧 WhatsApp connection name (যে নাম দিয়ে Unipile/Meta এ connection create করেছিলেন) */}
+                  {currentConversation?.platformInfo?.platform === 'whatsapp' && currentConversation?.whatsappConnection && (
+                    <span className="text-xs text-muted-foreground truncate max-w-[160px] font-medium" title={currentConversation.whatsappConnection?.displayName ?? currentConversation.whatsappConnection?.id ?? undefined}>
+                      Connection: {currentConversation.whatsappConnection?.displayName ?? currentConversation.whatsappConnection?.id ?? 'WhatsApp'}
+                    </span>
                   )}
                   {/* 🔧 NEW: Country badge in header */}
                   {currentConversation?.country && (

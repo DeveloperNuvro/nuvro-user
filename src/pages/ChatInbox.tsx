@@ -1097,7 +1097,6 @@ export default function ChatInbox() {
                         {convo.platformInfo?.platform ? (
                           <PlatformBadge platform={convo.platformInfo.platform} />
                         ) : convo.source ? (
-                          // Fallback: use source if platformInfo is missing
                           <PlatformBadge platform={convo.source} />
                         ) : null}
                       </div>
@@ -1125,6 +1124,22 @@ export default function ChatInbox() {
                         )}
                       </div>
                     </div>
+                    {/* 🔧 WhatsApp connection name: responsive row so it never cramps the title row */}
+                    {convo.platformInfo?.platform === 'whatsapp' && (convo.whatsappConnection?.displayName || convo.whatsappConnection?.id) && (
+                      <div className="mt-1 flex items-center min-w-0">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="inline-flex items-center max-w-full min-w-0 rounded-md bg-[#dcf8c6]/60 dark:bg-[#25D366]/20 text-[10px] sm:text-xs font-medium text-[#128C7E] dark:text-[#25D366] px-1.5 sm:px-2 py-0.5 truncate border border-[#25D366]/20 dark:border-[#25D366]/30">
+                              {convo.whatsappConnection?.displayName || convo.whatsappConnection?.id || 'WhatsApp'}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[200px]">
+                            <p className="font-medium">Connection</p>
+                            <p className="text-muted-foreground break-words">{convo.whatsappConnection?.displayName || convo.whatsappConnection?.id || 'WhatsApp'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </div>
+                    )}
                     
                     {/* 🔧 NEW: Tags display (exclude platform tag to avoid duplicate with PlatformBadge) */}
                     {(() => {
@@ -1207,6 +1222,12 @@ export default function ChatInbox() {
                   </div>
                   {currentConversation?.platformInfo?.platform && (
                     <PlatformBadge platform={currentConversation.platformInfo.platform} />
+                  )}
+                  {/* 🔧 WhatsApp connection name (যে নাম দিয়ে Unipile/Meta এ connection create করেছিলেন) */}
+                  {currentConversation?.platformInfo?.platform === 'whatsapp' && currentConversation?.whatsappConnection && (
+                    <span className="text-xs text-muted-foreground truncate max-w-[160px] font-medium" title={currentConversation.whatsappConnection?.displayName ?? currentConversation.whatsappConnection?.id ?? undefined}>
+                      Connection: {currentConversation.whatsappConnection?.displayName ?? currentConversation.whatsappConnection?.id ?? 'WhatsApp'}
+                    </span>
                   )}
                   {/* 🔧 NEW: Country badge in header */}
                   {currentConversation?.country && (

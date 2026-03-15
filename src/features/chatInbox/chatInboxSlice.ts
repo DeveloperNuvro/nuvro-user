@@ -38,6 +38,8 @@ export interface ConversationInList {
         code: string;
         name: string;
     } | null; // Customer country for display
+    /** Which WhatsApp connection this chat is under (for chat list display) */
+    whatsappConnection?: { id: string; displayName: string | null };
 }
 
 export interface CustomerTableRow {
