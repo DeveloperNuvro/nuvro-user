@@ -156,8 +156,43 @@ export default function DashboardLayout() {
     dispatch(removeAgentConversation(data));
   }, [dispatch]);
 
+  const handleConversationClosedByAgent = useCallback((data: { conversationId: string }) => {
+    if (data?.conversationId) {
+      dispatch(removeConversation({ conversationId: data.conversationId }));
+      dispatch(removeAgentConversation({ conversationId: data.conversationId }));
+    }
+  }, [dispatch]);
+
+  // 🔧 NEW: Handle new conversation so chat list updates in real time (no refresh) from any page
+  const handleNewConversation = useCallback((data: any) => {
+    if (!data?.id || !data?.customer?.id) return;
+    const state = store.getState();
+    const inChatInbox = state.chatInbox.conversations.some((c: ConversationInList) => c.id === data.id);
+    const inAgentInbox = state.agentInbox.conversations.some((c: ConversationInList) => c.id === data.id);
+    const payload: ConversationInList = {
+      id: data.id,
+      customer: { id: data.customer.id, name: data.customer.name || t('chatInbox.unknownCustomer') },
+      preview: data.preview || '',
+      latestMessageTimestamp: data.latestMessageTimestamp || new Date().toISOString(),
+      status: (data.status === 'closed' ? 'closed' : data.status) || 'ai_only',
+      assignedAgentId: data.assignedAgentId,
+      platformInfo: data.platformInfo,
+      source: data.source,
+      country: data.country,
+    };
+    if (!inChatInbox) dispatch(addNewCustomer(payload));
+    if (!inAgentInbox) dispatch(addAssignedConversation(payload));
+  }, [dispatch, t]);
+
   const handleConversationUpdate = useCallback((data: any) => {
-    dispatch(updateConversationStatus({ customerId: data.customerId, status: data.status, assignedAgentId: data.agentId || (data.to?.type === 'agent' ? data.to.id : undefined) }));
+    if (data?.conversationId && (data?.status === 'closed' || data?.status === 'CLOSED')) {
+      dispatch(removeConversation({ conversationId: data.conversationId }));
+      dispatch(removeAgentConversation({ conversationId: data.conversationId }));
+      return;
+    }
+    if (data?.customerId) {
+      dispatch(updateConversationStatus({ customerId: data.customerId, status: data.status, assignedAgentId: data.agentId || (data.to?.type === 'agent' ? data.to.id : undefined) }));
+    }
   }, [dispatch]);
 
   useEffect(() => {
@@ -182,8 +217,11 @@ export default function DashboardLayout() {
     socket.on("initialAgentStatuses", handleInitialAgentStatuses);
     socket.on("agentStatusUpdate", handleAgentStatusUpdate);
     socket.on("newMessage", handleNewMessage);
+    socket.on("newConversation", handleNewConversation);
     socket.on("newChatAssigned", handleNewAssignment);
     socket.on("conversationRemoved", handleConversationRemoved);
+    socket.on("conversationClosedByAgent", handleConversationClosedByAgent);
+    socket.on("conversationUpdated", handleConversationUpdate);
     socket.on("conversationTransferred", handleNewAssignment);
     socket.on("newTicketCreated", handleConversationUpdate);
 
@@ -193,12 +231,15 @@ export default function DashboardLayout() {
       socket.off("initialAgentStatuses", handleInitialAgentStatuses);
       socket.off("agentStatusUpdate", handleAgentStatusUpdate);
       socket.off("newMessage", handleNewMessage);
+      socket.off("newConversation", handleNewConversation);
       socket.off("newChatAssigned", handleNewAssignment);
       socket.off("conversationRemoved", handleConversationRemoved);
+      socket.off("conversationClosedByAgent", handleConversationClosedByAgent);
+      socket.off("conversationUpdated", handleConversationUpdate);
       socket.off("conversationTransferred", handleNewAssignment);
       socket.off("newTicketCreated", handleConversationUpdate);
     };
-  }, [user, accessToken, handleNewMessage, handleNewAssignment, handleInitialAgentStatuses, handleAgentStatusUpdate, handleConversationRemoved, handleConversationUpdate]);
+  }, [user, accessToken, handleNewMessage, handleNewAssignment, handleNewConversation, handleInitialAgentStatuses, handleAgentStatusUpdate, handleConversationRemoved, handleConversationClosedByAgent, handleConversationUpdate]);
 
   const menuItems = useMemo(() => {
     if (!user) return [];

@@ -500,6 +500,10 @@ export default function AgentInbox() {
     dispatch(removeConversation(data));
   }, [dispatch]);
 
+  const handleConversationClosedByAgent = useCallback((data: { conversationId?: string }) => {
+    if (data?.conversationId) dispatch(removeConversation({ conversationId: data.conversationId }));
+  }, [dispatch]);
+
   // 🔧 PRODUCTION: Real-time newMessage handler so chat updates without refresh (redundant with layout but ensures agent inbox always receives)
   const handleNewMessage = useCallback((data: any) => {
     const customerId = data?.customerId ?? data?.customer_id;
@@ -543,6 +547,7 @@ export default function AgentInbox() {
     socket.on('conversationUpdated', handleConversationUpdated);
     socket.on('conversationAssigned', handleConversationAssigned);
     socket.on('conversationRemoved', handleConversationRemoved);
+    socket.on('conversationClosedByAgent', handleConversationClosedByAgent);
 
     return () => {
       socket.off('newMessage', handleNewMessage);
@@ -550,8 +555,9 @@ export default function AgentInbox() {
       socket.off('conversationUpdated', handleConversationUpdated);
       socket.off('conversationAssigned', handleConversationAssigned);
       socket.off('conversationRemoved', handleConversationRemoved);
+      socket.off('conversationClosedByAgent', handleConversationClosedByAgent);
     };
-  }, [agentId, handleNewMessage, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned, handleConversationRemoved]);
+  }, [agentId, handleNewMessage, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned, handleConversationRemoved, handleConversationClosedByAgent]);
   
   useLayoutEffect(() => { 
     if (!messageListRef.current) return; 
