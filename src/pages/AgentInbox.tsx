@@ -19,9 +19,9 @@ import toast from 'react-hot-toast';
 
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from "@/api/axios";
-import { fetchAgentConversations, resetAgentConversations, updateConversationEnhanced, addAssignedConversation, removeConversation } from "../features/humanAgent/humanAgentInboxSlice";
+import { fetchAgentConversations, resetAgentConversations, updateConversationEnhanced, addAssignedConversation, removeConversation, updateConversationPreview } from "../features/humanAgent/humanAgentInboxSlice";
 import { ConversationInList } from "../features/chatInbox/chatInboxSlice";
-import { fetchMessagesByCustomer, sendHumanMessage, closeConversation } from "../features/chatInbox/chatInboxSlice";
+import { fetchMessagesByCustomer, sendHumanMessage, closeConversation, addRealtimeMessage } from "../features/chatInbox/chatInboxSlice";
 import { uploadImage as uploadImageApi, getConversationSummary as getConversationSummaryApi, improveMessage as improveMessageApi } from "@/api/chatApi";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
@@ -500,23 +500,58 @@ export default function AgentInbox() {
     dispatch(removeConversation(data));
   }, [dispatch]);
 
+  // 🔧 PRODUCTION: Real-time newMessage handler so chat updates without refresh (redundant with layout but ensures agent inbox always receives)
+  const handleNewMessage = useCallback((data: any) => {
+    const customerId = data?.customerId ?? data?.customer_id;
+    const sender = data?.sender ?? data.senderType;
+    const messageText = data?.message ?? data?.text ?? '';
+    const conversationId = data?.conversationId;
+    if (!customerId || !sender) return;
+    const socket = getSocket();
+    if (data?.senderSocketId && data.senderSocketId === socket?.id) return; // skip own sends
+    const formattedMessage = {
+      _id: data._id ?? data.id,
+      text: messageText,
+      sentBy: sender,
+      time: data.createdAt ?? data.timestamp ?? new Date().toISOString(),
+      messageType: data.messageType ?? data.metadata?.messageType ?? 'text',
+      mediaUrl: data.mediaUrl ?? data.metadata?.mediaUrl ?? data.metadata?.cloudinaryUrl ?? null,
+      cloudinaryUrl: data.cloudinaryUrl ?? data.metadata?.cloudinaryUrl ?? null,
+      originalMediaUrl: data.originalMediaUrl ?? data.metadata?.originalMediaUrl ?? null,
+      proxyUrl: data.proxyUrl ?? data.metadata?.proxyUrl ?? null,
+      attachmentId: data.attachmentId ?? data.metadata?.attachmentId ?? null,
+      metadata: data.metadata ?? {},
+      status: data.status,
+    };
+    dispatch(addRealtimeMessage({ customerId: String(customerId), message: formattedMessage }));
+    if (conversationId) {
+      dispatch(updateConversationPreview({
+        conversationId: String(conversationId),
+        preview: messageText,
+        latestMessageTimestamp: data.createdAt ?? data.timestamp ?? new Date().toISOString(),
+      }));
+    }
+  }, [dispatch]);
+
   // 🔧 OPTIMIZED: Real-time event listeners for conversation updates and transfers
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !agentId) return;
 
+    socket.on('newMessage', handleNewMessage);
     socket.on('newChatAssigned', handleNewChatAssigned);
     socket.on('conversationUpdated', handleConversationUpdated);
     socket.on('conversationAssigned', handleConversationAssigned);
     socket.on('conversationRemoved', handleConversationRemoved);
 
     return () => {
+      socket.off('newMessage', handleNewMessage);
       socket.off('newChatAssigned', handleNewChatAssigned);
       socket.off('conversationUpdated', handleConversationUpdated);
       socket.off('conversationAssigned', handleConversationAssigned);
       socket.off('conversationRemoved', handleConversationRemoved);
     };
-  }, [agentId, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned, handleConversationRemoved]);
+  }, [agentId, handleNewMessage, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned, handleConversationRemoved]);
   
   useLayoutEffect(() => { 
     if (!messageListRef.current) return; 

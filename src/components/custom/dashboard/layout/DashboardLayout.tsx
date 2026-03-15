@@ -66,24 +66,30 @@ export default function DashboardLayout() {
 
   // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
   const handleNewMessage = useCallback((data: any) => {
-    const { customerId, sender, message, customerName, conversationId, assignment, senderSocketId } = data;
-    
+    const customerId = data?.customerId ?? data?.customer_id;
+    const sender = data?.sender ?? data?.senderType;
+    const message = data?.message ?? data?.text ?? '';
+    const customerName = data?.customerName;
+    const conversationId = data?.conversationId;
+    const assignment = data?.assignment;
+    const senderSocketId = data?.senderSocketId;
+
     if (!customerId || !sender) return;
     const socket = getSocket();
     if (senderSocketId && senderSocketId === socket?.id) return;
 
-    const formattedMessage: Message = { 
-      _id: data._id, 
-      text: message, 
-      sentBy: sender, 
-      time: data.createdAt || new Date().toISOString(),
-      messageType: data.messageType || data.metadata?.messageType || 'text',
-      mediaUrl: data.mediaUrl || data.metadata?.mediaUrl || data.metadata?.cloudinaryUrl || null,
-      cloudinaryUrl: data.cloudinaryUrl || data.metadata?.cloudinaryUrl || null,
-      originalMediaUrl: data.originalMediaUrl || data.metadata?.originalMediaUrl || null,
-      proxyUrl: data.proxyUrl || data.metadata?.proxyUrl || null,
-      attachmentId: data.attachmentId || data.metadata?.attachmentId || null,
-      metadata: data.metadata || {}
+    const formattedMessage: Message = {
+      _id: data._id ?? data?.id,
+      text: message,
+      sentBy: sender,
+      time: data.createdAt ?? data?.timestamp ?? new Date().toISOString(),
+      messageType: data.messageType ?? data.metadata?.messageType ?? 'text',
+      mediaUrl: data.mediaUrl ?? data.metadata?.mediaUrl ?? data.metadata?.cloudinaryUrl ?? null,
+      cloudinaryUrl: data.cloudinaryUrl ?? data.metadata?.cloudinaryUrl ?? null,
+      originalMediaUrl: data.originalMediaUrl ?? data.metadata?.originalMediaUrl ?? null,
+      proxyUrl: data.proxyUrl ?? data.metadata?.proxyUrl ?? null,
+      attachmentId: data.attachmentId ?? data.metadata?.attachmentId ?? null,
+      metadata: data.metadata ?? {}
     };
 
     const currentState = store.getState();
@@ -92,18 +98,18 @@ export default function DashboardLayout() {
         ...currentState.agentInbox.conversations
     ];
     const uniqueConversations = allCurrentConversations.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
-    const isNewConversation = !uniqueConversations.some(c => c.id === conversationId);
+    const isNewConversation = conversationId ? !uniqueConversations.some(c => c.id === conversationId) : true;
 
-    dispatch(addRealtimeMessage({ customerId, message: formattedMessage }));
+    dispatch(addRealtimeMessage({ customerId: String(customerId), message: formattedMessage }));
 
-    if (isNewConversation && (sender === 'customer' || sender === 'system' || sender === 'ai')) {
+    if (isNewConversation && conversationId && (sender === 'customer' || sender === 'system' || sender === 'ai')) {
       if (user.role === 'business') {
           dispatch(addNewCustomer({ id: conversationId, customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') }, preview: message, latestMessageTimestamp: new Date().toISOString(), status: 'ai_only' }));
       }
     }
 
-    if (!isNewConversation) {
-        dispatch(updateConversationPreview({ conversationId, preview: message, latestMessageTimestamp: data.createdAt || new Date().toISOString() }));
+    if (!isNewConversation && conversationId) {
+        dispatch(updateConversationPreview({ conversationId: String(conversationId), preview: message, latestMessageTimestamp: data.createdAt ?? data?.timestamp ?? new Date().toISOString() }));
     }
     
     if (sender === 'customer') {
