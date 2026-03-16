@@ -33,15 +33,27 @@ import { addAssignedConversation, updateConversationPreview, removeConversation 
 import { setAgentStatus, HumanAgent } from "@/features/humanAgent/humanAgentSlice";
 import { socketReconnected } from "@/features/socket/socketSlice";
 import NotificationToast from "@/components/custom/Notification/NotificationToast";
+import { fetchChannels } from "@/features/channel/channelSlice";
 
-// প্রতিবার নতুন অডিও বাজানো যাতে পরপর মেসেজ এলে কোনো সাউন্ড মিস না হয় (একই element পুনরায় প্লে করলে ব্রাউজার কখনো কখনো স্কিপ করে)
+// One-at-a-time notification sound: stop any current playback before starting new one so it's not intrusive and no stacking.
 const NOTIFICATION_SOUND_URL = "/sounds/notification.mp3";
+let currentNotificationAudio: HTMLAudioElement | null = null;
 const playNotificationSound = () => {
+  if (currentNotificationAudio) {
+    try {
+      currentNotificationAudio.pause();
+      currentNotificationAudio.currentTime = 0;
+    } catch (_) {}
+    currentNotificationAudio = null;
+  }
   const audio = new Audio(NOTIFICATION_SOUND_URL);
   audio.volume = 1;
+  currentNotificationAudio = audio;
+  audio.addEventListener('ended', () => { currentNotificationAudio = null; });
+  audio.addEventListener('error', () => { currentNotificationAudio = null; });
   const p = audio.play();
   if (p !== undefined) {
-    p.catch(() => {});
+    p.catch(() => { currentNotificationAudio = null; });
   }
 };
 
@@ -54,9 +66,29 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const { user, accessToken }: any = useSelector((state: RootState) => state.auth as { user: AuthUser | null; accessToken: string | null });
   const { selectedBusiness, aiIntegrations } = useSelector((state: RootState) => state.business);
+  const channels = useSelector((state: RootState) => state.channel?.channels ?? []);
   
   const [isConnected, setIsConnected] = useState(getSocket()?.connected || false);
   const wasConnectedRef = useRef(false);
+  // এজেন্ট একই newMessage business + agent room দু’বার পায় বলে টোস্ট দুবার না দেখাতে dedupe
+  const lastToastMessageIdRef = useRef<string | null>(null);
+
+  // Agent's channel IDs for department filter: only play notification for conversations in my channel (Support vs Sales).
+  const myChannelIds = useMemo(() => {
+    if (!user || user.role !== 'agent') return [];
+    const uid = (user._id ?? (user as any).id)?.toString();
+    if (!uid) return [];
+    return (channels || []).filter((c: any) =>
+      (c.members || []).some((m: any) => (m?._id ?? m)?.toString() === uid)
+    ).map((c: any) => c._id);
+  }, [user, channels]);
+
+  // Load channels when user is agent so we can filter notifications by department.
+  useEffect(() => {
+    if (user?.role === 'agent' && channels?.length === 0) {
+      dispatch(fetchChannels());
+    }
+  }, [user?.role, channels?.length, dispatch]);
 
   // একবার ক্লিক/ইন্টারঅ্যাকশন দিলে অডিও আনলক (ব্রাউজার পলিসি) — প্রতিবার নতুন Audio() দিয়ে বাজানো হয় তাই ref দরকার নেই
   useEffect(() => {
@@ -124,9 +156,17 @@ export default function DashboardLayout() {
 
     dispatch(addRealtimeMessage({ customerId: String(customerId), message: formattedMessage }));
 
-    // প্রতিটি মেসেজ এলে সাউন্ড (internal note বাদে) — প্রতি মেসেজে নতুন Audio যাতে কখনো মিস না হয়
+    // Sound only for the right audience: business = unassigned only; agent = assigned to me AND conversation is in my department (Support vs Sales).
     if (!formattedMessage.isInternalNote) {
-      playNotificationSound();
+      const isUnassigned = assignment && (assignment.status === 'ai_only' || assignment.type === 'unassigned');
+      const isAssignedToMe = user.role === 'agent' && assignment && assignment.type === 'agent' && (assignment.id === user._id || assignment.id === (user as any).id);
+      const conversationChannelId = data.channelId ?? null;
+      const isMyDepartment = !conversationChannelId || myChannelIds.includes(conversationChannelId);
+      if (user.role === 'business' && isUnassigned) {
+        playNotificationSound();
+      } else if (isAssignedToMe && isMyDepartment) {
+        playNotificationSound();
+      }
     }
 
     if (isNewConversation && conversationId && (sender === 'customer' || sender === 'system' || sender === 'ai')) {
@@ -141,15 +181,23 @@ export default function DashboardLayout() {
     
     if (sender === 'customer') {
       const isUnassigned = assignment && (assignment.status === 'ai_only' || assignment.type === 'unassigned');
-      const isAssignedToMe = user.role === 'agent' && assignment && assignment.type === 'agent' && assignment.id === user._id;
+      const isAssignedToMe = user.role === 'agent' && assignment && assignment.type === 'agent' && (assignment.id === user._id || assignment.id === (user as any).id);
+      const messageId = data._id ?? data?.id ?? '';
+      const alreadyShownToast = messageId && lastToastMessageIdRef.current === messageId;
+
+      if (alreadyShownToast) return;
 
       if (isUnassigned && user.role === 'business') {
+        lastToastMessageIdRef.current = messageId || null;
         toast.custom(tToast => <NotificationToast t={tToast} name={customerName} msg={message} />);
+        if (messageId) setTimeout(() => { if (lastToastMessageIdRef.current === messageId) lastToastMessageIdRef.current = null; }, 2000);
       } else if (isAssignedToMe) {
+        lastToastMessageIdRef.current = messageId || null;
         toast.custom(tToast => <NotificationToast t={tToast} name={customerName} msg={message} />);
+        if (messageId) setTimeout(() => { if (lastToastMessageIdRef.current === messageId) lastToastMessageIdRef.current = null; }, 2000);
       }
     }
-  }, [user, dispatch, t]);
+  }, [user, dispatch, t, myChannelIds]);
 
   const handleNewAssignment = useCallback((data: ConversationInList & { conversationId?: string }) => {
     // Workflow channel assignment may emit newChatAssigned without customer (conversationId, status, channelId, channelName only)
@@ -162,11 +210,13 @@ export default function DashboardLayout() {
     if (user.role === 'agent') {
       dispatch(addAssignedConversation(data));
       toast.success(t('chatInbox.toastNewChat', { customerName: data.customer.name }));
-      playNotificationSound();
+      const assignmentChannelId = (data as any).channelId ?? null;
+      const isMyDepartment = !assignmentChannelId || myChannelIds.includes(assignmentChannelId);
+      if (isMyDepartment) playNotificationSound();
     } else if (user.role === 'business') {
       dispatch(updateConversationStatus({ customerId: data.customer.id, status: data.status, assignedAgentId: data.assignedAgentId }));
     }
-  }, [user, dispatch, t]);
+  }, [user, dispatch, t, myChannelIds]);
 
   const handleInitialAgentStatuses = useCallback((allAgentsWithStatus: HumanAgent[]) => {
     allAgentsWithStatus.forEach(agent => dispatch(setAgentStatus({ userId: agent._id, status: agent.status, lastSeen: agent.lastSeen })));

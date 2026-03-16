@@ -449,8 +449,7 @@ export default function AgentInbox() {
       const existingConversation = conversations.find(c => c.id === data.id);
       if (!existingConversation) {
         dispatch(addAssignedConversation(data));
-        if (isAssignedToMe) toast.success(`New conversation assigned: ${data.customer.name}`);
-        else toast.success(`New chat in ${(data as any).channelName || 'your channel'}: ${data.customer.name}`);
+        // টোস্ট শুধু DashboardLayout থেকে একবার দেখানো হয় (এখানে আবার দেখালে দুবার আসে)
       } else {
         dispatch(addAssignedConversation(data));
       }
