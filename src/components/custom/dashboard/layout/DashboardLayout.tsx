@@ -66,6 +66,19 @@ export default function DashboardLayout() {
     return () => window.removeEventListener('click', initAudio);
   }, []);
 
+  // 🔧 When user returns to this tab after 5+ min on another tab, reconnect socket if it dropped (browsers throttle background tabs so connection may have been closed).
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return;
+      const s = getSocket();
+      if (s && !s.connected) {
+        s.connect();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
   // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
   const handleNewMessage = useCallback((data: any) => {
     const customerId = data?.customerId ?? data?.customer_id;
