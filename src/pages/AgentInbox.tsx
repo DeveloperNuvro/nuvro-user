@@ -22,7 +22,7 @@ import { api } from "@/api/axios";
 import { fetchAgentConversations, resetAgentConversations, updateConversationEnhanced, addAssignedConversation, removeConversation, updateConversationPreview } from "../features/humanAgent/humanAgentInboxSlice";
 import { ConversationInList } from "../features/chatInbox/chatInboxSlice";
 import { fetchMessagesByCustomer, sendHumanMessage, closeConversation, addRealtimeMessage } from "../features/chatInbox/chatInboxSlice";
-import { uploadImage as uploadImageApi, getConversationSummary as getConversationSummaryApi, improveMessage as improveMessageApi } from "@/api/chatApi";
+import { uploadImage as uploadImageApi, getConversationSummary as getConversationSummaryApi, improveMessage as improveMessageApi, sendInternalNote as sendInternalNoteApi } from "@/api/chatApi";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -46,6 +46,15 @@ const SystemMessage = ({ text }: { text: string }) => (
   </div> 
 );
 const useDebounce = (value: string, delay: number) => { const [debouncedValue, setDebouncedValue] = useState(value); useEffect(() => { const handler = setTimeout(() => { setDebouncedValue(value); }, delay); return () => { clearTimeout(handler); }; }, [value, delay]); return debouncedValue; };
+
+// 🔧 Detect language from text so AI suggestion keeps the same language (no conversion to English)
+function detectLanguageFromText(text: string): string | undefined {
+  if (!text?.trim()) return undefined;
+  const t = text.trim();
+  if (/[\u0980-\u09FF]/.test(t)) return 'bn';
+  if (/[áéíóúñü¿¡]|(\b(el|la|los|las|de|que|es|en|un|una|por|con|no|una|su|al|lo|como|más|pero|sus|le|ya|o|fue|porque|esta|entre|cuando|muy|sin|sobre|también|me|hasta|hay|donde|han|quien|desde|todo|nos|durante|estados|otros|ese|eso|ante|ellos|e|esto|mí|antes|algunos|qué|unos|yo|otro|otras|otra|él|tanto|esa|estos|mucho|quienes|nada|ser|esos|tres|ni|él|esa|estas|algunas|del|contra|nosotros|está|bien|puede|sólo|tan|así|mismo|después|año|dos|aún|uno|bajo|cuatro|nueva|nuevo|sí|sido|parte|tiempo|ella|sí|día|uno|bien|poco|debe|entonces|están|cinco|nuestro|vida|quiere|sabe|gran|nuestra|hacer|nuestros|forma|caso|manera|otro|muchos|después|otros|aunque|esa|eso|años|contra|estado|desde|todo|nos|durante|primero|desde|esa|estos|ni|nosotros|él|ella|eso|sí|también|cuando|muy|sin|sobre|también|me|hasta|hay|donde)\b)/i.test(t)) return 'es';
+  return undefined;
+}
 
 // 🔧 Helper function to optimize Cloudinary URLs with transformations
 const optimizeImageUrl = (url: string | null, maxWidth: number = 800, quality: string = 'auto'): string | null => {
@@ -247,6 +256,7 @@ export default function AgentInbox() {
   const { agents } = useSelector((state: RootState) => state.humanAgent);
   const { conversations, status: agentInboxStatus, currentPage, totalPages } = useSelector((state: RootState) => state.agentInbox);
   const messagesData = useSelector((state: RootState) => selectedCustomer ? state.chatInbox.chatData[selectedCustomer] : null);
+  const socketReconnectCount = useSelector((state: RootState) => state.socket?.reconnectCount ?? 0);
 
   const businessId = user?.businessId;
   const agentId = user?._id;
@@ -286,6 +296,14 @@ export default function AgentInbox() {
   }, [agents, businessId, dispatch]);
   
   useEffect(() => { if (agentId) { dispatch(resetAgentConversations()); dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); } }, [dispatch, agentId, debouncedSearchQuery, activeFilter, activePlatform]);
+
+  // 🔧 Refetch agent chat list when socket reconnects so realtime updates resume (e.g. after 5+ min idle)
+  useEffect(() => {
+    if (socketReconnectCount > 0 && agentId) {
+      dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+    }
+  }, [socketReconnectCount]);
+
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
 
   // META: Fetch WhatsApp 24h session (and templates for Meta only); hide 24h/opt-in UI for Unipile (same as ChatInbox)
@@ -379,18 +397,18 @@ export default function AgentInbox() {
     }
   }, [currentConversation, dispatch]);
   
-  // 🔧 OPTIMIZED: Update notes (using memoized currentConversation)
-  const handleUpdateNotes = useCallback(async (notes: string) => {
-    if (!currentConversation?.id) return;
+  // 🔧 Send internal note as a message so it appears in the chat flow (chronologically), not only at the top
+  const handleSendInternalNote = useCallback(async (noteText: string) => {
+    if (!currentConversation?.id || !noteText?.trim()) return;
     try {
-      await api.patch(`/api/v1/customer/conversations/${currentConversation.id}/notes`, { notes });
-      dispatch(updateConversationEnhanced({ conversationId: currentConversation.id, notes }));
-      toast.success('Notes updated');
+      await sendInternalNoteApi(currentConversation.id, noteText.trim());
+      toast.success(t('agentInbox.noteSent', 'Note sent'));
       setNotesDialogOpen(false);
+      // Message will appear in the list via socket newMessage
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update notes');
+      toast.error(error.response?.data?.message || 'Failed to send note');
     }
-  }, [currentConversation, dispatch]);
+  }, [currentConversation, t]);
   
   // 🔧 OPTIMIZED: Assign conversation (using memoized currentConversation)
   const handleAssignConversation = useCallback(async (agentId: string) => {
@@ -1086,7 +1104,7 @@ export default function AgentInbox() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => setNotesDialogOpen(true)}>
                       <FileText className="mr-2 h-4 w-4" />
-                      {currentConversation?.notes ? 'Edit Notes' : 'Add Notes'}
+                      {t('agentInbox.addInternalNote', 'Add internal note')}
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={async () => {
                       if (!currentConversation?.id) return;
@@ -1190,13 +1208,14 @@ export default function AgentInbox() {
                   </DialogContent>
                 </Dialog>
                 
-                {/* 🔧 NEW: Notes Dialog */}
+                {/* 🔧 Internal note: sent as a message so it appears in the chat flow (chronologically) */}
                 <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
                   <DialogContent>
-                    <h3 className="text-lg font-semibold mb-4">Conversation Notes</h3>
+                    <h3 className="text-lg font-semibold mb-4">{t('agentInbox.addInternalNote', 'Add internal note')}</h3>
                     <NotesEditor 
-                      currentNotes={currentConversation?.notes || ''} 
-                      onSave={handleUpdateNotes}
+                      currentNotes="" 
+                      onSave={handleSendInternalNote}
+                      placeholder={t('agentInbox.internalNotePlaceholder', 'Add internal notes for this conversation...')}
                     />
                   </DialogContent>
                 </Dialog>
@@ -1232,15 +1251,6 @@ export default function AgentInbox() {
                 {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
                 {messagesData?.hasMore && messagesData.status !== 'loading' && (<Button variant="link" onClick={handleLoadMoreMessages}>{t('agentInbox.loadMoreMessages')}</Button>)}
               </div>
-              {/* Internal note shown as a message in the conversation flow (agent-only, never sent to customer) */}
-              {currentConversation?.notes && (
-                <div className="flex justify-center my-3">
-                  <div className="max-w-[85%] rounded-xl border-2 border-amber-500/40 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 shadow-sm">
-                    <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide mb-1.5">{t('agentInbox.internalNote', 'Internal note')}</p>
-                    <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words"><FormattedText text={currentConversation.notes} /></p>
-                  </div>
-                </div>
-              )}
               {Object.entries(groupedMessages).map(([date, group]) => {
                 const platform = currentConversation?.platformInfo?.platform || 'website';
                 const connectionIdFromConversation = currentConversation?.platformInfo?.connectionId;
@@ -1248,7 +1258,18 @@ export default function AgentInbox() {
                   <div key={date}>
                     <div className="text-center text-xs text-muted-foreground my-4">{date}</div>
                     {group?.map((msg: any, i) => { 
-                      if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />; 
+                      if (msg.sentBy === 'system') return <SystemMessage key={i} text={msg.text} />;
+                      // Internal note: render as message bubble in the flow (chronological), agent-side style
+                      if (msg.isInternalNote || msg.metadata?.isInternalNote) {
+                        return (
+                          <div key={i} className="flex justify-end my-2">
+                            <div className="max-w-[85%] rounded-xl border-2 border-amber-500/40 dark:border-amber-400/30 bg-amber-100 dark:bg-amber-950/50 px-4 py-2.5 shadow-sm">
+                              <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide mb-1">{t('agentInbox.internalNote', 'Internal note')}</p>
+                              <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words"><FormattedText text={msg.text} /></p>
+                            </div>
+                          </div>
+                        );
+                      }
                       // Treat AI as agent-side so customer & AI don't render on the same side
                       const isAgentSide = ["agent", "human", "ai"].includes(msg.sentBy);
                       const messageType = msg.messageType || msg.metadata?.messageType || 'text';
@@ -1691,7 +1712,8 @@ export default function AgentInbox() {
                       if (!newMessage.trim()) return;
                       setImproveLoading(true);
                       try {
-                        const data = await improveMessageApi(newMessage);
+                        const lang = detectLanguageFromText(newMessage) || (currentConversation as any)?.preferredLanguage || (user as any)?.language || i18n.language?.slice(0, 2);
+                        const data = await improveMessageApi(newMessage, lang);
                         if (data?.improvedText) setNewMessage(data.improvedText);
                       } catch {
                         toast.error(t('agentInbox.improveFailed', 'Could not improve message'));
@@ -1817,14 +1839,14 @@ const TagsEditor = ({ currentTags, onSave }: { currentTags: string[]; onSave: (t
   );
 };
 
-// 🔧 NEW: Notes Editor Component
-const NotesEditor = ({ currentNotes, onSave }: { currentNotes: string; onSave: (notes: string) => void }) => {
+// 🔧 Notes Editor Component (placeholder translated by parent)
+const NotesEditor = ({ currentNotes, onSave, placeholder = 'Add internal notes for this conversation...' }: { currentNotes: string; onSave: (notes: string) => void; placeholder?: string }) => {
   const [notes, setNotes] = useState(currentNotes);
   
   return (
     <div className="space-y-4">
       <Textarea
-        placeholder="Add internal notes for this conversation..."
+        placeholder={placeholder}
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         rows={6}

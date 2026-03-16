@@ -70,8 +70,11 @@ export interface Message {
         cloudinaryUrl?: string | null;
         proxyUrl?: string | null;
         attachmentId?: string | null;
+        isInternalNote?: boolean;
         [key: string]: any;
     };
+    /** When true, render as internal note bubble in the message flow (agent-only, chronological) */
+    isInternalNote?: boolean;
 }
 
 // --- STATE INTERFACE ---
@@ -194,18 +197,17 @@ export const fetchMessagesByCustomer = createAsyncThunk<
         }
         const formatted = messagesArray.map((msg: any) => ({
            _id: msg._id,
-           // Backend may send transformed fields (text, time, sentBy) or raw (message, timestamp, sender)
            text: msg.text ?? msg.message ?? '',
            time: msg.time ?? msg.timestamp ?? new Date().toISOString(),
            sentBy: msg.sentBy ?? msg.sender ?? 'customer',
-           // 🔧 Include media metadata so WhatsApp/Unipile image messages show on frontend
            messageType: msg.messageType || msg.metadata?.messageType || 'text',
            mediaUrl: msg.mediaUrl ?? msg.metadata?.mediaUrl ?? msg.metadata?.cloudinaryUrl ?? null,
            cloudinaryUrl: msg.cloudinaryUrl ?? msg.metadata?.cloudinaryUrl ?? null,
            originalMediaUrl: msg.originalMediaUrl ?? msg.metadata?.originalMediaUrl ?? null,
            proxyUrl: msg.proxyUrl ?? msg.metadata?.proxyUrl ?? null,
            attachmentId: msg.attachmentId ?? msg.metadata?.attachmentId ?? null,
-           metadata: msg.metadata || {}
+           metadata: msg.metadata || {},
+           isInternalNote: !!(msg.isInternalNote ?? msg.metadata?.isInternalNote),
         })).reverse();
         return {
             customerId,

@@ -26,8 +26,13 @@ export const useGlobalPresenceSocket = () => {
           userId: user._id,
           businessId: user.businessId,
         },
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'],
         withCredentials: true,
+        timeout: 60000,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
       });
 
       console.log('✅ Global Presence Socket connected for site-wide status.');

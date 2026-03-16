@@ -8,27 +8,28 @@ export const initSocket = (user: any, accessToken?: string): Socket => {
   if (socket) {
     socket.disconnect();
   }
-  
+
   if (user?._id && user?.businessId) {
-    // 🔧 NEW: Support both JWT token (new) and userId/businessId (backward compatible)
     const authConfig: any = {
       query: {
         userId: user._id,
         businessId: user.businessId,
       },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
       withCredentials: true,
+      // 🔧 Keep connection alive like WhatsApp/Messenger: match server timeouts and aggressive reconnection
+      timeout: 60000,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
     };
-    
-    // If accessToken is provided, use it for authentication (preferred method)
+
     if (accessToken) {
-      authConfig.auth = {
-        token: accessToken
-      };
-      // Also include token in query as fallback
+      authConfig.auth = { token: accessToken };
       authConfig.query.token = accessToken;
     }
-    
+
     socket = io(API_BASE_URL, authConfig);
 
     console.log('[Socket] Initialized for user:', user._id, accessToken ? '(with JWT token)' : '(legacy mode)');

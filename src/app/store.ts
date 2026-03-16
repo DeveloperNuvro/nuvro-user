@@ -21,6 +21,7 @@ import shopifyReducer from '../features/shopify/shopifySlice';
 import whatsappBusinessReducer from '../features/whatsappBusiness/whatsappBusinessSlice';
 import reportingReducer from '../features/reporting/reportingSlice';
 import workflowReducer from '../features/workflow/workflowSlice';
+import socketReducer from '../features/socket/socketSlice';
 
 export const store = configureStore({
   reducer: {
@@ -46,6 +47,7 @@ export const store = configureStore({
     whatsappBusiness: whatsappBusinessReducer,
     reporting: reportingReducer,
     workflow: workflowReducer,
+    socket: socketReducer,
   },
 });
 

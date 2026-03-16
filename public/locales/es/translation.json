@@ -176,7 +176,11 @@
     "toastTransferSuccess": "¡Conversación transferida!",
     "toastTransferFailed": "La transferencia falló.",
     "toastCloseSuccess": "¡Conversación cerrada!",
-    "toastCloseFailed": "No se pudo cerrar la conversación."
+    "toastCloseFailed": "No se pudo cerrar la conversación.",
+    "internalNote": "Nota interna",
+    "addInternalNote": "Añadir nota interna",
+    "noteSent": "Nota enviada",
+    "internalNotePlaceholder": "Añade notas internas para esta conversación..."
   },
   "workflow": {
     "title": "Flujos de conversación",
@@ -957,6 +961,9 @@
     "aiSummary": "Resumen con IA",
     "loadingSummary": "Cargando...",
     "internalNote": "Nota interna",
+    "addInternalNote": "Añadir nota interna",
+    "noteSent": "Nota enviada",
+    "internalNotePlaceholder": "Añade notas internas para esta conversación...",
     "improveTone": "Mejorar redacción y tono",
     "improveFailed": "No se pudo mejorar el mensaje",
     "loadMoreMessages": "Cargar más mensajes",

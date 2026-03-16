@@ -247,7 +247,11 @@
     "toastTransferSuccess": "কথোপকথন স্থানান্তরিত হয়েছে!",
     "toastTransferFailed": "স্থানান্তর ব্যর্থ হয়েছে।",
     "toastCloseSuccess": "কথোপকথন বন্ধ হয়েছে!",
-    "toastCloseFailed": "কথোপকথন বন্ধ করতে ব্যর্থ হয়েছে।"
+    "toastCloseFailed": "কথোপকথন বন্ধ করতে ব্যর্থ হয়েছে।",
+    "internalNote": "অভ্যন্তরীণ নোট",
+    "addInternalNote": "অভ্যন্তরীণ নোট যোগ করুন",
+    "noteSent": "নোট পাঠানো হয়েছে",
+    "internalNotePlaceholder": "এই কথোপকথনের জন্য অভ্যন্তরীণ নোট যোগ করুন..."
   },
   "workflow": {
     "title": "কনভারসেশন ওয়ার্কফ্লো",
@@ -1028,6 +1032,9 @@
     "aiSummary": "এআই সারাংশ",
     "loadingSummary": "লোড হচ্ছে...",
     "internalNote": "অভ্যন্তরীণ নোট",
+    "addInternalNote": "অভ্যন্তরীণ নোট যোগ করুন",
+    "noteSent": "নোট পাঠানো হয়েছে",
+    "internalNotePlaceholder": "এই কথোপকথনের জন্য অভ্যন্তরীণ নোট যোগ করুন...",
     "improveTone": "বার্তার ভাব ও ভাষা উন্নত করুন",
     "improveFailed": "বার্তা উন্নত করা যায়নি",
     "loadMoreMessages": "আরও বার্তা লোড করুন",

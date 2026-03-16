@@ -31,6 +31,7 @@ import {
 } from '@/features/chatInbox/chatInboxSlice';
 import { addAssignedConversation, updateConversationPreview, removeConversation as removeAgentConversation } from "@/features/humanAgent/humanAgentInboxSlice";
 import { setAgentStatus, HumanAgent } from "@/features/humanAgent/humanAgentSlice";
+import { socketReconnected } from "@/features/socket/socketSlice";
 import NotificationToast from "@/components/custom/Notification/NotificationToast";
 
 const playNotificationSound = (notificationRef: React.RefObject<HTMLAudioElement | null>) => {
@@ -54,6 +55,7 @@ export default function DashboardLayout() {
   const { selectedBusiness, aiIntegrations } = useSelector((state: RootState) => state.business);
   
   const [isConnected, setIsConnected] = useState(getSocket()?.connected || false);
+  const wasConnectedRef = useRef(false);
 
   const notificationRef = useRef<HTMLAudioElement | null>(null);
 
@@ -82,14 +84,15 @@ export default function DashboardLayout() {
       _id: data._id ?? data?.id,
       text: message,
       sentBy: sender,
-      time: data.createdAt ?? data?.timestamp ?? new Date().toISOString(),
+      time: data.time ?? data.createdAt ?? data?.timestamp ?? new Date().toISOString(),
       messageType: data.messageType ?? data.metadata?.messageType ?? 'text',
       mediaUrl: data.mediaUrl ?? data.metadata?.mediaUrl ?? data.metadata?.cloudinaryUrl ?? null,
       cloudinaryUrl: data.cloudinaryUrl ?? data.metadata?.cloudinaryUrl ?? null,
       originalMediaUrl: data.originalMediaUrl ?? data.metadata?.originalMediaUrl ?? null,
       proxyUrl: data.proxyUrl ?? data.metadata?.proxyUrl ?? null,
       attachmentId: data.attachmentId ?? data.metadata?.attachmentId ?? null,
-      metadata: data.metadata ?? {}
+      metadata: data.metadata ?? {},
+      isInternalNote: !!(data.isInternalNote ?? data.metadata?.isInternalNote),
     };
 
     const currentState = store.getState();
@@ -206,6 +209,10 @@ export default function DashboardLayout() {
 
     const onConnect = () => {
       setIsConnected(true);
+      if (wasConnectedRef.current) {
+        dispatch(socketReconnected());
+      }
+      wasConnectedRef.current = true;
       socket.emit('getInitialAgentStatuses');
     };
     const onDisconnect = () => setIsConnected(false);

@@ -117,13 +117,23 @@ export const updateConversationNotes = async (
   return response.data.data;
 };
 
+/** Send an internal note as a message so it appears in the chat flow (chronologically), not only at the top */
+export const sendInternalNote = async (
+  conversationId: string,
+  message: string
+): Promise<{ message: { _id: string; text: string; sentBy: string; time: string; metadata?: { isInternalNote: boolean } } }> => {
+  const response = await api.post(`/api/v1/chat-inbox/conversations/${conversationId}/internal-notes`, { message });
+  return response.data.data;
+};
+
 export const getConversationSummary = async (conversationId: string): Promise<{ summary: string }> => {
   const response = await api.get(`/api/v1/chat-inbox/conversations/${conversationId}/summary`);
   return response.data.data;
 };
 
-export const improveMessage = async (text: string): Promise<{ improvedText: string }> => {
-  const response = await api.post('/api/v1/chat-inbox/improve-message', { text });
+/** Improve message tone; pass language so the improved text stays in the same language (e.g. 'en' | 'es' | 'bn'). */
+export const improveMessage = async (text: string, language?: string): Promise<{ improvedText: string }> => {
+  const response = await api.post('/api/v1/chat-inbox/improve-message', { text, language });
   return response.data.data;
 };
 

@@ -281,6 +281,7 @@ export default function ChatInbox() {
   const { channels } = useSelector((state: RootState) => state.channel);
   const { agents } = useSelector((state: RootState) => state.humanAgent);
   const { conversations, status: chatListStatus, currentPage, totalPages } = useSelector((state: RootState) => state.chatInbox);
+  const socketReconnectCount = useSelector((state: RootState) => state.socket?.reconnectCount ?? 0);
   // const { templates } = useSelector((state: RootState) => state.whatsappBusiness); // META: commented out
   
   // 🔧 NEW: Mark conversation as read
@@ -325,21 +326,20 @@ export default function ChatInbox() {
     }
   }, [selectedCustomer, conversations, dispatch]);
   
-  // 🔧 NEW: Update notes
-  const handleUpdateNotes = useCallback(async (notes: string) => {
-    if (!selectedCustomer) return;
+  // 🔧 Send internal note as a message so it appears in the chat flow (chronologically)
+  const handleSendInternalNote = useCallback(async (noteText: string) => {
+    if (!selectedCustomer || !noteText?.trim()) return;
     const conversation = conversations.find((c) => c.customer.id === selectedCustomer);
     if (!conversation?.id) return;
     try {
-      const { updateConversationNotes } = await import('@/api/chatApi');
-      await updateConversationNotes(conversation.id, notes);
-      dispatch(updateConversationEnhanced({ conversationId: conversation.id, notes }));
-      toast.success('Notes updated');
+      const { sendInternalNote } = await import('@/api/chatApi');
+      await sendInternalNote(conversation.id, noteText.trim());
+      toast.success(t('chatInbox.noteSent', 'Note sent'));
       setNotesDialogOpen(false);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update notes');
+      toast.error(error.response?.data?.message || 'Failed to send note');
     }
-  }, [selectedCustomer, conversations, dispatch]);
+  }, [selectedCustomer, conversations, t]);
   
   // 🔧 NEW: Assign conversation
   const handleAssignConversation = useCallback(async (agentId: string) => {
@@ -407,6 +407,13 @@ export default function ChatInbox() {
       dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); 
     } 
   }, [businessId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
+
+  // 🔧 Refetch chat list when socket reconnects so realtime updates resume (e.g. after 5+ min idle)
+  useEffect(() => {
+    if (socketReconnectCount > 0 && businessId) {
+      dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+    }
+  }, [socketReconnectCount]);
 
   // META WhatsApp Business: 24h session + template selector – commented out. Using Unipile for WhatsApp.
   // META: Fetch WhatsApp 24h session + templates when a WhatsApp conversation is selected
@@ -783,7 +790,8 @@ export default function ChatInbox() {
     const socket = getSocket();
     if (socket?.connected && selectedCustomer) socket.emit('agentStoppedTyping', { customerId: selectedCustomer });
 
-    const platform = currentConversation.platformInfo?.platform || 'website';
+    const platformRaw = currentConversation.platformInfo?.platform || currentConversation?.source || 'website';
+    const platform = typeof platformRaw === 'string' ? platformRaw.toLowerCase() : 'website';
     const messageText = newMessage.trim();
     let imageUrl: string | null = null;
     let audioUrl: string | null = null;
@@ -820,8 +828,8 @@ export default function ChatInbox() {
     handleRemoveImage();
     handleRemoveAudio();
 
-    // For website conversations, use internal messaging
-    if (platform === 'website' || !platform) {
+    // For website conversations, use internal messaging only (no external channel)
+    if (platform === 'website' || !platform || platform === '') {
       if (!socket) {
         toast.error('Connection error. Please refresh the page.');
         return;
@@ -1293,7 +1301,7 @@ export default function ChatInbox() {
                       </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => setNotesDialogOpen(true)}>
                         <FileText className="mr-2 h-4 w-4" />
-                        {currentConversation?.notes ? 'Edit Notes' : 'Add Notes'}
+                        {t('chatInbox.addInternalNote', 'Add internal note')}
                       </DropdownMenuItem>
                       {!currentConversation?.assignedAgentId && (
                         <>
@@ -1379,13 +1387,14 @@ export default function ChatInbox() {
                     </DialogContent>
                   </Dialog>
                   
-                  {/* 🔧 NEW: Notes Dialog */}
+                  {/* 🔧 Internal note: sent as a message so it appears in the chat flow (chronologically) */}
                   <Dialog open={notesDialogOpen} onOpenChange={setNotesDialogOpen}>
                     <DialogContent>
-                      <h3 className="text-lg font-semibold mb-4">Conversation Notes</h3>
+                      <h3 className="text-lg font-semibold mb-4">{t('chatInbox.addInternalNote', 'Add internal note')}</h3>
                       <NotesEditor 
-                        currentNotes={currentConversation?.notes || ''} 
-                        onSave={handleUpdateNotes}
+                        currentNotes="" 
+                        onSave={handleSendInternalNote}
+                        placeholder={t('chatInbox.internalNotePlaceholder', 'Add internal notes for this conversation...')}
                       />
                     </DialogContent>
                   </Dialog>
@@ -1411,15 +1420,6 @@ export default function ChatInbox() {
                   {messagesData?.status === 'loading' && <Loader2 className="h-5 w-5 animate-spin mx-auto my-4" />}
                   {messagesData?.hasMore && messagesData.status !== 'loading' && (<Button variant="link" onClick={handleLoadMoreMessages}>{t('chatInbox.loadMoreMessages')}</Button>)}
                 </div>
-                {/* Internal note as message in conversation flow (agent-only, never sent to customer) */}
-                {currentConversation?.notes && (
-                  <div className="flex justify-center my-3">
-                    <div className="max-w-[85%] rounded-xl border-2 border-amber-500/40 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 shadow-sm">
-                      <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide mb-1.5">{t('chatInbox.internalNote', 'Internal note')}</p>
-                      <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words"><FormattedText text={currentConversation.notes} /></p>
-                    </div>
-                  </div>
-                )}
                 {Object.entries(groupedMessages).map(([date, group]) => {
                   const platform = currentConversation?.platformInfo?.platform || 'website';
                   const connectionIdFromConversation = currentConversation?.platformInfo?.connectionId;
@@ -1436,7 +1436,17 @@ export default function ChatInbox() {
                             workflowOptions={Array.isArray(workflowOpts) ? workflowOpts : undefined}
                           />
                         );
-                      } 
+                      }
+                      if (msg.isInternalNote || msg.metadata?.isInternalNote) {
+                        return (
+                          <div key={i} className="flex justify-end my-2">
+                            <div className="max-w-[85%] rounded-xl border-2 border-amber-500/40 dark:border-amber-400/30 bg-amber-100 dark:bg-amber-950/50 px-4 py-2.5 shadow-sm">
+                              <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide mb-1">{t('chatInbox.internalNote', 'Internal note')}</p>
+                              <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words"><FormattedText text={msg.text} /></p>
+                            </div>
+                          </div>
+                        );
+                      }
                       // Treat AI as agent-side so customer & AI don't render on the same side
                       const isAgentSide = ["agent", "human", "ai"].includes(msg.sentBy);
                       const messageType = msg.messageType || msg.metadata?.messageType || 'text';
@@ -2200,13 +2210,13 @@ const TagsEditor = ({ currentTags, onSave }: { currentTags: string[]; onSave: (t
 };
 
 // 🔧 NEW: Notes Editor Component
-const NotesEditor = ({ currentNotes, onSave }: { currentNotes: string; onSave: (notes: string) => void }) => {
+const NotesEditor = ({ currentNotes, onSave, placeholder = 'Add internal notes for this conversation...' }: { currentNotes: string; onSave: (notes: string) => void; placeholder?: string }) => {
   const [notes, setNotes] = useState(currentNotes);
   
   return (
     <div className="space-y-4">
       <Textarea
-        placeholder="Add internal notes for this conversation..."
+        placeholder={placeholder}
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         rows={6}

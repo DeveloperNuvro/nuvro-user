@@ -176,7 +176,11 @@
     "toastTransferSuccess": "Conversation transferred!",
     "toastTransferFailed": "Transfer failed.",
     "toastCloseSuccess": "Conversation closed!",
-    "toastCloseFailed": "Failed to close conversation."
+    "toastCloseFailed": "Failed to close conversation.",
+    "internalNote": "Internal note",
+    "addInternalNote": "Add internal note",
+    "noteSent": "Note sent",
+    "internalNotePlaceholder": "Add internal notes for this conversation..."
   },
   "workflow": {
     "title": "Conversation Workflows",
@@ -1005,6 +1009,9 @@
     "aiSummary": "AI Summary",
     "loadingSummary": "Loading...",
     "internalNote": "Internal note",
+    "addInternalNote": "Add internal note",
+    "noteSent": "Note sent",
+    "internalNotePlaceholder": "Add internal notes for this conversation...",
     "improveTone": "Improve wording and tone",
     "improveFailed": "Could not improve message",
     "loadMoreMessages": "Load More Messages",
