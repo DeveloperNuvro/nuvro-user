@@ -34,13 +34,14 @@ import { setAgentStatus, HumanAgent } from "@/features/humanAgent/humanAgentSlic
 import { socketReconnected } from "@/features/socket/socketSlice";
 import NotificationToast from "@/components/custom/Notification/NotificationToast";
 
-const playNotificationSound = (notificationRef: React.RefObject<HTMLAudioElement | null>) => {
-  if (notificationRef.current) {
-    notificationRef.current.currentTime = 0;
-    const playPromise = notificationRef.current.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(error => { console.warn("Audio playback prevented.", error); });
-    }
+// প্রতিবার নতুন অডিও বাজানো যাতে পরপর মেসেজ এলে কোনো সাউন্ড মিস না হয় (একই element পুনরায় প্লে করলে ব্রাউজার কখনো কখনো স্কিপ করে)
+const NOTIFICATION_SOUND_URL = "/sounds/notification.mp3";
+const playNotificationSound = () => {
+  const audio = new Audio(NOTIFICATION_SOUND_URL);
+  audio.volume = 1;
+  const p = audio.play();
+  if (p !== undefined) {
+    p.catch(() => {});
   }
 };
 
@@ -57,13 +58,18 @@ export default function DashboardLayout() {
   const [isConnected, setIsConnected] = useState(getSocket()?.connected || false);
   const wasConnectedRef = useRef(false);
 
-  const notificationRef = useRef<HTMLAudioElement | null>(null);
-
+  // একবার ক্লিক/ইন্টারঅ্যাকশন দিলে অডিও আনলক (ব্রাউজার পলিসি) — প্রতিবার নতুন Audio() দিয়ে বাজানো হয় তাই ref দরকার নেই
   useEffect(() => {
-    notificationRef.current = new Audio("/sounds/notification.mp3");
-    const initAudio = () => { if (notificationRef.current) notificationRef.current.load(); };
-    window.addEventListener('click', initAudio, { once: true });
-    return () => window.removeEventListener('click', initAudio);
+    const unlock = () => {
+      const a = new Audio(NOTIFICATION_SOUND_URL);
+      a.load();
+    };
+    window.addEventListener('click', unlock, { once: true });
+    window.addEventListener('keydown', unlock, { once: true });
+    return () => {
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
+    };
   }, []);
 
   // 🔧 When user returns to this tab after 5+ min on another tab, reconnect socket if it dropped (browsers throttle background tabs so connection may have been closed).
@@ -118,6 +124,11 @@ export default function DashboardLayout() {
 
     dispatch(addRealtimeMessage({ customerId: String(customerId), message: formattedMessage }));
 
+    // প্রতিটি মেসেজ এলে সাউন্ড (internal note বাদে) — প্রতি মেসেজে নতুন Audio যাতে কখনো মিস না হয়
+    if (!formattedMessage.isInternalNote) {
+      playNotificationSound();
+    }
+
     if (isNewConversation && conversationId && (sender === 'customer' || sender === 'system' || sender === 'ai')) {
       if (user.role === 'business') {
           dispatch(addNewCustomer({ id: conversationId, customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') }, preview: message, latestMessageTimestamp: new Date().toISOString(), status: 'ai_only' }));
@@ -134,10 +145,8 @@ export default function DashboardLayout() {
 
       if (isUnassigned && user.role === 'business') {
         toast.custom(tToast => <NotificationToast t={tToast} name={customerName} msg={message} />);
-        playNotificationSound(notificationRef);
       } else if (isAssignedToMe) {
         toast.custom(tToast => <NotificationToast t={tToast} name={customerName} msg={message} />);
-        playNotificationSound(notificationRef);
       }
     }
   }, [user, dispatch, t]);
@@ -153,7 +162,7 @@ export default function DashboardLayout() {
     if (user.role === 'agent') {
       dispatch(addAssignedConversation(data));
       toast.success(t('chatInbox.toastNewChat', { customerName: data.customer.name }));
-      playNotificationSound(notificationRef);
+      playNotificationSound();
     } else if (user.role === 'business') {
       dispatch(updateConversationStatus({ customerId: data.customer.id, status: data.status, assignedAgentId: data.assignedAgentId }));
     }
