@@ -23,6 +23,7 @@ import { fetchAgentConversations, resetAgentConversations, updateConversationEnh
 import { ConversationInList } from "../features/chatInbox/chatInboxSlice";
 import { fetchMessagesByCustomer, sendHumanMessage, closeConversation, addRealtimeMessage } from "../features/chatInbox/chatInboxSlice";
 import { uploadImage as uploadImageApi, getConversationSummary as getConversationSummaryApi, improveMessage as improveMessageApi, sendInternalNote as sendInternalNoteApi } from "@/api/chatApi";
+import { suggestQuickResponses, type SuggestItem } from "@/api/quickResponsesApi";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -222,6 +223,9 @@ export default function AgentInbox() {
   const [summaryText, setSummaryText] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [improveLoading, setImproveLoading] = useState(false);
+  const [snippetSuggestions, setSnippetSuggestions] = useState<SuggestItem[]>([]);
+  const [snippetSuggestLoading, setSnippetSuggestLoading] = useState(false);
+  const snippetQueryRef = useRef<string | null>(null);
 
   // META: 24h session + template + opt-in (Meta WhatsApp Business only; hidden for Unipile WhatsApp – same as ChatInbox)
   const [whatsappSession, setWhatsappSession] = useState<{
@@ -305,6 +309,30 @@ export default function AgentInbox() {
   }, [socketReconnectCount]);
 
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
+
+  // Quick responses: when user types "/", fetch snippet suggestions (debounced)
+  useEffect(() => {
+    const raw = (newMessage || '').trim();
+    if (!raw.startsWith('/')) {
+      setSnippetSuggestions([]);
+      snippetQueryRef.current = null;
+      return;
+    }
+    const query = raw.slice(1).replace(/\s.*$/, '').toLowerCase();
+    snippetQueryRef.current = query;
+    const timer = setTimeout(async () => {
+      try {
+        setSnippetSuggestLoading(true);
+        const list = await suggestQuickResponses(query, 10);
+        if (snippetQueryRef.current === query) setSnippetSuggestions(list);
+      } catch {
+        if (snippetQueryRef.current === query) setSnippetSuggestions([]);
+      } finally {
+        if (snippetQueryRef.current === query) setSnippetSuggestLoading(false);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [newMessage]);
 
   // META: Fetch WhatsApp 24h session (and templates for Meta only); hide 24h/opt-in UI for Unipile (same as ChatInbox)
   useEffect(() => {
@@ -1690,17 +1718,50 @@ export default function AgentInbox() {
                     id="image-upload-agent"
                   />
                   <Textarea 
-                    placeholder={t('agentInbox.messagePlaceholder')} 
+                    placeholder={t('chatInbox.snippetHint') || "Use '/' for snippets"} 
                     value={newMessage} 
                     onChange={e => setNewMessage(e.target.value)} 
                     onFocus={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentTyping', { customerId: selectedCustomer }); }}
                     onBlur={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentStoppedTyping', { customerId: selectedCustomer }); }}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
+                    onKeyDown={e => {
+                      if ((newMessage || '').trim().startsWith('/') && snippetSuggestions.length > 0) {
+                        if (e.key === 'Escape') { setSnippetSuggestions([]); e.preventDefault(); return; }
+                        if (e.key === 'Enter' && snippetSuggestions.length === 1) {
+                          setNewMessage(snippetSuggestions[0].message);
+                          setSnippetSuggestions([]);
+                          e.preventDefault();
+                          return;
+                        }
+                      }
+                      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
+                    }} 
                     className="w-full resize-none p-3 sm:p-4 pr-28 sm:pr-32 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
                     rows={1} 
                     spellCheck={true}
                     disabled={currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && whatsappSession?.source !== 'unipile'}
                   />
+                  {(snippetSuggestions.length > 0 || snippetSuggestLoading) && (newMessage || '').trim().startsWith('/') && (
+                    <div className="absolute bottom-full left-0 right-0 mb-1 max-h-[220px] overflow-y-auto rounded-lg border bg-popover text-popover-foreground shadow-md z-50 py-1">
+                      {snippetSuggestLoading ? (
+                        <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t('chatInbox.loadingSnippets', 'Loading...')}
+                        </div>
+                      ) : (
+                        snippetSuggestions.map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-accent focus:bg-accent focus:outline-none text-sm flex flex-col gap-0.5"
+                            onMouseDown={(e) => { e.preventDefault(); setNewMessage(s.message); setSnippetSuggestions([]); }}
+                          >
+                            <span className="font-medium">/{s.command}</span>
+                            <span className="text-muted-foreground line-clamp-1">{s.message}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
                   {/* Improve wording/tone (no send); spelling suggestions via browser spellCheck */}
                   <Button
                     type="button"

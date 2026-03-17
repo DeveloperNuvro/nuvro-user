@@ -505,7 +505,7 @@ export default function DashboardLayout() {
   return (
     <div className= "flex min-h-screen" >
       <div className="hidden md:block" > { SidebarContent } </div>
-      <div className = "flex-1 flex flex-col md:ml-[300px]" >
+      <div className="flex-1 flex flex-col min-w-0 md:ml-[300px]">
         <header className="h-[72px] flex items-center sticky top-0 z-[50] bg-gradient-to-r from-white via-gray-50 to-white dark:from-[#1B1B20] dark:via-[#18181D] dark:to-[#1B1B20] border-b border-gray-200 dark:border-[#2C3139] px-6 shadow-sm dark:shadow-[#0F0F12] backdrop-blur-sm bg-white/95 dark:bg-[#1B1B20]/95" >
           <div className="flex items-center gap-6 flex-1">
             <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
@@ -568,7 +568,7 @@ export default function DashboardLayout() {
             </button>
           </div>
         </header>
-        <main className = "flex-1 p-6 overflow-y-auto bg-gray-50 dark:bg-[#121212]" >
+        <main className="flex-1 min-w-0 p-6 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-[#121212]">
           <Outlet />
         </main>
       </div>

@@ -299,15 +299,15 @@ const TicketList: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 pb-8 p-4 sm:p-6 md:p-8">
+    <div className="space-y-8 pb-8 p-4 sm:p-6 md:p-8 w-full max-w-full overflow-x-hidden min-w-0 box-border">
       {/* Enhanced Header Section */}
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-2">
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
+      <div className="space-y-6 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 min-w-0">
+          <div className="space-y-2 min-w-0 flex-1">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight truncate">
               {t('ticketPage.title', 'Support Tickets')}
             </h1>
-            <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
+            <p className="text-sm sm:text-base text-muted-foreground max-w-full">
               {t('ticketPage.subtitle', 'Manage and track customer support tickets efficiently')}
             </p>
           </div>
@@ -322,7 +322,7 @@ const TicketList: React.FC = () => {
 
         {/* Stats Cards */}
         {tickets.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 min-w-0">
             {/* Total Tickets */}
             <div className={`
               relative overflow-hidden rounded-2xl p-5 sm:p-6 border transition-all duration-300
@@ -442,9 +442,10 @@ const TicketList: React.FC = () => {
         )}
 
         {/* Filters and Search */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <Tabs value={filter} onValueChange={(value) => { setFilter(value); handlePageChange(1); }}>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 w-full min-w-0">
+          <Tabs value={filter} onValueChange={(value) => { setFilter(value); handlePageChange(1); }} className="w-full sm:w-auto min-w-0">
             <TabsList className={`
+              w-full sm:w-auto flex flex-wrap gap-1 p-1 h-auto
               ${isDarkMode ? 'bg-muted/50' : 'bg-muted/30'}
             `}>
               <TabsTrigger value="all" className="flex items-center gap-2">
@@ -527,18 +528,18 @@ const TicketList: React.FC = () => {
         </div>
       )}
 
-      {/* Desktop Table View */}
+      {/* Desktop Table View - only on xl to avoid horizontal scroll; below xl use cards */}
       {tickets.length > 0 && (
         <Card className={`
-          overflow-hidden border
+          hidden xl:block overflow-hidden border w-full max-w-full min-w-0
           ${isDarkMode 
             ? 'bg-card border-border/60 shadow-lg shadow-black/10' 
             : 'bg-card border-border/80 shadow-md shadow-black/5'
           }
         `}>
-        <CardContent className="p-0">
-            <div className="w-full overflow-x-auto">
-              <table className="min-w-full text-sm">
+        <CardContent className="p-0 min-w-0 max-w-full">
+            <div className="w-full max-w-full overflow-x-auto overflow-y-hidden -mx-px">
+              <table className="w-full text-sm min-w-[900px]">
                 <thead className={`
                   text-left border-b
                   ${isDarkMode 
@@ -695,9 +696,9 @@ const TicketList: React.FC = () => {
       </Card>
       )}
 
-      {/* Mobile Card View */}
+      {/* Card View - shown below xl so table never causes page scroll */}
       {tickets.length > 0 && (
-        <div className="lg:hidden space-y-4">
+        <div className="xl:hidden space-y-4 w-full min-w-0">
           {tickets.map((ticket, idx) => (
             <Card 
               key={ticket._id}
@@ -825,11 +826,11 @@ const TicketList: React.FC = () => {
       
       {/* Pagination */}
       {tickets.length > 0 && (
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-border">
-          <span className="text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-border w-full min-w-0">
+          <span className="text-sm text-muted-foreground text-center sm:text-left order-2 sm:order-1">
             {total > 0 ? t('ticketPage.pagination.showing', { start: (currentPage - 1) * pageSize + 1, end: Math.min(currentPage * pageSize, total), total }) : t('ticketPage.pagination.noTickets')}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 order-1 sm:order-2 flex-shrink-0">
             <Button 
               variant="outline" 
               size="sm" 
@@ -857,7 +858,7 @@ const TicketList: React.FC = () => {
 
       <Dialog open={modalState.isOpen} onOpenChange={(open) => !open && closeModal()}>
         <DialogContent className={`
-          sm:max-w-[425px] md:max-w-[550px]
+          w-[95vw] max-w-[95vw] sm:max-w-[425px] md:max-w-[550px] max-h-[90vh] overflow-y-auto
           ${isDarkMode ? 'bg-card border-border/60' : 'bg-card border-border/80'}
         `}>
           <DialogHeader className={`
@@ -883,15 +884,15 @@ const TicketList: React.FC = () => {
             </div>
           ) : (
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-x-4 gap-y-2"><label htmlFor="businessId" className="text-right col-span-1 text-sm">{t('ticketPage.form.businessId')}</label><Input id="businessId" value={formData.businessId} className="col-span-3" disabled /></div>
-              <div className="grid grid-cols-4 items-center gap-x-4 gap-y-1"><label htmlFor="customerId" className="text-right col-span-1 text-sm">{t('ticketPage.form.customerId')}</label><Input id="customerId" placeholder={t('ticketPage.form.customerIdPlaceholder')} value={formData.customerId} onChange={(e) => setFormData({ ...formData, customerId: e.target.value })} className={`col-span-3 ${formErrors.customerId ? 'border-red-500' : ''}`} disabled={modalState.mode === 'edit'} />{formErrors.customerId && <p className="text-red-500 text-xs col-start-2 col-span-3">{formErrors.customerId}</p>}</div>
-              <div className="grid grid-cols-4 items-center gap-x-4 gap-y-1"><label htmlFor="subject" className="text-right col-span-1 text-sm">{t('ticketPage.form.subject')}</label><Input id="subject" placeholder={t('ticketPage.form.subjectPlaceholder')} value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} className={`col-span-3 ${formErrors.subject ? 'border-red-500' : ''}`} />{formErrors.subject && <p className="text-red-500 text-xs col-start-2 col-span-3">{formErrors.subject}</p>}</div>
-              <div className="grid grid-cols-4 items-center gap-x-4 gap-y-1"><label htmlFor="description" className="text-right col-span-1 text-sm">{t('ticketPage.form.description')}</label><Textarea id="description" placeholder={t('ticketPage.form.descriptionPlaceholder')} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={`col-span-3 ${formErrors.description ? 'border-red-500' : ''}`} rows={4} />{formErrors.description && <p className="text-red-500 text-xs col-start-2 col-span-3">{formErrors.description}</p>}</div>
-              <div className="grid grid-cols-4 items-center gap-x-4 gap-y-2"><label htmlFor="priority" className="text-right col-span-1 text-sm">{t('ticketPage.form.priority')}</label><Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value as TicketPriority })}><SelectTrigger className="col-span-3"><SelectValue placeholder={t('ticketPage.form.selectPriority')} /></SelectTrigger><SelectContent>{Object.values(TicketPriority).map((priority) => (<SelectItem key={priority} value={priority}>{getPriorityText(priority)}</SelectItem>))}</SelectContent></Select></div>
-              <div className="grid grid-cols-4 items-center gap-x-4 gap-y-2"><label htmlFor="type" className="text-right col-span-1 text-sm">{t('ticketPage.form.type')}</label><Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value as TicketType })}><SelectTrigger className="col-span-3"><SelectValue placeholder={t('ticketPage.form.selectType')} /></SelectTrigger><SelectContent>{Object.values(TicketType).map((type) => (<SelectItem key={type} value={type}>{getTypeText(type)}</SelectItem>))}</SelectContent></Select></div>
-              {modalState.mode === 'edit' && (<div className="grid grid-cols-4 items-center gap-x-4 gap-y-2"><label htmlFor="status" className="text-right col-span-1 text-sm">{t('ticketPage.form.status')}</label><Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value as TicketStatus })}><SelectTrigger className="col-span-3"><SelectValue placeholder={t('ticketPage.form.selectStatus')} /></SelectTrigger><SelectContent>{Object.values(TicketStatus).map((status) => (<SelectItem key={status} value={status}>{getStatusText(status)}</SelectItem>))}</SelectContent></Select></div>)}
-              <div className="grid grid-cols-4 items-center gap-x-4 gap-y-2"><label htmlFor="assignedAgent" className="text-right col-span-1 text-sm">{t('ticketPage.form.agentId')}</label><Input id="assignedAgent" placeholder={t('ticketPage.form.agentIdPlaceholder')} value={formData.assignedAgent} onChange={(e) => setFormData({ ...formData, assignedAgent: e.target.value })} className="col-span-3" /></div>
-              <div className="grid grid-cols-4 items-center gap-x-4 gap-y-2"><label htmlFor="comment" className="text-right col-span-1 text-sm">{t('ticketPage.form.comment')}</label><Input id="comment" placeholder={t('ticketPage.form.commentPlaceholder')} value={formData.comment} onChange={(e) => setFormData({ ...formData, comment: e.target.value })} className="col-span-3" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-x-4"><label htmlFor="businessId" className="text-sm sm:text-right">{t('ticketPage.form.businessId')}</label><Input id="businessId" value={formData.businessId} className="sm:col-span-3" disabled /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-x-4"><label htmlFor="customerId" className="text-sm sm:text-right">{t('ticketPage.form.customerId')}</label><div className="sm:col-span-3"><Input id="customerId" placeholder={t('ticketPage.form.customerIdPlaceholder')} value={formData.customerId} onChange={(e) => setFormData({ ...formData, customerId: e.target.value })} className={`w-full ${formErrors.customerId ? 'border-red-500' : ''}`} disabled={modalState.mode === 'edit'} />{formErrors.customerId && <p className="text-red-500 text-xs mt-1">{formErrors.customerId}</p>}</div></div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-x-4"><label htmlFor="subject" className="text-sm sm:text-right">{t('ticketPage.form.subject')}</label><div className="sm:col-span-3"><Input id="subject" placeholder={t('ticketPage.form.subjectPlaceholder')} value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} className={`w-full ${formErrors.subject ? 'border-red-500' : ''}`} />{formErrors.subject && <p className="text-red-500 text-xs mt-1">{formErrors.subject}</p>}</div></div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-x-4"><label htmlFor="description" className="text-sm sm:text-right">{t('ticketPage.form.description')}</label><div className="sm:col-span-3"><Textarea id="description" placeholder={t('ticketPage.form.descriptionPlaceholder')} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={`w-full ${formErrors.description ? 'border-red-500' : ''}`} rows={4} />{formErrors.description && <p className="text-red-500 text-xs mt-1">{formErrors.description}</p>}</div></div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-x-4"><label htmlFor="priority" className="text-sm sm:text-right">{t('ticketPage.form.priority')}</label><Select value={formData.priority} onValueChange={(value) => setFormData({ ...formData, priority: value as TicketPriority })}><SelectTrigger className="w-full sm:col-span-3"><SelectValue placeholder={t('ticketPage.form.selectPriority')} /></SelectTrigger><SelectContent>{Object.values(TicketPriority).map((priority) => (<SelectItem key={priority} value={priority}>{getPriorityText(priority)}</SelectItem>))}</SelectContent></Select></div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-x-4"><label htmlFor="type" className="text-sm sm:text-right">{t('ticketPage.form.type')}</label><Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value as TicketType })}><SelectTrigger className="w-full sm:col-span-3"><SelectValue placeholder={t('ticketPage.form.selectType')} /></SelectTrigger><SelectContent>{Object.values(TicketType).map((type) => (<SelectItem key={type} value={type}>{getTypeText(type)}</SelectItem>))}</SelectContent></Select></div>
+              {modalState.mode === 'edit' && (<div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-x-4"><label htmlFor="status" className="text-sm sm:text-right">{t('ticketPage.form.status')}</label><Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value as TicketStatus })}><SelectTrigger className="w-full sm:col-span-3"><SelectValue placeholder={t('ticketPage.form.selectStatus')} /></SelectTrigger><SelectContent>{Object.values(TicketStatus).map((status) => (<SelectItem key={status} value={status}>{getStatusText(status)}</SelectItem>))}</SelectContent></Select></div>)}
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-x-4"><label htmlFor="assignedAgent" className="text-sm sm:text-right">{t('ticketPage.form.agentId')}</label><Input id="assignedAgent" placeholder={t('ticketPage.form.agentIdPlaceholder')} value={formData.assignedAgent} onChange={(e) => setFormData({ ...formData, assignedAgent: e.target.value })} className="w-full sm:col-span-3" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-2 sm:gap-x-4"><label htmlFor="comment" className="text-sm sm:text-right">{t('ticketPage.form.comment')}</label><Input id="comment" placeholder={t('ticketPage.form.commentPlaceholder')} value={formData.comment} onChange={(e) => setFormData({ ...formData, comment: e.target.value })} className="w-full sm:col-span-3" /></div>
             </div>
           )}
           <DialogFooter className={`
@@ -925,7 +926,7 @@ const TicketList: React.FC = () => {
       
       <Dialog open={clientModalState.isOpen} onOpenChange={(open) => !open && closeClientModal()}>
         <DialogContent className={`
-          sm:max-w-[425px]
+          w-[95vw] max-w-[95vw] sm:max-w-[425px] max-h-[90vh] overflow-y-auto
           ${isDarkMode ? 'bg-card border-border/60' : 'bg-card border-border/80'}
         `}>
           <DialogHeader className={`

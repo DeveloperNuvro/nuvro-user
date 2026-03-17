@@ -20,6 +20,7 @@ import toast from 'react-hot-toast';
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from "@/api/axios";
 import { uploadImage as uploadImageApi, uploadAudio as uploadAudioApi } from "@/api/chatApi";
+import { suggestQuickResponses, type SuggestItem } from "@/api/quickResponsesApi";
 import {
   fetchCustomersByBusiness,
   fetchMessagesByCustomer,
@@ -265,6 +266,10 @@ export default function ChatInbox() {
   const [optInUpdating, setOptInUpdating] = useState(false);
   const [showOptInSource, setShowOptInSource] = useState(false);
   const [optInSourceValue, setOptInSourceValue] = useState('');
+  // Quick responses: show suggestions when user types /
+  const [snippetSuggestions, setSnippetSuggestions] = useState<SuggestItem[]>([]);
+  const [snippetSuggestLoading, setSnippetSuggestLoading] = useState(false);
+  const snippetQueryRef = useRef<string | null>(null);
   
   // 🔧 NEW: Helper function to get priority color
   const getPriorityColor = (priority: string = 'normal') => {
@@ -464,6 +469,30 @@ export default function ChatInbox() {
   }, [selectedCustomer, filteredConversations]);
 
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
+
+  // Quick responses: when user types "/", fetch snippet suggestions (debounced)
+  useEffect(() => {
+    const raw = (newMessage || '').trim();
+    if (!raw.startsWith('/')) {
+      setSnippetSuggestions([]);
+      snippetQueryRef.current = null;
+      return;
+    }
+    const query = raw.slice(1).replace(/\s.*$/, '').toLowerCase();
+    snippetQueryRef.current = query;
+    const timer = setTimeout(async () => {
+      try {
+        setSnippetSuggestLoading(true);
+        const list = await suggestQuickResponses(query, 10);
+        if (snippetQueryRef.current === query) setSnippetSuggestions(list);
+      } catch {
+        if (snippetQueryRef.current === query) setSnippetSuggestions([]);
+      } finally {
+        if (snippetQueryRef.current === query) setSnippetSuggestLoading(false);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [newMessage]);
 
   // 🔧 OPTIMIZED: Memoize conversation lookup to avoid repeated finds
   const selectedConversation = useMemo(() => {
@@ -2100,17 +2129,52 @@ export default function ChatInbox() {
                       )}
                     </Button>
                   </div>
-                  <Textarea 
-                    placeholder={t('chatInbox.messagePlaceholder')} 
-                    value={newMessage} 
-                    onChange={e => setNewMessage(e.target.value)} 
-                    onFocus={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentTyping', { customerId: selectedCustomer }); }}
-                    onBlur={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentStoppedTyping', { customerId: selectedCustomer }); }}
-                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }} 
-                    className="w-full resize-none p-3 sm:p-4 pr-12 sm:pr-14 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
-                    rows={1} 
-                    disabled={isUploadingImage || isUploadingAudio || isRecording || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate)}
-                  />
+                  <div className="relative w-full">
+                    <Textarea 
+                      placeholder={t('chatInbox.snippetHint') || "Use '/' for snippets"} 
+                      value={newMessage} 
+                      onChange={e => setNewMessage(e.target.value)} 
+                      onFocus={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentTyping', { customerId: selectedCustomer }); }}
+                      onBlur={() => { const s = getSocket(); if (s?.connected && selectedCustomer) s.emit('agentStoppedTyping', { customerId: selectedCustomer }); }}
+                      onKeyDown={e => {
+                        if ((newMessage || '').trim().startsWith('/') && snippetSuggestions.length > 0) {
+                          if (e.key === 'Escape') { setSnippetSuggestions([]); e.preventDefault(); return; }
+                          if (e.key === 'Enter' && snippetSuggestions.length === 1) {
+                            setNewMessage(snippetSuggestions[0].message);
+                            setSnippetSuggestions([]);
+                            e.preventDefault();
+                            return;
+                          }
+                        }
+                        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
+                      }} 
+                      className="w-full resize-none p-3 sm:p-4 pr-12 sm:pr-14 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
+                      rows={1} 
+                      disabled={isUploadingImage || isUploadingAudio || isRecording || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate)}
+                    />
+                    {(snippetSuggestions.length > 0 || snippetSuggestLoading) && (newMessage || '').trim().startsWith('/') && (
+                      <div className="absolute bottom-full left-0 right-0 mb-1 max-h-[220px] overflow-y-auto rounded-lg border bg-popover text-popover-foreground shadow-md z-50 py-1">
+                        {snippetSuggestLoading ? (
+                          <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {t('chatInbox.loadingSnippets', 'Loading...')}
+                          </div>
+                        ) : (
+                          snippetSuggestions.map((s) => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 hover:bg-accent focus:bg-accent focus:outline-none text-sm flex flex-col gap-0.5"
+                              onMouseDown={(e) => { e.preventDefault(); setNewMessage(s.message); setSnippetSuggestions([]); }}
+                            >
+                              <span className="font-medium">/{s.command}</span>
+                              <span className="text-muted-foreground line-clamp-1">{s.message}</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <Button 
                     onClick={handleSendMessage} 
                     size="icon" 

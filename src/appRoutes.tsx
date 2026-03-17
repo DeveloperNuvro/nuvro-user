@@ -2,7 +2,7 @@
 
 import React from "react";
 // Icons (use only fi/go/lu/si/tb/md/io5 — do not use react-icons/vsc)
-import { FiGrid, FiUsers, FiTrendingUp, FiLink, FiLayers, FiMonitor } from "react-icons/fi";
+import { FiGrid, FiUsers, FiTrendingUp, FiLink, FiLayers, FiMonitor, FiMessageSquare } from "react-icons/fi";
 import { GoInbox } from "react-icons/go";
 import { LuTicket } from "react-icons/lu";
 import { SiProbot } from "react-icons/si";
@@ -32,6 +32,7 @@ import ComingSoon from "./components/custom/comingSoon/ComingSoon";
 import WorkflowPage from "./pages/WorkflowPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import WidgetEmbedPage from "./pages/WidgetEmbedPage";
+import SnippetsPage from "./pages/SnippetsPage";
 
 // Define roles for consistency
 export const ROLES = {
@@ -70,6 +71,7 @@ export const menuRoutes: MenuRoute[] = [
   { path: "workflows", component: <WorkflowPage />, label: "Workflow", icon: <FiLayers className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Main Menu" },
   { path: "integrations", component: <IntegrationsPage />, label: "Integrations", icon: <FiLink className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Main Menu" },
   { path: "widget", component: <WidgetEmbedPage />, label: "Widget", icon: <FiMonitor className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Main Menu" },
+  { path: "snippets", component: <SnippetsPage />, label: "Quick responses", icon: <FiMessageSquare className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Main Menu" },
   { path: "customers", component: <CustomersPage />, label: "Customers", icon: <FiUsers className="mr-2" />, allowedRoles: [ROLES.BUSINESS, ROLES.AGENT], section: "Business" },
   { path: "analytics", component: <AnalysisPage />, label: "Analytics", icon: <FiTrendingUp className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Business" },
   { path: "reporting", component: <ReportingPage />, label: "Reporting", icon: <FiTrendingUp className="mr-2" />, allowedRoles: [ROLES.BUSINESS], section: "Business" },
