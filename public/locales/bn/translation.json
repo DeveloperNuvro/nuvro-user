@@ -253,7 +253,9 @@
     "addInternalNote": "অভ্যন্তরীণ নোট যোগ করুন",
     "noteSent": "নোট পাঠানো হয়েছে",
     "internalNotePlaceholder": "এই কথোপকথনের জন্য অভ্যন্তরীণ নোট যোগ করুন...",
-    "snippetHint": "স্নিপেটের জন্য '/' ব্যবহার করুন"
+    "snippetHint": "স্নিপেটের জন্য '/' ব্যবহার করুন",
+    "downloadDocument": "ডাউনলোড",
+    "documentUnavailable": "ডকুমেন্ট উপলব্ধ নয়"
   },
   "snippets": {
     "title": "দ্রুত প্রতিক্রিয়া",

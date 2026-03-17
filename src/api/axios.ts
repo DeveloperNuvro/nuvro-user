@@ -6,6 +6,13 @@ import toast from 'react-hot-toast';
 
 export const baseURL = import.meta.env.VITE_API_BASE_URL;
 
+/** Base URL for API; fallback to same origin when env is not set (e.g. document proxy). */
+export function getApiBaseUrl(): string {
+  if (baseURL) return baseURL.replace(/\/$/, '');
+  if (typeof window !== 'undefined') return window.location.origin;
+  return '';
+}
+
 export const api = axios.create({
   baseURL,
   withCredentials: true,

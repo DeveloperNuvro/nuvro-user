@@ -48,6 +48,7 @@ import ChatInboxSkeleton from "@/components/skeleton/ChatInboxSkeleton"; // 1. I
 import PlatformBadge from "@/components/custom/unipile/PlatformBadge";
 import CountryBadge from "@/components/custom/unipile/CountryBadge";
 import FormattedText from "@/components/custom/FormattedText";
+import SecureDocumentPreview from "@/components/custom/SecureDocumentPreview";
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
@@ -398,11 +399,12 @@ export default function ChatInbox() {
     } 
   }, [businessId, dispatch]);
 
+  // Fetch agent status once when businessId is set; do NOT depend on agents or it re-runs after every fetch → infinite loop
   useEffect(() => {
     if (businessId) {
       dispatch(fetchAgentsWithStatus());
     }
-  }, [agents, businessId, dispatch]);
+  }, [businessId, dispatch]);
 
   // 🔧 FIX: Reset and fetch conversations when filters change
   // Reset is needed to clear old platform's conversations before fetching new ones
@@ -1479,7 +1481,7 @@ export default function ChatInbox() {
                       // Treat AI as agent-side so customer & AI don't render on the same side
                       const isAgentSide = ["agent", "human", "ai"].includes(msg.sentBy);
                       const messageType = msg.messageType || msg.metadata?.messageType || 'text';
-                      let mediaUrl = msg.cloudinaryUrl || msg.mediaUrl || msg.metadata?.cloudinaryUrl || msg.metadata?.mediaUrl || null;
+                      let mediaUrl = msg.cloudinaryUrl || msg.mediaUrl || msg.metadata?.cloudinaryUrl || msg.metadata?.mediaUrl || msg.originalMediaUrl || msg.metadata?.originalMediaUrl || null;
                       let proxyUrl = msg.proxyUrl || msg.metadata?.proxyUrl || null;
                       
                       // 🔧 CRITICAL FIX: Never use att:// URLs directly - browsers can't load them
@@ -1543,17 +1545,20 @@ export default function ChatInbox() {
                         proxyUrl = `${apiBaseUrl}${proxyUrl}`;
                       }
                       
-                      // 🔧 CRITICAL: Only use HTTP/HTTPS URLs, never att:// URLs
-                      // For image/video: prefer cloudinaryUrl then mediaUrl then proxyUrl so inbox always shows WhatsApp/Unipile images
-                      const validMediaUrl = mediaUrl && typeof mediaUrl === 'string' && !mediaUrl.startsWith('att://') ? mediaUrl : null;
+                      // 🔧 CRITICAL: Use any HTTP URL for preview (after refresh API sends cloudinaryUrl/mediaUrl at top level and in metadata)
+                      const anyCloudinary = msg.cloudinaryUrl || msg.metadata?.cloudinaryUrl || null;
+                      const anyMedia = mediaUrl || msg.metadata?.mediaUrl || null;
+                      const validMediaUrl = (anyMedia && typeof anyMedia === 'string' && !anyMedia.startsWith('att://')) ? anyMedia : null;
                       const displayUrl = messageType === 'audio'
-                        ? (msg.cloudinaryUrl || validMediaUrl || proxyUrl || null)
+                        ? (anyCloudinary || validMediaUrl || proxyUrl || null)
                         : (messageType === 'image' || messageType === 'video' || messageType === 'document'
-                            ? (msg.cloudinaryUrl || validMediaUrl || proxyUrl || null)
+                            ? (anyCloudinary || validMediaUrl || proxyUrl || null)
                             : (validMediaUrl || proxyUrl || null));
                       
+                      // 🔧 Show as document when messageType is document OR we have URL + fileName/PDF hint (so preview shows after refresh)
+                      const isDocumentMessage = messageType === 'document' || (!!(displayUrl || proxyUrl) && (!!msg.metadata?.fileName || /\.(pdf|doc|docx|xls|xlsx)$/i.test(msg.metadata?.fileName || '') || (displayUrl || proxyUrl || '').toLowerCase().includes('.pdf')));
                       // 🔧 FIX: Detect media message from messageType OR if message text contains "Image:" or "att://"
-                      const isMediaMessage = ['image', 'video', 'audio', 'document'].includes(messageType) || 
+                      const isMediaMessage = ['image', 'video', 'audio', 'document'].includes(messageType) || isDocumentMessage ||
                                             (msg.text && typeof msg.text === 'string' && (msg.text.includes('att://') || msg.text.match(/^(📷|🎥|🎵|📄|📎)/)));
                       
                       // 🔧 FIX: If message text is just a placeholder and we have media, hide the text
@@ -1569,7 +1574,7 @@ export default function ChatInbox() {
                       // 🔧 NEW: Get avatar URL from message metadata or conversation platformInfo
                       const messageAvatar = msg.metadata?.avatar || currentConversation?.platformInfo?.platformUserAvatar || null;
                       const senderName = msg.metadata?.name || msg.customerName || currentConversation?.customer?.name || 'User';
-                      
+
                       return (
                         <div key={i} className={cn("flex items-start gap-2 my-2", isAgentSide ? "flex-row-reverse" : "flex-row", msg.status === 'failed' && 'opacity-50')}>
                           {/* 🔧 NEW: Avatar for customer messages */}
@@ -1619,10 +1624,10 @@ export default function ChatInbox() {
                               : platform === 'telegram'
                               ? "message-bubble-telegram-received text-[#000000] dark:text-white rounded-bl-none"
                               : "bg-muted text-muted-foreground rounded-bl-none",
-                            isMediaMessage && displayUrl ? "p-0" : "p-3 sm:p-4"
+                            (isMediaMessage && (displayUrl || (isDocumentMessage && proxyUrl))) ? "p-0" : "p-3 sm:p-4"
                           )}>
-                            {/* 🔧 NEW: Render media based on messageType */}
-                            {isMediaMessage && displayUrl ? (
+                            {/* 🔧 NEW: Render media based on messageType (document can use proxyUrl when displayUrl missing) */}
+                            {isMediaMessage && (displayUrl || (isDocumentMessage && proxyUrl)) ? (
                               <>
                                 {messageType === 'image' && (
                                   <div className="relative group">
@@ -1716,16 +1721,31 @@ export default function ChatInbox() {
                                     </div>
                                   </div>
                                 )}
-                                {messageType === 'document' && (
-                                  <div className="p-3 flex items-center gap-2">
-                                    <a 
-                                      href={displayUrl} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="text-primary hover:underline flex items-center gap-2"
-                                    >
-                                      <span>📄 {msg.text || 'Document'}</span>
-                                    </a>
+                                {isDocumentMessage && (
+                                  <div className="p-3 space-y-3 w-full max-w-[320px]">
+                                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                      <FileText className="h-5 w-5 shrink-0 text-primary" />
+                                      <span className="truncate">
+                                        {msg.metadata?.fileName || (msg.text && msg.text !== '📄 Document' && !msg.text.startsWith('att://') ? msg.text : 'Document')}
+                                      </span>
+                                    </div>
+                                    {(displayUrl || proxyUrl) ? (
+                                      <SecureDocumentPreview
+                                        url={displayUrl || proxyUrl || null}
+                                        variant={
+                                          msg.metadata?.mimeType === 'application/pdf' || /\.pdf$/i.test(msg.metadata?.fileName || '') || (displayUrl || proxyUrl || '').toLowerCase().includes('.pdf')
+                                            ? 'pdf'
+                                            : /\.(jpe?g|png|gif|webp)$/i.test(msg.metadata?.fileName || '')
+                                              ? 'image'
+                                              : 'placeholder'
+                                        }
+                                        fileName={msg.metadata?.fileName || undefined}
+                                        downloadLabel={t('chatInbox.downloadDocument', 'Download')}
+                                        showDownload
+                                      />
+                                    ) : (
+                                      <p className="text-xs text-muted-foreground">{t('chatInbox.documentUnavailable', 'Document unavailable')}</p>
+                                    )}
                                   </div>
                                 )}
                                 {/* Show text caption if available and not just placeholder */}

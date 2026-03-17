@@ -183,7 +183,9 @@
     "noteSent": "Note sent",
     "internalNotePlaceholder": "Add internal notes for this conversation...",
     "snippetHint": "Use '/' for snippets",
-    "loadingSnippets": "Loading..."
+    "loadingSnippets": "Loading...",
+    "downloadDocument": "Download",
+    "documentUnavailable": "Document unavailable"
   },
   "snippets": {
     "title": "Quick responses",

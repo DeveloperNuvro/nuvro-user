@@ -182,7 +182,9 @@
     "addInternalNote": "Añadir nota interna",
     "noteSent": "Nota enviada",
     "internalNotePlaceholder": "Añade notas internas para esta conversación...",
-    "snippetHint": "Usa '/' para respuestas rápidas"
+    "snippetHint": "Usa '/' para respuestas rápidas",
+    "downloadDocument": "Descargar",
+    "documentUnavailable": "Documento no disponible"
   },
   "snippets": {
     "title": "Respuestas rápidas",

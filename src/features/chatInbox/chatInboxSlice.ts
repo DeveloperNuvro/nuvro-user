@@ -190,30 +190,39 @@ export const fetchMessagesByCustomer = createAsyncThunk<
         const res = await api.get(`/api/v1/customer/messages/${customerId}`, {
             params: { page, limit: 20 },
         });
-        const responsePayload = res.data.data;
-        const messagesArray = responsePayload.data;
+        // Backend sends: res.data = { status, message, data: { success?, data: messages[], pagination } }
+        const payload = res.data?.data;
+        const messagesArray = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : null;
+        const pagination = payload?.pagination || { currentPage: 1, totalPages: 1 };
         if (!Array.isArray(messagesArray)) {
             return thunkAPI.rejectWithValue("Message data from API was not an array");
         }
-        const formatted = messagesArray.map((msg: any) => ({
-           _id: msg._id,
-           text: msg.text ?? msg.message ?? '',
-           time: msg.time ?? msg.timestamp ?? new Date().toISOString(),
-           sentBy: msg.sentBy ?? msg.sender ?? 'customer',
-           messageType: msg.messageType || msg.metadata?.messageType || 'text',
-           mediaUrl: msg.mediaUrl ?? msg.metadata?.mediaUrl ?? msg.metadata?.cloudinaryUrl ?? null,
-           cloudinaryUrl: msg.cloudinaryUrl ?? msg.metadata?.cloudinaryUrl ?? null,
-           originalMediaUrl: msg.originalMediaUrl ?? msg.metadata?.originalMediaUrl ?? null,
-           proxyUrl: msg.proxyUrl ?? msg.metadata?.proxyUrl ?? null,
-           attachmentId: msg.attachmentId ?? msg.metadata?.attachmentId ?? null,
-           metadata: msg.metadata || {},
-           isInternalNote: !!(msg.isInternalNote ?? msg.metadata?.isInternalNote),
-        })).reverse();
+        // 🔧 CRITICAL: Preserve media URLs so document/image preview works after refresh; prefer top-level, then metadata
+        const formatted = messagesArray.map((msg: any) => {
+           const meta = msg.metadata || {};
+           const mediaUrl = msg.mediaUrl ?? meta.mediaUrl ?? meta.cloudinaryUrl ?? null;
+           const cloudinaryUrl = msg.cloudinaryUrl ?? meta.cloudinaryUrl ?? (mediaUrl && !String(mediaUrl).startsWith('att://') ? mediaUrl : null);
+           return {
+             ...msg,
+             _id: msg._id,
+             text: msg.text ?? msg.message ?? '',
+             time: msg.time ?? msg.timestamp ?? new Date().toISOString(),
+             sentBy: msg.sentBy ?? msg.sender ?? 'customer',
+             messageType: msg.messageType || meta.messageType || 'text',
+             mediaUrl: mediaUrl || msg.mediaUrl,
+             cloudinaryUrl: cloudinaryUrl || msg.cloudinaryUrl,
+             originalMediaUrl: msg.originalMediaUrl ?? meta.originalMediaUrl ?? null,
+             proxyUrl: msg.proxyUrl ?? meta.proxyUrl ?? null,
+             attachmentId: msg.attachmentId ?? meta.attachmentId ?? null,
+             metadata: { ...meta, mediaUrl: mediaUrl || meta.mediaUrl, cloudinaryUrl: cloudinaryUrl || meta.cloudinaryUrl },
+             isInternalNote: !!(msg.isInternalNote ?? meta.isInternalNote),
+           };
+        }).reverse();
         return {
             customerId,
             messages: formatted,
-            page: responsePayload.pagination.currentPage,
-            totalPages: responsePayload.pagination.totalPages,
+            page: pagination.currentPage ?? 1,
+            totalPages: pagination.totalPages ?? 1,
         };
     } catch (error: any) {
         return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch messages");
