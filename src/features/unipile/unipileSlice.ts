@@ -201,6 +201,29 @@ export const updateUnipileChannelConfig = createAsyncThunk(
   }
 );
 
+export const updateUnipileConnectionName = createAsyncThunk(
+  'unipile/updateConnectionName',
+  async (
+    { connectionRef, name }: { connectionRef: string; name: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await api.patch(`/api/v1/unipile/connections/${connectionRef}/name`, {
+        connectionName: name.trim(),
+      });
+      const data = res.data?.data ?? res.data;
+      const newName = data?.name ?? data?.connectionName ?? name.trim();
+      return { connectionRef, newName };
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        'Failed to update connection name';
+      return rejectWithValue(typeof msg === 'string' ? msg : 'Failed to update connection name');
+    }
+  }
+);
+
 export const reconnectUnipileConnection = createAsyncThunk(
   'unipile/reconnectConnection',
   async (connectionId: string, { rejectWithValue, getState }) => {
@@ -560,7 +583,14 @@ const unipileSlice = createSlice({
           if (fallbackBehavior !== undefined) conn.fallbackBehavior = fallbackBehavior;
         }
       })
-      
+      .addCase(updateUnipileConnectionName.fulfilled, (state, action) => {
+        const { connectionRef, newName } = action.payload;
+        const conn = state.connections.find(
+          (c) => c.id === connectionRef || c.connectionId === connectionRef
+        );
+        if (conn) conn.name = newName;
+      })
+
       // Reconnect connection
       .addCase(reconnectUnipileConnection.pending, (state) => {
         state.status = 'loading';

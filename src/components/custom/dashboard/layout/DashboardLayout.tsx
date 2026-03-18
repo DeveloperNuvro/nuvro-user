@@ -34,6 +34,7 @@ import { setAgentStatus, HumanAgent } from "@/features/humanAgent/humanAgentSlic
 import { socketReconnected } from "@/features/socket/socketSlice";
 import NotificationToast from "@/components/custom/Notification/NotificationToast";
 import { fetchChannels } from "@/features/channel/channelSlice";
+import { normalizeApiMediaUrl } from "@/lib/audioUrlNormalize";
 
 // One-at-a-time notification sound: stop any current playback before starting new one so it's not intrusive and no stacking.
 const NOTIFICATION_SOUND_URL = "/sounds/notification.mp3";
@@ -140,8 +141,11 @@ export default function DashboardLayout() {
       mediaUrl: data.mediaUrl ?? data.metadata?.mediaUrl ?? data.metadata?.cloudinaryUrl ?? null,
       cloudinaryUrl: data.cloudinaryUrl ?? data.metadata?.cloudinaryUrl ?? null,
       originalMediaUrl: data.originalMediaUrl ?? data.metadata?.originalMediaUrl ?? null,
-      proxyUrl: data.proxyUrl ?? data.metadata?.proxyUrl ?? null,
+      proxyUrl: normalizeApiMediaUrl(data.proxyUrl ?? data.metadata?.proxyUrl) ?? data.proxyUrl ?? data.metadata?.proxyUrl ?? null,
       attachmentId: data.attachmentId ?? data.metadata?.attachmentId ?? null,
+      audioUrl: data.audioUrl ?? data.metadata?.audioUrl ?? null,
+      audioSrc: normalizeApiMediaUrl(data.audioSrc ?? data.metadata?.audioSrc) ?? data.audioSrc ?? data.metadata?.audioSrc ?? null,
+      audioPlayUrl: normalizeApiMediaUrl(data.audioPlayUrl ?? data.metadata?.audioPlayUrl) ?? data.audioPlayUrl ?? data.metadata?.audioPlayUrl ?? null,
       metadata: data.metadata ?? {},
       isInternalNote: !!(data.isInternalNote ?? data.metadata?.isInternalNote),
     };

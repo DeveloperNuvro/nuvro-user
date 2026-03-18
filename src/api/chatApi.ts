@@ -1,6 +1,6 @@
 // 🔧 NEW: Chat API functions for Unipile features
 // 10-item fix: (8) getConversationSummary, (9) improveMessage for AI Summary & Improve tone
-import { api } from './axios';
+import { api, absolutizeApiUrl } from './axios';
 
 // Chat Inbox API
 export const getConversationsForInbox = async (params?: {
@@ -25,6 +25,16 @@ export const getMessagesByCustomer = async (
 ) => {
   const response = await api.get(`/api/v1/chat-inbox/messages/${customerId}`, { params });
   return response.data.data;
+};
+
+/** Get a playable audio URL for a chat message (when message.audioSrc is missing). */
+export const getAudioPlayUrl = async (chatMessageId: string): Promise<string | null> => {
+  const response = await api.get('/api/v1/chat-inbox/audio-play-url', {
+    params: { chatMessageId },
+  });
+  const url = response.data?.data?.url;
+  if (typeof url !== 'string' || !url) return null;
+  return absolutizeApiUrl(url) || url;
 };
 
 export type WhatsAppOptIn = {

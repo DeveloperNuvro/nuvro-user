@@ -38,3 +38,19 @@ export const countTextCharacters = (file: File): Promise<number> => {
     reader.readAsText(file);
   });
 };
+
+/** Cloudinary video/audio URL → MP3 delivery URL (Safari-compatible). Backend may send this as audioSrc; use as fallback when only cloudinaryUrl exists. */
+export function toCloudinaryMp3Url(cloudinaryUrl: string | null | undefined): string | null {
+  if (!cloudinaryUrl || typeof cloudinaryUrl !== 'string') return null;
+  const u = cloudinaryUrl.trim();
+  if (!u.includes('res.cloudinary.com') || !u.includes('/video/upload/')) return null;
+  try {
+    const match = u.match(/^(https?:\/\/[^/]+\/video\/upload\/)([^/]+)(\/.+)$/);
+    if (!match) return null;
+    const [, prefix, versionOrTrans, rest] = match;
+    const restMp3 = rest.replace(/\.(ogg|oga|opus|webm|m4a|aac)$/i, '.mp3');
+    return `${prefix}f_mp3/${versionOrTrans}${restMp3}`;
+  } catch {
+    return null;
+  }
+}

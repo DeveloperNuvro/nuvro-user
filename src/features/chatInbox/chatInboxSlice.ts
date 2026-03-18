@@ -3,6 +3,7 @@
 
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/api/axios";
+import { normalizeApiMediaUrl } from "@/lib/audioUrlNormalize";
 
 // --- INTERFACES ---
 
@@ -64,12 +65,18 @@ export interface Message {
     originalMediaUrl?: string | null;
     proxyUrl?: string | null;
     attachmentId?: string | null;
+    /** Backend sets for audio messages — use in <audio src> for playback */
+    audioUrl?: string | null;
+    audioSrc?: string | null;
+    audioPlayUrl?: string | null;
     metadata?: {
         messageType?: 'text' | 'image' | 'video' | 'audio' | 'document';
         mediaUrl?: string | null;
         cloudinaryUrl?: string | null;
         proxyUrl?: string | null;
         attachmentId?: string | null;
+        audioSrc?: string | null;
+        audioPlayUrl?: string | null;
         isInternalNote?: boolean;
         [key: string]: any;
     };
@@ -197,11 +204,15 @@ export const fetchMessagesByCustomer = createAsyncThunk<
         if (!Array.isArray(messagesArray)) {
             return thunkAPI.rejectWithValue("Message data from API was not an array");
         }
-        // 🔧 CRITICAL: Preserve media URLs so document/image preview works after refresh; prefer top-level, then metadata
+        // 🔧 CRITICAL: Preserve media URLs and audioSrc so document/image/audio preview works after refresh
         const formatted = messagesArray.map((msg: any) => {
            const meta = msg.metadata || {};
            const mediaUrl = msg.mediaUrl ?? meta.mediaUrl ?? meta.cloudinaryUrl ?? null;
            const cloudinaryUrl = msg.cloudinaryUrl ?? meta.cloudinaryUrl ?? (mediaUrl && !String(mediaUrl).startsWith('att://') ? mediaUrl : null);
+           const audioUrl = msg.audioUrl ?? meta.audioUrl ?? null;
+           const audioSrc = normalizeApiMediaUrl(msg.audioSrc ?? meta.audioSrc ?? null);
+           const audioPlayUrl = normalizeApiMediaUrl(msg.audioPlayUrl ?? meta.audioPlayUrl ?? null);
+           const proxyNorm = normalizeApiMediaUrl(msg.proxyUrl ?? meta.proxyUrl ?? null);
            return {
              ...msg,
              _id: msg._id,
@@ -212,9 +223,12 @@ export const fetchMessagesByCustomer = createAsyncThunk<
              mediaUrl: mediaUrl || msg.mediaUrl,
              cloudinaryUrl: cloudinaryUrl || msg.cloudinaryUrl,
              originalMediaUrl: msg.originalMediaUrl ?? meta.originalMediaUrl ?? null,
-             proxyUrl: msg.proxyUrl ?? meta.proxyUrl ?? null,
+             proxyUrl: proxyNorm ?? msg.proxyUrl ?? meta.proxyUrl ?? null,
              attachmentId: msg.attachmentId ?? meta.attachmentId ?? null,
-             metadata: { ...meta, mediaUrl: mediaUrl || meta.mediaUrl, cloudinaryUrl: cloudinaryUrl || meta.cloudinaryUrl },
+             audioUrl: audioUrl ?? msg.audioUrl,
+             audioSrc: audioSrc ?? msg.audioSrc,
+             audioPlayUrl: audioPlayUrl ?? msg.audioPlayUrl,
+             metadata: { ...meta, mediaUrl: mediaUrl || meta.mediaUrl, cloudinaryUrl: cloudinaryUrl || meta.cloudinaryUrl, audioUrl, audioSrc, audioPlayUrl, proxyUrl: proxyNorm ?? meta.proxyUrl },
              isInternalNote: !!(msg.isInternalNote ?? meta.isInternalNote),
            };
         }).reverse();
@@ -286,6 +300,9 @@ const chatInboxSlice = createSlice({
                 originalMediaUrl: rawMessage.originalMediaUrl ?? rawMessage.metadata?.originalMediaUrl ?? null,
                 proxyUrl: rawMessage.proxyUrl ?? rawMessage.metadata?.proxyUrl ?? null,
                 attachmentId: rawMessage.attachmentId ?? rawMessage.metadata?.attachmentId ?? null,
+                audioUrl: rawMessage.audioUrl ?? rawMessage.metadata?.audioUrl ?? null,
+                audioSrc: rawMessage.audioSrc ?? rawMessage.metadata?.audioSrc ?? null,
+                audioPlayUrl: rawMessage.audioPlayUrl ?? rawMessage.metadata?.audioPlayUrl ?? null,
                 metadata: rawMessage.metadata || {}
             };
             

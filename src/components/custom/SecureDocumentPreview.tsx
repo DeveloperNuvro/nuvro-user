@@ -77,8 +77,28 @@ export default function SecureDocumentPreview({
     !isCloudinaryImageUrl &&
     (needsAuth || (isCloudinaryUrl && isDocumentVariant));
 
-  // Single URL for both preview and download: prefer blob (works in iframe), else original url
+  // IMPORTANT: avoid auto-download.
+  // If the upstream sends Content-Disposition: attachment, pointing iframe at the direct URL can trigger a download.
+  // So when we plan to fetch + blob (auth proxy / cloudinary docs), only set iframe src AFTER blobUrl is ready.
+  const mustUseBlobForPreview = Boolean(shouldFetchForPreview);
+
+  // Single URL for download button: prefer blob when available (same file), else original url
   const previewAndDownloadUrl = blobUrl || url || null;
+  const iframeSrc = mustUseBlobForPreview ? (blobUrl || undefined) : (previewAndDownloadUrl || undefined);
+
+  // Trigger download only on explicit click (prevents auto-download when opening chat)
+  const handleDownload = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!previewAndDownloadUrl) return;
+    const a = document.createElement('a');
+    a.href = previewAndDownloadUrl;
+    a.download = fileName || 'document';
+    a.rel = 'noopener noreferrer';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   if (DEBUG_DOC_PREVIEW && url) {
     console.log('[DocPreview]', {
@@ -227,16 +247,14 @@ export default function SecureDocumentPreview({
           />
         </div>
         {showDownload && previewAndDownloadUrl && (
-          <a
-            href={previewAndDownloadUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            download={fileName || undefined}
+          <button
+            type="button"
+            onClick={handleDownload}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 text-sm font-medium mt-2"
           >
             <Download className="h-4 w-4" />
             {downloadLabel}
-          </a>
+          </button>
         )}
       </div>
     );
@@ -263,16 +281,14 @@ export default function SecureDocumentPreview({
           )}
         </div>
         {showDownload && (previewAndDownloadUrl || url) && (
-          <a
-            href={previewAndDownloadUrl || url || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            download={fileName || undefined}
+          <button
+            type="button"
+            onClick={handleDownload}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 text-sm font-medium mt-2"
           >
             <Download className="h-4 w-4" />
             {downloadLabel}
-          </a>
+          </button>
         )}
       </div>
     );
@@ -302,23 +318,21 @@ export default function SecureDocumentPreview({
           </div>
         )}
         <iframe
-          key={previewAndDownloadUrl || 'empty'}
-          src={previewAndDownloadUrl || undefined}
+          key={iframeSrc || 'empty'}
+          src={iframeSrc}
           title="Document preview"
           className="w-full h-[240px] border-0 min-h-[200px]"
         />
       </div>
       {showDownload && previewAndDownloadUrl && (
-        <a
-          href={previewAndDownloadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          download={fileName || undefined}
+        <button
+          type="button"
+          onClick={handleDownload}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary/10 text-primary hover:bg-primary/20 text-sm font-medium mt-2"
         >
           <Download className="h-4 w-4" />
           {downloadLabel}
-        </a>
+        </button>
       )}
     </div>
   );

@@ -5,8 +5,8 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X, Mic, Square } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X } from "lucide-react";
+import { cn, toCloudinaryMp3Url } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
 import dayjs from "dayjs";
@@ -19,7 +19,7 @@ import toast from 'react-hot-toast';
 
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from "@/api/axios";
-import { uploadImage as uploadImageApi, uploadAudio as uploadAudioApi } from "@/api/chatApi";
+import { uploadImage as uploadImageApi, getAudioPlayUrl as getAudioPlayUrlApi } from "@/api/chatApi";
 import { suggestQuickResponses, type SuggestItem } from "@/api/quickResponsesApi";
 import {
   fetchCustomersByBusiness,
@@ -49,6 +49,7 @@ import PlatformBadge from "@/components/custom/unipile/PlatformBadge";
 import CountryBadge from "@/components/custom/unipile/CountryBadge";
 import FormattedText from "@/components/custom/FormattedText";
 import SecureDocumentPreview from "@/components/custom/SecureDocumentPreview";
+import SimpleVoiceNote from "@/components/custom/SimpleVoiceNote";
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
@@ -646,16 +647,33 @@ export default function ChatInbox() {
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // 🔧 META OFFICIAL: State for audio upload and recording
-  const [selectedAudioFile, setSelectedAudioFile] = useState<File | null>(null);
-  const [audioPreview, setAudioPreview] = useState<string | null>(null);
-  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
-  const audioInputRef = useRef<HTMLInputElement>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // 🔧 Audio: when API doesn't return audioSrc, fetch play URL on demand so playback works
+  const [audioUrlByMessageId, setAudioUrlByMessageId] = useState<Record<string, string>>({});
+  const audioFetchRequestedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!selectedCustomer) {
+      setAudioUrlByMessageId({});
+      audioFetchRequestedRef.current = new Set();
+      return;
+    }
+    const list = messagesData?.list || [];
+    const toFetch: string[] = [];
+    for (const msg of list) {
+      const isAudio = msg.messageType === 'audio' || msg.text === '🎵 Audio' || msg.metadata?.messageType === 'audio';
+      if (!isAudio || !msg._id) continue;
+      const hasUrlFromApi = !!(msg.audioSrc ?? msg.audioPlayUrl ?? msg.cloudinaryUrl ?? msg.mediaUrl ?? msg.proxyUrl);
+      if (!hasUrlFromApi && !audioFetchRequestedRef.current.has(msg._id)) toFetch.push(msg._id);
+    }
+    if (toFetch.length === 0) return;
+    toFetch.forEach((id) => audioFetchRequestedRef.current.add(id));
+    let cancelled = false;
+    toFetch.forEach((id) => {
+      getAudioPlayUrlApi(id).then((url) => {
+        if (!cancelled && url) setAudioUrlByMessageId((prev) => ({ ...prev, [id]: url }));
+      }).catch(() => {});
+    });
+    return () => { cancelled = true; };
+  }, [selectedCustomer, messagesData?.list]);
 
   // 🔧 NEW: Handle image file selection
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -684,33 +702,6 @@ export default function ChatInbox() {
     reader.readAsDataURL(file);
   }, []);
 
-  // 🔧 META OFFICIAL: Handle audio file selection
-  const handleAudioSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type (Meta supports: AAC, MP4, MPEG, AMR, OGG)
-    const validAudioTypes = ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg', 'audio/ogg; codecs=opus', 'audio/mp3', 'audio/wav'];
-    if (!file.type.startsWith('audio/') && !validAudioTypes.includes(file.type)) {
-      toast.error('Please select an audio file (AAC, MP4, MPEG, AMR, OGG)');
-      return;
-    }
-
-    // Validate file size (max 16MB - Meta's limit)
-    if (file.size > 16 * 1024 * 1024) {
-      toast.error('Audio size must be less than 16MB');
-      return;
-    }
-
-    setSelectedAudioFile(file);
-    setSelectedImageFile(null); // Clear image if audio is selected
-    setImagePreview(null);
-    
-    // Create preview URL
-    const audioUrl = URL.createObjectURL(file);
-    setAudioPreview(audioUrl);
-  }, []);
-
   // 🔧 NEW: Remove selected image
   const handleRemoveImage = useCallback(() => {
     setSelectedImageFile(null);
@@ -719,90 +710,6 @@ export default function ChatInbox() {
       fileInputRef.current.value = '';
     }
   }, []);
-
-  // 🔧 META OFFICIAL: Handle audio recording
-  const startRecording = useCallback(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
-      });
-      
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: mediaRecorder.mimeType });
-        const audioFile = new File([audioBlob], `recording-${Date.now()}.${mediaRecorder.mimeType.includes('webm') ? 'webm' : 'mp4'}`, {
-          type: mediaRecorder.mimeType
-        });
-        
-        setSelectedAudioFile(audioFile);
-        const audioUrl = URL.createObjectURL(audioBlob);
-        setAudioPreview(audioUrl);
-        
-        // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
-      };
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-      setRecordingTime(0);
-      
-      // Start timer
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
-      }, 1000);
-      
-    } catch (error: any) {
-      console.error('Error starting recording:', error);
-      toast.error('Failed to start recording. Please allow microphone access.');
-    }
-  }, []);
-
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-        recordingTimerRef.current = null;
-      }
-    }
-  }, [isRecording]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-      }
-      if (mediaRecorderRef.current && isRecording) {
-        mediaRecorderRef.current.stop();
-      }
-    };
-  }, [isRecording]);
-
-  // 🔧 META OFFICIAL: Handle audio removal
-  const handleRemoveAudio = useCallback(() => {
-    if (audioPreview) {
-      URL.revokeObjectURL(audioPreview);
-    }
-    setSelectedAudioFile(null);
-    setAudioPreview(null);
-    if (audioInputRef.current) {
-      audioInputRef.current.value = '';
-    }
-    if (isRecording) {
-      stopRecording();
-    }
-  }, [audioPreview, isRecording, stopRecording]);
 
   // 🔧 NEW: Upload image to get URL
   const uploadImage = useCallback(async (file: File): Promise<string> => {
@@ -816,7 +723,7 @@ export default function ChatInbox() {
   }, []);
 
   const handleSendMessage = useCallback(async () => {
-    if ((!newMessage.trim() && !selectedImageFile && !selectedAudioFile) || !selectedCustomer || !businessId || !currentConversation) return;
+    if ((!newMessage.trim() && !selectedImageFile) || !selectedCustomer || !businessId || !currentConversation) return;
 
     const socket = getSocket();
     if (socket?.connected && selectedCustomer) socket.emit('agentStoppedTyping', { customerId: selectedCustomer });
@@ -825,8 +732,7 @@ export default function ChatInbox() {
     const platform = typeof platformRaw === 'string' ? platformRaw.toLowerCase() : 'website';
     const messageText = newMessage.trim();
     let imageUrl: string | null = null;
-    let audioUrl: string | null = null;
-    
+
     // 🔧 NEW: Upload image if selected
     if (selectedImageFile) {
       setIsUploadingImage(true);
@@ -840,24 +746,9 @@ export default function ChatInbox() {
       }
       setIsUploadingImage(false);
     }
-    
-    // 🔧 META OFFICIAL: Upload audio if selected
-    if (selectedAudioFile) {
-      setIsUploadingAudio(true);
-      try {
-        const result = await uploadAudioApi(selectedAudioFile);
-        audioUrl = result.url;
-      } catch (error: any) {
-        toast.error(error.response?.data?.message || 'Failed to upload audio');
-        setIsUploadingAudio(false);
-        return;
-      }
-      setIsUploadingAudio(false);
-    }
-    
+
     setNewMessage("");
     handleRemoveImage();
-    handleRemoveAudio();
 
     // For website conversations, use internal messaging only (no external channel)
     if (platform === 'website' || !platform || platform === '') {
@@ -878,24 +769,19 @@ export default function ChatInbox() {
 
         const payload: any = {
           conversationId: currentConversation.id,
-          message: messageText || (imageUrl ? '📷 Image' : audioUrl ? '🎵 Audio' : ''),
+          message: messageText || (imageUrl ? '📷 Image' : ''),
           businessId: businessId,
         };
-        
-        // 🔧 NEW: Add media URL if available
+
         if (imageUrl) {
           payload.imageUrl = imageUrl;
           payload.messageType = 'image';
-        } else if (audioUrl) {
-          payload.audioUrl = audioUrl;
-          payload.messageType = 'audio';
         }
-        
+
         const { sendMessageViaConversation } = await import('@/api/chatApi');
         await sendMessageViaConversation(payload);
-        
-        // The message will be updated via socket when it arrives
-        toast.success(imageUrl ? 'Image sent!' : audioUrl ? 'Audio sent!' : 'Message sent!');
+
+        toast.success(imageUrl ? 'Image sent!' : 'Message sent!');
       } catch (error: any) {
         const errorData = error.response?.data;
         
@@ -999,9 +885,9 @@ export default function ChatInbox() {
   
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] h-screen w-full gap-4 lg:gap-6 p-4 lg:p-6">
+      <div className="chat-inbox-no-shadow grid grid-cols-1 lg:grid-cols-[350px_1fr] h-screen w-full gap-4 lg:gap-6 p-4 lg:p-6">
         <aside className={cn(
-          "flex flex-col border p-4 rounded-xl max-h-screen transition-colors shadow-lg",
+          "flex flex-col border p-4 rounded-xl max-h-screen transition-colors",
           activePlatform === 'whatsapp' ? "chat-bg-whatsapp border-[#d4c5b7] dark:border-[#1e2a32]" :
           activePlatform === 'website' ? "chat-bg-website border-border" :
           "bg-card border-border"
@@ -1015,7 +901,7 @@ export default function ChatInbox() {
               className={cn(
                 "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all whitespace-nowrap",
                 activePlatform === 'all'
-                  ? "bg-background shadow-sm"
+                  ? "bg-background"
                   : "hover:bg-background/50"
               )}
             >
@@ -1026,7 +912,7 @@ export default function ChatInbox() {
               className={cn(
                 "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 whitespace-nowrap",
                 activePlatform === 'website'
-                  ? "bg-background shadow-sm"
+                  ? "bg-background"
                   : "hover:bg-background/50"
               )}
             >
@@ -1038,7 +924,7 @@ export default function ChatInbox() {
               className={cn(
                 "flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all flex items-center justify-center gap-1 whitespace-nowrap",
                 activePlatform === 'whatsapp'
-                  ? "bg-[#25d366] text-white shadow-sm"
+                  ? "bg-[#25d366] text-white"
                   : "hover:bg-[#25d366]/10 text-[#25d366]"
               )}
             >
@@ -1111,7 +997,7 @@ export default function ChatInbox() {
                     {/* 🔧 REMOVED: Platform badge on avatar - badge already shown next to name */}
                     {/* 🔧 NEW: Unread count badge - positioned on avatar */}
                     {(convo.unreadCount || 0) > 0 && (
-                      <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center z-10 border-2 border-background shadow-sm">
+                      <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center z-10 border-2 border-background">
                         {(convo.unreadCount || 0) > 99 ? '99+' : (convo.unreadCount || 0)}
                       </div>
                     )}
@@ -1234,7 +1120,7 @@ export default function ChatInbox() {
 
         <main 
           className={cn(
-            "flex flex-col border rounded-xl max-h-screen transition-colors overflow-hidden shadow-lg",
+            "flex flex-col border rounded-xl max-h-screen transition-colors overflow-hidden",
             // Platform-specific main container backgrounds using CSS classes
             currentConversation?.platformInfo?.platform === 'whatsapp' 
               ? "chat-bg-whatsapp border-[#d4c5b7] dark:border-[#1e2a32]" 
@@ -1471,7 +1357,7 @@ export default function ChatInbox() {
                       if (msg.isInternalNote || msg.metadata?.isInternalNote) {
                         return (
                           <div key={i} className="flex justify-end my-2">
-                            <div className="max-w-[85%] rounded-xl border-2 border-amber-500/40 dark:border-amber-400/30 bg-amber-100 dark:bg-amber-950/50 px-4 py-2.5 shadow-sm">
+                            <div className="max-w-[85%] rounded-xl border-2 border-amber-500/40 dark:border-amber-400/30 bg-amber-100 dark:bg-amber-950/50 px-4 py-2.5">
                               <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide mb-1">{t('chatInbox.internalNote', 'Internal note')}</p>
                               <p className="text-sm text-amber-900 dark:text-amber-100 whitespace-pre-wrap break-words"><FormattedText text={msg.text} /></p>
                             </div>
@@ -1549,16 +1435,24 @@ export default function ChatInbox() {
                       const anyCloudinary = msg.cloudinaryUrl || msg.metadata?.cloudinaryUrl || null;
                       const anyMedia = mediaUrl || msg.metadata?.mediaUrl || null;
                       const validMediaUrl = (anyMedia && typeof anyMedia === 'string' && !anyMedia.startsWith('att://')) ? anyMedia : null;
-                      const displayUrl = messageType === 'audio'
-                        ? (anyCloudinary || validMediaUrl || proxyUrl || null)
-                        : (messageType === 'image' || messageType === 'video' || messageType === 'document'
-                            ? (anyCloudinary || validMediaUrl || proxyUrl || null)
-                            : (validMediaUrl || proxyUrl || null));
+                      const isLikelyAudio = messageType === 'audio' || msg.text === '🎵 Audio' || msg.metadata?.messageType === 'audio' || (msg.text && /🎵/.test(msg.text));
+                      // 🔧 Audio: backend sends audioSrc (and audioPlayUrl) — use first so playback works
+                      const audioPlayUrl = msg.audioSrc ?? msg.audioPlayUrl ?? msg.metadata?.audioSrc ?? msg.metadata?.audioPlayUrl ?? null;
+                      const fetchedAudioUrl = audioUrlByMessageId[msg._id] || null;
+                      const cloudinaryMp3 = (messageType === 'audio' || isLikelyAudio) && anyCloudinary ? (toCloudinaryMp3Url(anyCloudinary) || anyCloudinary) : null;
+                      const effectiveAudioUrl = audioPlayUrl || cloudinaryMp3 || (messageType === 'audio' || isLikelyAudio ? (anyCloudinary || validMediaUrl || proxyUrl || fetchedAudioUrl) : null) || null;
+                      const displayUrl = (messageType === 'audio' || messageType === 'image' || messageType === 'video' || messageType === 'document' || isLikelyAudio)
+                        ? (messageType === 'audio' || isLikelyAudio
+                          ? (effectiveAudioUrl || anyCloudinary || validMediaUrl || proxyUrl || fetchedAudioUrl || null)
+                          : (anyCloudinary || validMediaUrl || proxyUrl || null))
+                        : (validMediaUrl || proxyUrl || null);
                       
                       // 🔧 Show as document when messageType is document OR we have URL + fileName/PDF hint (so preview shows after refresh)
                       const isDocumentMessage = messageType === 'document' || (!!(displayUrl || proxyUrl) && (!!msg.metadata?.fileName || /\.(pdf|doc|docx|xls|xlsx)$/i.test(msg.metadata?.fileName || '') || (displayUrl || proxyUrl || '').toLowerCase().includes('.pdf')));
+                      // 🔧 Show as audio when messageType is audio OR we have URL + audio hint (voice/Unipile sometimes sends wrong type)
+                      const isAudioMessage = messageType === 'audio' || (!!(displayUrl || proxyUrl) && (msg.text === '🎵 Audio' || msg.metadata?.messageType === 'audio' || (msg.text && /🎵/.test(msg.text))));
                       // 🔧 FIX: Detect media message from messageType OR if message text contains "Image:" or "att://"
-                      const isMediaMessage = ['image', 'video', 'audio', 'document'].includes(messageType) || isDocumentMessage ||
+                      const isMediaMessage = ['image', 'video', 'audio', 'document'].includes(messageType) || isDocumentMessage || isAudioMessage ||
                                             (msg.text && typeof msg.text === 'string' && (msg.text.includes('att://') || msg.text.match(/^(📷|🎥|🎵|📄|📎)/)));
                       
                       // 🔧 FIX: If message text is just a placeholder and we have media, hide the text
@@ -1608,7 +1502,7 @@ export default function ChatInbox() {
                           )}
                           <div className={cn("flex flex-col min-w-0 flex-1", isAgentSide ? "items-end" : "items-start")}>
                           <div className={cn(
-                            "max-w-[65%] rounded-2xl text-sm leading-snug overflow-hidden message-bubble-shadow",
+                            "max-w-[65%] rounded-2xl text-sm leading-snug overflow-hidden",
                             isAgentSide 
                               ? platform === 'whatsapp' 
                                 ? "message-bubble-whatsapp-sent text-[#111b21] dark:text-white rounded-br-none" 
@@ -1624,10 +1518,10 @@ export default function ChatInbox() {
                               : platform === 'telegram'
                               ? "message-bubble-telegram-received text-[#000000] dark:text-white rounded-bl-none"
                               : "bg-muted text-muted-foreground rounded-bl-none",
-                            (isMediaMessage && (displayUrl || (isDocumentMessage && proxyUrl))) ? "p-0" : "p-3 sm:p-4"
+                            (isMediaMessage && (displayUrl || (isDocumentMessage && proxyUrl) || (isAudioMessage && (proxyUrl || displayUrl)) || isAudioMessage)) ? "p-0" : "p-3 sm:p-4"
                           )}>
                             {/* 🔧 NEW: Render media based on messageType (document can use proxyUrl when displayUrl missing) */}
-                            {isMediaMessage && (displayUrl || (isDocumentMessage && proxyUrl)) ? (
+                            {isMediaMessage && (displayUrl || (isDocumentMessage && proxyUrl) || (isAudioMessage && (proxyUrl || displayUrl)) || isAudioMessage) ? (
                               <>
                                 {messageType === 'image' && (
                                   <div className="relative group">
@@ -1635,7 +1529,7 @@ export default function ChatInbox() {
                                       src={displayUrl}
                                       alt={msg.text || 'Image'}
                                       proxyUrl={proxyUrl}
-                                      className="max-w-[280px] sm:max-w-[320px] md:max-w-[360px] w-full h-auto rounded-xl cursor-pointer object-cover shadow-lg border-2 border-white/30 dark:border-white/10 hover:shadow-2xl hover:scale-[1.02] hover:border-white/50 dark:hover:border-white/30 transition-all duration-300 ease-out"
+                                      className="max-w-[280px] sm:max-w-[320px] md:max-w-[360px] w-full h-auto rounded-xl cursor-pointer object-cover border-2 border-white/30 dark:border-white/10 hover:scale-[1.02] hover:border-white/50 dark:hover:border-white/30 transition-all duration-300 ease-out"
                                       onClick={() => setSelectedImage({ src: displayUrl || '', alt: msg.text || 'Image' })}
                                     />
                                     <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
@@ -1655,69 +1549,19 @@ export default function ChatInbox() {
                                     Your browser does not support the video tag.
                                   </video>
                                 )}
-                                {messageType === 'audio' && (
+                                {isAudioMessage && (
                                   <div className="p-3 sm:p-4">
-                                    <div className="flex items-center gap-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-xl p-4 border border-purple-200/50 dark:border-purple-800/50">
-                                      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
-                                        <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.793L4.383 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.383l4-3.617a1 1 0 011.617.793zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
-                                        </svg>
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <audio 
-                                          src={displayUrl || proxyUrl || msg.cloudinaryUrl || null} 
-                                          controls 
-                                          className="w-full h-10"
-                                          preload="metadata"
-                                          crossOrigin="anonymous"
-                                          onError={(e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
-                                            const audioElement = e.currentTarget;
-                                            const currentSrc = audioElement.src;
-                                            console.error('Audio playback error:', {
-                                              currentSrc,
-                                              displayUrl,
-                                              proxyUrl,
-                                              cloudinaryUrl: msg.cloudinaryUrl,
-                                              mediaUrl: msg.mediaUrl,
-                                              error: e
-                                            });
-                                            
-                                            // Try fallback URLs in order
-                                            if (proxyUrl && currentSrc !== proxyUrl) {
-                                              console.log('Trying proxyUrl fallback:', proxyUrl);
-                                              audioElement.src = proxyUrl;
-                                            } else if (msg.cloudinaryUrl && currentSrc !== msg.cloudinaryUrl) {
-                                              console.log('Trying cloudinaryUrl fallback:', msg.cloudinaryUrl);
-                                              audioElement.src = msg.cloudinaryUrl;
-                                            } else if (msg.mediaUrl && currentSrc !== msg.mediaUrl && !msg.mediaUrl.startsWith('att://')) {
-                                              console.log('Trying mediaUrl fallback:', msg.mediaUrl);
-                                              audioElement.src = msg.mediaUrl;
-                                            } else {
-                                              console.error('All audio URL fallbacks failed');
-                                              toast.error('Failed to load audio file. Please check the URL.');
-                                            }
-                                          }}
-                                          onLoadedMetadata={(e) => {
-                                            const audio = e.currentTarget;
-                                            const duration = audio.duration;
-                                            if (duration && !isNaN(duration)) {
-                                              const minutes = Math.floor(duration / 60);
-                                              const seconds = Math.floor(duration % 60);
-                                              console.log(`✅ Audio loaded successfully. Duration: ${minutes}:${seconds.toString().padStart(2, '0')}`);
-                                            }
-                                          }}
-                                          onCanPlay={(e) => {
-                                            console.log('✅ Audio can play:', e.currentTarget.src);
-                                          }}
-                                        >
-                                          Your browser does not support the audio tag.
-                                        </audio>
-                                        {msg.text && !isPlaceholderText && (
-                                          <p className="text-xs text-muted-foreground mt-2 break-words">
-                                            <FormattedText text={msg.text} />
-                                          </p>
-                                        )}
-                                      </div>
+                                    <div className="rounded-xl border border-purple-200/50 bg-gradient-to-r from-purple-50 to-blue-50 p-4 dark:border-purple-800/50 dark:from-purple-900/20 dark:to-blue-900/20">
+                                      <SimpleVoiceNote
+                                        messageId={String(msg._id)}
+                                        audioUrl={(msg as any).audioUrl ?? msg.metadata?.audioUrl ?? audioUrlByMessageId[msg._id]}
+                                        cloudinaryUrl={msg.cloudinaryUrl ?? msg.metadata?.cloudinaryUrl ?? anyCloudinary}
+                                      />
+                                      {msg.text && !isPlaceholderText && (
+                                        <p className="mt-2 break-words text-xs text-muted-foreground">
+                                          <FormattedText text={msg.text} />
+                                        </p>
+                                      )}
                                     </div>
                                   </div>
                                 )}
@@ -2027,62 +1871,6 @@ export default function ChatInbox() {
                   </div>
                 )}
                 
-                {/* 🔧 META OFFICIAL: Audio preview */}
-                {audioPreview && (
-                  <div className="relative mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg border border-purple-200/50 dark:border-purple-800/50">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center">
-                        <Mic className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <audio 
-                          src={audioPreview} 
-                          controls 
-                          className="w-full h-8"
-                          preload="metadata"
-                        >
-                          Your browser does not support the audio tag.
-                        </audio>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {selectedAudioFile?.name || 'Audio recording'}
-                          {selectedAudioFile && ` (${(selectedAudioFile.size / 1024 / 1024).toFixed(2)} MB)`}
-                        </p>
-                      </div>
-                      <button
-                        onClick={handleRemoveAudio}
-                        className="flex-shrink-0 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-                
-                {/* 🔧 META OFFICIAL: Recording indicator */}
-                {isRecording && (
-                  <div className="mb-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 flex items-center gap-3">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center animate-pulse">
-                      <Mic className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-red-700 dark:text-red-300">
-                        Recording... {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
-                      </p>
-                      <p className="text-xs text-red-600 dark:text-red-400">Click stop to finish recording</p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="destructive"
-                      onClick={stopRecording}
-                      className="shrink-0"
-                    >
-                      <Square className="h-4 w-4 mr-1" />
-                      Stop
-                    </Button>
-                  </div>
-                )}
-                
                 <div className="relative flex items-end gap-2">
                   {/* 🔧 NEW: Image upload button */}
                   <input
@@ -2093,62 +1881,21 @@ export default function ChatInbox() {
                     className="hidden"
                     id="image-upload"
                   />
-                  <input
-                    ref={audioInputRef}
-                    type="file"
-                    accept="audio/*,.aac,.mp4,.mpeg,.amr,.ogg"
-                    onChange={handleAudioSelect}
-                    className="hidden"
-                    id="audio-upload"
-                  />
-                  <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className="cursor-pointer h-9 w-9 shrink-0"
-                      disabled={isUploadingImage || isUploadingAudio || isRecording}
-                      onClick={() => fileInputRef.current?.click()}
-                      title="Upload image"
-                    >
-                      {isUploadingImage ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <ImageIcon className="h-4 w-4" />
-                      )}
-                    </Button>
-                    {/* 🔧 META OFFICIAL: Audio upload/record button */}
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="outline"
-                      className={cn(
-                        "cursor-pointer h-9 w-9 shrink-0",
-                        isRecording && "bg-red-500 text-white hover:bg-red-600"
-                      )}
-                      disabled={isUploadingImage || isUploadingAudio}
-                      onClick={() => {
-                        if (isRecording) {
-                          stopRecording();
-                        } else {
-                          // Show menu: Upload or Record
-                          const shouldRecord = window.confirm('Choose an option:\n\nOK = Record audio\nCancel = Upload audio file');
-                          if (shouldRecord) {
-                            startRecording();
-                          } else {
-                            audioInputRef.current?.click();
-                          }
-                        }
-                      }}
-                      title={isRecording ? "Stop recording" : "Upload or record audio"}
-                    >
-                      {isRecording ? (
-                        <Square className="h-4 w-4" />
-                      ) : (
-                        <Mic className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="cursor-pointer h-9 w-9 shrink-0"
+                    disabled={isUploadingImage}
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload image"
+                  >
+                    {isUploadingImage ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImageIcon className="h-4 w-4" />
+                    )}
+                  </Button>
                   <div className="relative w-full">
                     <Textarea 
                       placeholder={t('chatInbox.snippetHint') || "Use '/' for snippets"} 
@@ -2170,10 +1917,10 @@ export default function ChatInbox() {
                       }} 
                       className="w-full resize-none p-3 sm:p-4 pr-12 sm:pr-14 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
                       rows={1} 
-                      disabled={isUploadingImage || isUploadingAudio || isRecording || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate)}
+                      disabled={isUploadingImage || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate)}
                     />
                     {(snippetSuggestions.length > 0 || snippetSuggestLoading) && (newMessage || '').trim().startsWith('/') && (
-                      <div className="absolute bottom-full left-0 right-0 mb-1 max-h-[220px] overflow-y-auto rounded-lg border bg-popover text-popover-foreground shadow-md z-50 py-1">
+                      <div className="absolute bottom-full left-0 right-0 mb-1 max-h-[220px] overflow-y-auto rounded-lg border bg-popover text-popover-foreground z-50 py-1">
                         {snippetSuggestLoading ? (
                           <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -2199,7 +1946,7 @@ export default function ChatInbox() {
                     onClick={handleSendMessage} 
                     size="icon" 
                     className="h-9 w-9 bg-primary cursor-pointer hover:bg-primary/90 shrink-0"
-                    disabled={isUploadingImage || isUploadingAudio || (whatsappSession?.requiresTemplate && currentConversation?.platformInfo?.platform === 'whatsapp') || (!newMessage.trim() && !selectedImageFile && !selectedAudioFile)}
+                    disabled={isUploadingImage || (whatsappSession?.requiresTemplate && currentConversation?.platformInfo?.platform === 'whatsapp') || (!newMessage.trim() && !selectedImageFile)}
                   >
                     {isUploadingImage ? (
                       <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
@@ -2231,7 +1978,7 @@ export default function ChatInbox() {
                 <img
                   src={optimizeImageUrl(selectedImage.src, 1920, 'auto') || selectedImage.src} // Higher quality for modal (1920px max)
                   alt={selectedImage.alt}
-                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg"
                   onClick={(e) => e.stopPropagation()}
                   loading="eager" // Eager load for modal (user already clicked to view)
                   decoding="async"

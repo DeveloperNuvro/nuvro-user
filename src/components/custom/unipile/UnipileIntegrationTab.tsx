@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, Plus, Trash2, CheckCircle, XCircle, MessageSquare, Phone, RefreshCw, RotateCcw, Info, KeyRound, Settings } from "lucide-react";
+import { Loader2, Plus, Trash2, CheckCircle, XCircle, MessageSquare, Phone, RefreshCw, RotateCcw, Info, KeyRound, Settings, Pencil } from "lucide-react";
 import QRCode from 'qrcode';
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/store";
@@ -22,6 +22,7 @@ import {
   syncAccount,
   getAccountById,
   updateUnipileChannelConfig,
+  updateUnipileConnectionName,
   UnipileConnection,
   type ChannelMode,
   type ChannelFallbackBehavior,
@@ -141,6 +142,10 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
   const [channelConfigFallback, setChannelConfigFallback] = useState<ChannelFallbackBehavior>('route_to_ai');
   const [channelConfigDefaultFlowId, setChannelConfigDefaultFlowId] = useState<string | null>(null);
   const [channelConfigSaving, setChannelConfigSaving] = useState(false);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameConnection, setRenameConnection] = useState<UnipileConnection | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameSaving, setRenameSaving] = useState(false);
   const workflows = useSelector((state: RootState) => state.workflow?.workflows ?? []);
   const user = useSelector((state: RootState) => state.auth.user);
   const businessId = user?.businessId ?? '';
@@ -746,6 +751,80 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Rename connection (display name in dashboard only) */}
+        <Dialog
+          open={renameDialogOpen}
+          onOpenChange={(open) => {
+            setRenameDialogOpen(open);
+            if (!open) {
+              setRenameConnection(null);
+              setRenameValue('');
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle>{t('singleAiAgentPage.multiPlatform.editConnectionNameTitle')}</DialogTitle>
+              <DialogDescription>
+                {t('singleAiAgentPage.multiPlatform.editConnectionNameHint')}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-2 py-2">
+              <Label htmlFor="rename-connection">{t('singleAiAgentPage.multiPlatform.connectionNameLabel')}</Label>
+              <Input
+                id="rename-connection"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                maxLength={150}
+                placeholder={t('singleAiAgentPage.multiPlatform.connectionNamePlaceholder')}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRenameDialogOpen(false);
+                  setRenameConnection(null);
+                }}
+              >
+                {t('singleAiAgentPage.multiPlatform.cancel')}
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!renameConnection) return;
+                  const trim = renameValue.trim();
+                  if (!trim) {
+                    toast.error(t('singleAiAgentPage.multiPlatform.toast.fillFields'));
+                    return;
+                  }
+                  const ref = renameConnection.id || renameConnection.connectionId;
+                  if (!ref) return;
+                  setRenameSaving(true);
+                  try {
+                    await dispatch(updateUnipileConnectionName({ connectionRef: ref, name: trim })).unwrap();
+                    toast.success(t('singleAiAgentPage.multiPlatform.connectionNameUpdated'));
+                    setRenameDialogOpen(false);
+                    setRenameConnection(null);
+                    setRenameValue('');
+                  } catch (e: unknown) {
+                    toast.error(
+                      typeof e === 'string'
+                        ? e
+                        : t('singleAiAgentPage.multiPlatform.connectionNameUpdateError')
+                    );
+                  } finally {
+                    setRenameSaving(false);
+                  }
+                }}
+                disabled={renameSaving}
+              >
+                {renameSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t('singleAiAgentPage.multiPlatform.saveName')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Stats Cards */}
@@ -895,7 +974,23 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
                           <IconComponent className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                          <CardTitle className="text-base font-semibold">{connection.name}</CardTitle>
+                          <div className="flex items-center gap-1 group">
+                            <CardTitle className="text-base font-semibold">{connection.name}</CardTitle>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 shrink-0 text-muted-foreground opacity-70 hover:opacity-100"
+                              title={t('singleAiAgentPage.multiPlatform.editConnectionName')}
+                              onClick={() => {
+                                setRenameConnection(connection);
+                                setRenameValue(connection.name || '');
+                                setRenameDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                           <CardDescription className="text-xs capitalize mt-1">
                             {config?.name || connection.platform}
                           </CardDescription>
