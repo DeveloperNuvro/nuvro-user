@@ -191,7 +191,27 @@
     "internalNotePlaceholder": "Añade notas internas para esta conversación...",
     "snippetHint": "Usa '/' para respuestas rápidas",
     "downloadDocument": "Descargar",
-    "documentUnavailable": "Documento no disponible"
+    "documentUnavailable": "Documento no disponible",
+    "quotedReplyLabel": "Respondiendo a",
+    "quotedReplyNoPreview": "Mensaje original (sin vista previa)",
+    "whapi": {
+      "badge": "WhatsApp (Whapi)",
+      "gateOk": "Gate OK",
+      "gateIssue": "Problema en gate",
+      "gateUnknown": "Estado del gate desconocido",
+      "capabilitiesHint": "Funciones de inbox Whapi disponibles para esta conexión.",
+      "refreshHint": "Actualiza para cargar el estado del gate y la presencia.",
+      "showOnline": "Mostrar en línea",
+      "showOffline": "Mostrar fuera de línea",
+      "contactPresence": "Contacto: {{hint}}",
+      "contactPresenceUnknown": "Presencia: actualiza tras abrir el chat",
+      "refresh": "Actualizar",
+      "replyingTo": "Respondiendo a: {{text}}",
+      "reply": "Responder",
+      "react": "Reaccionar",
+      "reactionSent": "Reacción enviada",
+      "reactionFailed": "No se pudo enviar la reacción"
+    }
   },
   "snippets": {
     "title": "Respuestas rápidas",

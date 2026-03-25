@@ -269,23 +269,23 @@ body {
 
 /* 🎨 Platform-specific message bubble styles */
 .message-bubble-whatsapp-sent {
-  background: linear-gradient(135deg, #dcf8c6 0%, #d4f0b8 100%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(180deg, #d9fdd3 0%, #cff9c4 100%);
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13), 0 1px 3px rgba(11, 20, 26, 0.08);
 }
 
 .dark .message-bubble-whatsapp-sent {
-  background: linear-gradient(135deg, #005c4b 0%, #004d3f 100%);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(180deg, #005c4b 0%, #004a3d 100%);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
 }
 
 .message-bubble-whatsapp-received {
   background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13), 0 1px 2px rgba(11, 20, 26, 0.06);
 }
 
 .dark .message-bubble-whatsapp-received {
   background: #202c33;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .message-bubble-instagram {
@@ -318,20 +318,56 @@ body {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-/* Chat Inbox: flat bubbles (no shadow) */
-.chat-inbox-no-shadow .message-bubble-whatsapp-sent,
-.chat-inbox-no-shadow .message-bubble-whatsapp-received,
+/* Chat Inbox: flat bubbles for non-WhatsApp (WhatsApp keeps depth — closer to the app) */
 .chat-inbox-no-shadow .message-bubble-instagram,
 .chat-inbox-no-shadow .message-bubble-telegram-sent,
 .chat-inbox-no-shadow .message-bubble-telegram-received {
   box-shadow: none !important;
 }
 
-/* Agent Inbox: flat bubbles (no shadow) */
-.agent-inbox-no-shadow .message-bubble-whatsapp-sent,
-.agent-inbox-no-shadow .message-bubble-whatsapp-received,
+/* Agent Inbox: same — WhatsApp bubbles keep shadow */
 .agent-inbox-no-shadow .message-bubble-instagram,
 .agent-inbox-no-shadow .message-bubble-telegram-sent,
 .agent-inbox-no-shadow .message-bubble-telegram-received {
   box-shadow: none !important;
+}
+
+/* WhatsApp thread chrome (Chat + Agent inbox) */
+.chat-wa-header-strip {
+  background: linear-gradient(180deg, #f0f2f5 0%, #e8eaed 100%);
+  border-bottom-color: #d1d7db !important;
+}
+
+.dark .chat-wa-header-strip {
+  background: linear-gradient(180deg, #202c33 0%, #111b21 100%);
+  border-bottom-color: #2a3942 !important;
+}
+
+.chat-wa-composer-dock {
+  background: linear-gradient(180deg, #f0f2f5 0%, #ebebeb 100%);
+  border-top-color: #d1d7db !important;
+}
+
+.dark .chat-wa-composer-dock {
+  background: linear-gradient(180deg, #0b141a 0%, #111b21 100%);
+  border-top-color: #2a3942 !important;
+}
+
+.chat-wa-composer-dock textarea.wa-composer-input,
+.chat-wa-composer-dock .wa-composer-input {
+  border-radius: 1.35rem !important;
+  background-color: #fff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.dark .chat-wa-composer-dock textarea.wa-composer-input,
+.dark .chat-wa-composer-dock .wa-composer-input {
+  background-color: #2a3942 !important;
+  border-color: transparent !important;
+  box-shadow: none;
+}
+
+.chat-wa-attach-btn {
+  border-radius: 9999px !important;
 }

@@ -262,7 +262,27 @@
     "internalNotePlaceholder": "এই কথোপকথনের জন্য অভ্যন্তরীণ নোট যোগ করুন...",
     "snippetHint": "স্নিপেটের জন্য '/' ব্যবহার করুন",
     "downloadDocument": "ডাউনলোড",
-    "documentUnavailable": "ডকুমেন্ট উপলব্ধ নয়"
+    "documentUnavailable": "ডকুমেন্ট উপলব্ধ নয়",
+    "quotedReplyLabel": "উত্তর দিচ্ছেন",
+    "quotedReplyNoPreview": "মূল বার্তা (প্রিভিউ নেই)",
+    "whapi": {
+      "badge": "WhatsApp (Whapi)",
+      "gateOk": "গেট ঠিক আছে",
+      "gateIssue": "গেট সমস্যা",
+      "gateUnknown": "গেট অজানা",
+      "capabilitiesHint": "এই সংযোগের জন্য Whapi ইনবক্স ফিচার আছে।",
+      "refreshHint": "গেট স্ট্যাটাস ও উপস্থিতি আনতে রিফ্রেশ করুন।",
+      "showOnline": "অনলাইন দেখান",
+      "showOffline": "অফলাইন দেখান",
+      "contactPresence": "যোগাযোগ: {{hint}}",
+      "contactPresenceUnknown": "উপস্থিতি: চ্যাট খোলার পর রিফ্রেশ করুন",
+      "refresh": "রিফ্রেশ",
+      "replyingTo": "উত্তর দিচ্ছেন: {{text}}",
+      "reply": "উত্তর",
+      "react": "প্রতিক্রিয়া",
+      "reactionSent": "প্রতিক্রিয়া পাঠানো হয়েছে",
+      "reactionFailed": "প্রতিক্রিয়া পাঠানো যায়নি"
+    }
   },
   "snippets": {
     "title": "দ্রুত প্রতিক্রিয়া",

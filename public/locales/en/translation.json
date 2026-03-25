@@ -192,7 +192,27 @@
     "snippetHint": "Use '/' for snippets",
     "loadingSnippets": "Loading...",
     "downloadDocument": "Download",
-    "documentUnavailable": "Document unavailable"
+    "documentUnavailable": "Document unavailable",
+    "quotedReplyLabel": "Replying to",
+    "quotedReplyNoPreview": "Original message (preview unavailable)",
+    "whapi": {
+      "badge": "WhatsApp (Whapi)",
+      "gateOk": "Gate OK",
+      "gateIssue": "Gate issue",
+      "gateUnknown": "Gate status unknown",
+      "capabilitiesHint": "Whapi inbox features are available for this connection.",
+      "refreshHint": "Refresh to load gate status and customer presence.",
+      "showOnline": "Show online",
+      "showOffline": "Show offline",
+      "contactPresence": "Contact: {{hint}}",
+      "contactPresenceUnknown": "Presence: refresh or wait after opening chat",
+      "refresh": "Refresh",
+      "replyingTo": "Replying to: {{text}}",
+      "reply": "Reply",
+      "react": "React",
+      "reactionSent": "Reaction sent",
+      "reactionFailed": "Could not send reaction"
+    }
   },
   "snippets": {
     "title": "Quick responses",

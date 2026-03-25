@@ -39,7 +39,41 @@ export const fetchAgentConversations = createAsyncThunk<
             const response = await api.get("/api/v1/agents/my-conversations", { params });
 
             const responsePayload = response.data.data;
-            const conversations: ConversationInList[] = responsePayload.data;
+            const rawList = responsePayload.data || [];
+            const normWaProv = (p: unknown): 'whapi' | 'unipile' | 'meta' | undefined => {
+                const s = String(p ?? '').toLowerCase();
+                if (s === 'whapi' || s === 'unipile' || s === 'meta') return s;
+                return undefined;
+            };
+            const conversations: ConversationInList[] = rawList.map((c: any) => ({
+                ...c,
+                id: c.id != null ? String(c.id) : c._id != null ? String(c._id) : '',
+                customer: c.customer
+                    ? {
+                          id:
+                              c.customer.id != null
+                                  ? String(c.customer.id)
+                                  : c.customer._id != null
+                                    ? String(c.customer._id)
+                                    : '',
+                          name: c.customer.name ?? '',
+                          ...(c.customer.phone != null && String(c.customer.phone).trim() !== ''
+                              ? { phone: String(c.customer.phone).trim() }
+                              : {}),
+                      }
+                    : { id: '', name: '' },
+                ...(c.whatsappConnection
+                    ? {
+                          whatsappConnection: {
+                              id: String(c.whatsappConnection.id ?? '').trim(),
+                              displayName: c.whatsappConnection.displayName ?? null,
+                              ...(normWaProv(c.whatsappConnection.provider)
+                                  ? { provider: normWaProv(c.whatsappConnection.provider)! }
+                                  : {}),
+                          },
+                      }
+                    : {}),
+            }));
             const totalPages = responsePayload.pagination?.totalPages || 1;
 
             return { page, conversations, totalPages };

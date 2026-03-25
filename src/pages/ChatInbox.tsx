@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X, Reply } from "lucide-react";
 import { cn, toCloudinaryMp3Url } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -60,7 +60,10 @@ import FormattedText from "@/components/custom/FormattedText";
 import SecureDocumentPreview from "@/components/custom/SecureDocumentPreview";
 import SimpleVoiceNote from "@/components/custom/SimpleVoiceNote";
 import { isMetaWhatsAppCloudApiSession } from "@/utils/whatsappSession";
-import { whatsappConnectionBadgeLabel } from "@/utils/whatsappInboxLabels";
+import { whatsappConnectionBadgeLabel, isWhapiLinkedWhatsApp, whapiQuoteMessageIdFromMessage } from "@/utils/whatsappInboxLabels";
+import WhapiInboxToolbar from "@/components/chatInbox/WhapiInboxToolbar";
+import MessageQuotedPreview from "@/components/chatInbox/MessageQuotedPreview";
+import { putWhapiMessageReaction } from "@/api/whapiInboxApi";
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
@@ -285,7 +288,9 @@ export default function ChatInbox() {
   const [snippetSuggestions, setSnippetSuggestions] = useState<SuggestItem[]>([]);
   const [snippetSuggestLoading, setSnippetSuggestLoading] = useState(false);
   const snippetQueryRef = useRef<string | null>(null);
-  
+  /** Whapi-linked WhatsApp: quote target for send-message (server maps to Whapi quoted id). */
+  const [whapiReplyTo, setWhapiReplyTo] = useState<{ id: string; preview: string } | null>(null);
+
   // 🔧 NEW: Helper function to get priority color
   const getPriorityColor = (priority: string = 'normal') => {
     switch (priority) {
@@ -404,6 +409,34 @@ export default function ChatInbox() {
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== user?._id) : [], [agents, user?._id]);
   const offlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'offline' && agent._id !== user?._id) : [], [agents, user?._id]);
   const groupedMessages = useMemo(() => { const allMessages = messagesData?.list || []; return allMessages.reduce((acc: { [key: string]: any[] }, msg: any) => { const dateLabel = dayjs(msg.time).isToday() ? t('chatInbox.dateToday') : dayjs(msg.time).isYesterday() ? t('chatInbox.dateYesterday') : dayjs(msg.time).format("MMMM D, YYYY"); if (!acc[dateLabel]) acc[dateLabel] = []; acc[dateLabel].push(msg); return acc; }, {}); }, [messagesData?.list, t]);
+
+  const whapiChatJidFromMessages = useMemo(() => {
+    const list = messagesData?.list || [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const cid = (list[i] as any)?.metadata?.chatId;
+      if (typeof cid === 'string' && cid.trim()) return cid.trim();
+    }
+    return null as string | null;
+  }, [messagesData?.list]);
+
+  const isWhapiWaThread = useMemo(
+    () =>
+      currentConversation?.platformInfo?.platform === 'whatsapp' &&
+      isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection),
+    [currentConversation?.platformInfo?.platform, currentConversation?.whatsappConnection]
+  );
+
+  const isWaThread = useMemo(
+    () =>
+      String(currentConversation?.platformInfo?.platform || currentConversation?.source || '')
+        .toLowerCase()
+        .trim() === 'whatsapp',
+    [currentConversation?.platformInfo?.platform, currentConversation?.source]
+  );
+
+  useEffect(() => {
+    setWhapiReplyTo(null);
+  }, [selectedCustomer]);
 
   useEffect(() => { dayjs.locale(i18n.language); }, [i18n.language]);
   
@@ -799,9 +832,15 @@ export default function ChatInbox() {
           payload.messageType = 'image';
         }
 
+        if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection) && whapiReplyTo?.id) {
+          payload.quotedWhapiMessageId = whapiReplyTo.id;
+          if (whapiReplyTo.preview?.trim()) payload.quotedPreviewText = whapiReplyTo.preview.trim().slice(0, 500);
+        }
+
         const { sendMessageViaConversation } = await import('@/api/chatApi');
         await sendMessageViaConversation(payload);
 
+        if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection)) setWhapiReplyTo(null);
         toast.success(imageUrl ? 'Image sent!' : 'Message sent!');
       } catch (error: any) {
         const errorData = error.response?.data;
@@ -876,7 +915,7 @@ export default function ChatInbox() {
     )
       .unwrap()
       .catch((error) => toast.error(error || t('chatInbox.toastMessageFailed')));
-  }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t, selectedImageFile, uploadImage, handleRemoveImage]);
+  }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t, selectedImageFile, uploadImage, handleRemoveImage, whapiReplyTo]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
     if (!currentConversation?.id) { toast.error(t('chatInbox.toastTransferNoId')); return; }
@@ -1197,7 +1236,7 @@ export default function ChatInbox() {
             "flex flex-col border rounded-xl max-h-screen transition-colors overflow-hidden",
             // Platform-specific main container backgrounds using CSS classes
             currentConversation?.platformInfo?.platform === 'whatsapp' 
-              ? "chat-bg-whatsapp border-[#d4c5b7] dark:border-[#1e2a32]" 
+              ? "chat-bg-whatsapp border-[#c8bfb4] dark:border-[#1e2a32] shadow-sm" 
               : currentConversation?.platformInfo?.platform === 'instagram' 
               ? "chat-bg-instagram border-[#e8d4e0] dark:border-[#3d2a42]" 
               : currentConversation?.platformInfo?.platform === 'telegram' 
@@ -1209,7 +1248,12 @@ export default function ChatInbox() {
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center"><MessageSquareText className="h-12 w-12 sm:h-16 sm:w-16 mb-4" /><h2 className="text-lg sm:text-xl font-medium">{t('chatInbox.mainEmptyTitle')}</h2><p className="text-sm sm:text-base">{t('chatInbox.mainEmptySubtitle')}</p></div>
           ) : (
             <>
-              <div className="flex items-start sm:items-center justify-between p-3 sm:p-4 border-b gap-2 min-w-0">
+              <div
+                className={cn(
+                  'flex items-start sm:items-center justify-between p-3 sm:p-4 border-b gap-2 min-w-0',
+                  isWaThread && 'chat-wa-header-strip'
+                )}
+              >
                 <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                   <div className="flex flex-col gap-2 min-[400px]:flex-row min-[400px]:flex-wrap min-[400px]:items-center min-w-0">
                     <h2
@@ -1399,6 +1443,13 @@ export default function ChatInbox() {
                   <Tooltip><TooltipTrigger asChild><Button className="cursor-pointer" variant="ghost" size="icon" onClick={handleCloseConversation}><XCircle className="h-5 w-5 text-red-500" /></Button></TooltipTrigger><TooltipContent><p>{t('chatInbox.closeConversationTooltip')}</p></TooltipContent></Tooltip>
                 </div>
               </div>
+              {isWhapiWaThread && currentConversation?.whatsappConnection?.id && (
+                <WhapiInboxToolbar
+                  connectionId={currentConversation.whatsappConnection.id}
+                  customerPhone={currentConversation.customer?.phone ?? null}
+                  chatId={whapiChatJidFromMessages}
+                />
+              )}
               <div 
                 ref={messageListRef} 
                 className={cn(
@@ -1581,6 +1632,11 @@ export default function ChatInbox() {
                             </div>
                           )}
                           <div className={cn("flex flex-col min-w-0 flex-1", isAgentSide ? "items-end" : "items-start")}>
+                          <MessageQuotedPreview
+                            metadata={msg.metadata}
+                            variant={platform === 'whatsapp' ? 'whatsapp' : 'default'}
+                            className={isAgentSide ? 'self-end' : 'self-start'}
+                          />
                           <div className={cn(
                             "max-w-[65%] rounded-2xl text-sm leading-snug overflow-hidden",
                             isAgentSide 
@@ -1775,6 +1831,53 @@ export default function ChatInbox() {
                               </div>
                             )}
                           </div>
+                          {isWhapiWaThread &&
+                            !msg.isInternalNote &&
+                            currentConversation?.whatsappConnection?.id &&
+                            whapiQuoteMessageIdFromMessage(msg) && (
+                              <div
+                                className={cn(
+                                  'flex flex-wrap items-center gap-0.5 mt-0.5 max-w-[min(100%,20rem)]',
+                                  isAgentSide ? 'justify-end ml-auto' : 'justify-start'
+                                )}
+                              >
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-1.5 text-[10px] gap-0.5 text-muted-foreground hover:text-foreground"
+                                  onClick={() => {
+                                    const id = whapiQuoteMessageIdFromMessage(msg)!;
+                                    const prev = (msg.text || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+                                    setWhapiReplyTo({ id, preview: prev || id.slice(0, 16) });
+                                  }}
+                                >
+                                  <Reply className="h-3 w-3 shrink-0" />
+                                  {t('chatInbox.whapi.reply')}
+                                </Button>
+                                {(['👍', '❤️', '😂', '🙏', '✅'] as const).map((em) => (
+                                  <button
+                                    key={em}
+                                    type="button"
+                                    className="cursor-pointer rounded-md px-1 py-0.5 text-sm leading-none hover:bg-muted/80 active:scale-95 transition-transform"
+                                    title={t('chatInbox.whapi.react')}
+                                    onClick={async () => {
+                                      const wid = currentConversation.whatsappConnection?.id;
+                                      const mid = whapiQuoteMessageIdFromMessage(msg);
+                                      if (!wid || !mid) return;
+                                      try {
+                                        await putWhapiMessageReaction(wid, mid, em);
+                                        toast.success(t('chatInbox.whapi.reactionSent'));
+                                      } catch {
+                                        toast.error(t('chatInbox.whapi.reactionFailed'));
+                                      }
+                                    }}
+                                  >
+                                    {em}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ); 
@@ -1783,7 +1886,17 @@ export default function ChatInbox() {
                   );
                 })}
               </div>
-              <div className="p-3 sm:p-6 border-t">
+              <div className={cn('p-3 sm:p-6 border-t', isWaThread && 'chat-wa-composer-dock')}>
+                {isWhapiWaThread && whapiReplyTo && (
+                  <div className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-600/20 bg-emerald-500/5 px-3 py-2 text-sm">
+                    <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                      {t('chatInbox.whapi.replyingTo', { text: whapiReplyTo.preview })}
+                    </span>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setWhapiReplyTo(null)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
                 {/* META: 24h session badge + template selector when outside window */}
                 {currentConversation?.platformInfo?.platform === 'whatsapp' && (
                   <div className="mb-3 space-y-2">
@@ -1942,8 +2055,9 @@ export default function ChatInbox() {
                         className="max-w-[200px] max-h-[200px] object-cover"
                       />
                       <button
+                        type="button"
                         onClick={handleRemoveImage}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        className="absolute top-1 right-1 cursor-pointer bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1965,7 +2079,7 @@ export default function ChatInbox() {
                     type="button"
                     size="icon"
                     variant="outline"
-                    className="cursor-pointer h-9 w-9 shrink-0"
+                    className={cn('h-9 w-9 shrink-0', isWaThread && 'chat-wa-attach-btn border-[#00000014] dark:border-white/10')}
                     disabled={isUploadingImage}
                     onClick={() => fileInputRef.current?.click()}
                     title="Upload image"
@@ -1995,7 +2109,10 @@ export default function ChatInbox() {
                         }
                         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
                       }} 
-                      className="w-full resize-none p-3 sm:p-4 pr-12 sm:pr-14 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
+                      className={cn(
+                        'w-full resize-none p-3 sm:p-4 pr-12 sm:pr-14 focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base',
+                        isWaThread ? 'wa-composer-input' : 'rounded-lg bg-muted border-none'
+                      )}
                       rows={1} 
                       disabled={isUploadingImage || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate)}
                     />
@@ -2011,7 +2128,7 @@ export default function ChatInbox() {
                             <button
                               key={s.id}
                               type="button"
-                              className="w-full text-left px-3 py-2 hover:bg-accent focus:bg-accent focus:outline-none text-sm flex flex-col gap-0.5"
+                              className="w-full cursor-pointer text-left px-3 py-2 hover:bg-accent focus:bg-accent focus:outline-none text-sm flex flex-col gap-0.5"
                               onMouseDown={(e) => { e.preventDefault(); setNewMessage(s.message); setSnippetSuggestions([]); }}
                             >
                               <span className="font-medium">/{s.command}</span>
@@ -2025,7 +2142,12 @@ export default function ChatInbox() {
                   <Button 
                     onClick={handleSendMessage} 
                     size="icon" 
-                    className="h-9 w-9 bg-primary cursor-pointer hover:bg-primary/90 shrink-0"
+                    className={cn(
+                      'h-9 w-9 shrink-0',
+                      isWaThread
+                        ? 'rounded-full bg-[#25D366] text-white hover:bg-[#20bd5a] shadow-sm border-0'
+                        : 'bg-primary hover:bg-primary/90'
+                    )}
                     disabled={isUploadingImage || (whatsappSession?.requiresTemplate && currentConversation?.platformInfo?.platform === 'whatsapp') || (!newMessage.trim() && !selectedImageFile)}
                   >
                     {isUploadingImage ? (

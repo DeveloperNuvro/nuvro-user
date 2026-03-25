@@ -77,6 +77,13 @@ export const sendMessageViaConversation = async (data: {
   mediaUrl?: string;
   messageType?: 'text' | 'image' | 'video' | 'audio' | 'document';
   platform?: 'whatsapp' | 'unipile' | 'whatsapp-business';
+  /** Whapi-linked WhatsApp only — forwarded to server for quote/reply on send */
+  quotedWhapiMessageId?: string;
+  /** Shown in inbox as “replying to …” (optional; server stores on ChatMessage.metadata). */
+  quotedPreviewText?: string;
+  replyToWhapiMessageId?: string;
+  whapiAudioDelivery?: 'voice' | 'file';
+  filename?: string;
   useTemplate?: boolean;
   templateName?: string;
   templateLanguage?: string;
