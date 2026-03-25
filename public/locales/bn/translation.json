@@ -249,6 +249,13 @@
     "toastTransferFailed": "স্থানান্তর ব্যর্থ হয়েছে।",
     "toastCloseSuccess": "কথোপকথন বন্ধ হয়েছে!",
     "toastCloseFailed": "কথোপকথন বন্ধ করতে ব্যর্থ হয়েছে।",
+    "closeAllOpenButton": "সব খোলা বন্ধ করুন",
+    "closeAllOpenConfirmTitle": "সব খোলা কথোপকথন বন্ধ করবেন?",
+    "closeAllOpenConfirmDescription": "আপনার ব্যবসার সব খোলা কথোপকথন বন্ধ হয়ে যাবে। সাপোর্টেড চ্যানেলে গ্রাহকরা “চ্যাট বন্ধ” বার্তা পেতে পারেন।",
+    "closeAllOpenConfirmAction": "সব বন্ধ করুন",
+    "closeAllOpenSuccess": "{{count}}টি কথোপকথন বন্ধ করা হয়েছে।",
+    "closeAllOpenSomeFailed": "{{count}}টি কথোপকথন বন্ধ করা যায়নি।",
+    "closeAllOpenFailed": "সব কথোপকথন বন্ধ করা যায়নি।",
     "internalNote": "অভ্যন্তরীণ নোট",
     "addInternalNote": "অভ্যন্তরীণ নোট যোগ করুন",
     "noteSent": "নোট পাঠানো হয়েছে",
@@ -1092,7 +1099,14 @@
       "transferFailed": "স্থানান্তর ব্যর্থ হয়েছে।",
       "closeSuccess": "কথোপকথন বন্ধ হয়েছে!",
       "closeFailed": "কথোপকথন বন্ধ করতে ব্যর্থ হয়েছে।"
-    }
+    },
+    "closeAllOpenButton": "সব খোলা বন্ধ করুন",
+    "closeAllOpenConfirmTitle": "সব খোলা কথোপকথন বন্ধ করবেন?",
+    "closeAllOpenConfirmDescription": "আপনার ইনবক্সের সব খোলা কথোপকথন বন্ধ হবে (আপনার কাছে নিযুক্ত বা আপনার চ্যানেলে নিযুক্ত নয়)। সাপোর্টেড চ্যানেলে গ্রাহকরা “চ্যাট বন্ধ” বার্তা পেতে পারেন।",
+    "closeAllOpenConfirmAction": "সব বন্ধ করুন",
+    "closeAllOpenSuccess": "{{count}}টি কথোপকথন বন্ধ করা হয়েছে।",
+    "closeAllOpenSomeFailed": "{{count}}টি কথোপকথন বন্ধ করা যায়নি।",
+    "closeAllOpenFailed": "সব কথোপকথন বন্ধ করা যায়নি।"
   },
   "trainModelPage": {
     "step1": {
@@ -1189,6 +1203,7 @@
     "title": "ইন্টিগ্রেশন",
     "subtitle": "WhatsApp Business এবং মাল্টি-প্ল্যাটফর্ম মেসেজিং (Unipile) সংযুক্ত করুন। চ্যানেল সেটিংস এবং কাজের সময় এখানে পরিচালনা করুন।",
     "tabWhatsApp": "WhatsApp Business",
+    "tabWhapi": "WhatsApp (Whapi)",
     "tabMultiPlatform": "মাল্টি-প্ল্যাটফর্ম",
     "fourScenarioNote": "আপনি এআই এজেন্ট ছাড়াই WhatsApp সংযুক্ত করতে পারবেন (শুধু হিউম্যান)। পরে ওয়ার্কফ্লোতে এআই এজেন্ট যোগ করে এআই রিপ্লাই চালু করতে পারবেন। ৪টি সিনারিও (বিজনেস আওয়ার চালু/বন্ধ × এআই সহ বা ছাড়া) সাপোর্টেড।",
     "restrictionAvoidance": {
@@ -1201,6 +1216,36 @@
         "quality": "Meta Business Manager-এ অ্যাকাউন্ট চেক করুন এবং রিপ্লাই রেট ভালো রাখুন।",
         "volume": "যখন কাস্টমার এইমাত্র লিখেছে তখন রিপ্লাই দিন; একসাথে অনেক মানুষকে হঠাৎ অনেক মেসেজ পাঠানো এড়িয়ে চলুন।"
       }
+    },
+    "whapi": {
+      "title": "WhatsApp (লিঙ্কড ডিভাইস — Whapi)",
+      "subtitle": "একটি Whapi চ্যানেল তৈরি করুন, ফোনে QR স্ক্যান করুন, এবং ইনবাউন্ড/আউটবাউন্ড Nuvro-তে লিঙ্ক করুন।",
+      "webhookHint": "ওয়েবহুক URL (ব্যাকএন্ড রেজিস্টার করে):",
+      "addConnection": "Whapi কানেকশন যোগ করুন",
+      "createTitle": "নতুন Whapi চ্যানেল",
+      "createHint": "Whapi-তে চ্যানেল তৈরি হয়; এই ডিভাইসে WhatsApp কানেক্ট করতে QR স্ক্যান করুন।",
+      "displayName": "ডিসপ্লে নাম",
+      "displayNamePlaceholder": "যেমন: সাপোর্ট WhatsApp",
+      "projectOptional": "Whapi প্রোজেক্ট (ঐচ্ছিক)",
+      "projectPlaceholder": "ডিফল্ট প্রোজেক্ট",
+      "defaultProject": "ডিফল্ট",
+      "create": "তৈরি করুন",
+      "created": "চ্যানেল তৈরি হয়েছে। QR খুলে স্ক্যান করুন।",
+      "loading": "কানেকশন লোড হচ্ছে…",
+      "channelId": "Whapi চ্যানেল",
+      "showQr": "QR দেখান",
+      "syncWebhooks": "ওয়েবহুক সিঙ্ক",
+      "rename": "নাম বদলান",
+      "delete": "মুছুন",
+      "confirmDelete": "এই Whapi কানেকশন মুছবেন?",
+      "deleted": "কানেকশন সরানো হয়েছে",
+      "empty": "এখনও কোনো Whapi কানেকশন নেই।",
+      "qrTitle": "WhatsApp দিয়ে QR স্ক্যান করুন",
+      "qrHint": "WhatsApp → লিঙ্কড ডিভাইস → একটি ডিভাইস লিঙ্ক করুন। লগইন ব্যর্থ হলে চ্যানেল তৈরির ~৯০ সেকেন্ড পর আবার চেষ্টা করুন।",
+      "qrError": "QR লোড করা যায়নি। এক মিনিট পর আবার চেষ্টা করুন।",
+      "renameTitle": "কানেকশনের নাম বদলান",
+      "renamed": "নাম আপডেট হয়েছে",
+      "webhooksSynced": "ওয়েবহুক আপডেট হয়েছে"
     },
     "toast": {
       "connectionSuccess": "কানেকশন সম্পন্ন। স্ট্যাটাস আপডেট হয়েছে।"

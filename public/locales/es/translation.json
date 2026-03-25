@@ -178,6 +178,13 @@
     "toastTransferFailed": "La transferencia falló.",
     "toastCloseSuccess": "¡Conversación cerrada!",
     "toastCloseFailed": "No se pudo cerrar la conversación.",
+    "closeAllOpenButton": "Cerrar todas las abiertas",
+    "closeAllOpenConfirmTitle": "¿Cerrar todas las conversaciones abiertas?",
+    "closeAllOpenConfirmDescription": "Se cerrarán todas las conversaciones abiertas de tu empresa. Los clientes pueden recibir un mensaje de “chat cerrado” en los canales compatibles.",
+    "closeAllOpenConfirmAction": "Cerrar todas",
+    "closeAllOpenSuccess": "Se cerraron {{count}} conversación(es).",
+    "closeAllOpenSomeFailed": "No se pudieron cerrar {{count}} conversación(es).",
+    "closeAllOpenFailed": "No se pudieron cerrar todas las conversaciones.",
     "internalNote": "Nota interna",
     "addInternalNote": "Añadir nota interna",
     "noteSent": "Nota enviada",
@@ -1021,7 +1028,14 @@
       "transferFailed": "La transferencia falló.",
       "closeSuccess": "¡Conversación cerrada!",
       "closeFailed": "Error al cerrar la conversación."
-    }
+    },
+    "closeAllOpenButton": "Cerrar todas las abiertas",
+    "closeAllOpenConfirmTitle": "¿Cerrar todas las conversaciones abiertas?",
+    "closeAllOpenConfirmDescription": "Se cerrarán todas las conversaciones abiertas de tu bandeja (asignadas a ti o sin asignar en tus canales). Los clientes pueden recibir un mensaje de “chat cerrado” en canales compatibles.",
+    "closeAllOpenConfirmAction": "Cerrar todas",
+    "closeAllOpenSuccess": "Se cerraron {{count}} conversación(es).",
+    "closeAllOpenSomeFailed": "No se pudieron cerrar {{count}} conversación(es).",
+    "closeAllOpenFailed": "No se pudieron cerrar todas las conversaciones."
   },
   "trainModelPage": {
     "step1": {
@@ -1118,6 +1132,7 @@
     "title": "Integraciones",
     "subtitle": "Conecta WhatsApp Business y mensajería multiplataforma (Unipile). Gestiona la configuración de canales y horarios aquí.",
     "tabWhatsApp": "WhatsApp Business",
+    "tabWhapi": "WhatsApp (Whapi)",
     "tabMultiPlatform": "Multiplataforma",
     "fourScenarioNote": "Puedes conectar WhatsApp sin agente de IA (solo humanos). Añade un agente de IA en Flujos de trabajo después para respuestas con IA. Se admiten los 4 escenarios (horario laboral on/off × con o sin IA).",
     "restrictionAvoidance": {
@@ -1130,6 +1145,36 @@
         "quality": "Revisa tu cuenta en Meta Business Manager y mantén unas buenas tasas de respuesta.",
         "volume": "Responde cuando el cliente acaba de escribir; evita enviar de golpe muchos mensajes a mucha gente."
       }
+    },
+    "whapi": {
+      "title": "WhatsApp (dispositivo vinculado — Whapi)",
+      "subtitle": "Crea un canal Whapi, escanea el QR en el teléfono y enlaza la entrada/salida con Nuvro.",
+      "webhookHint": "URL del webhook (registrada por el backend):",
+      "addConnection": "Añadir conexión Whapi",
+      "createTitle": "Nuevo canal Whapi",
+      "createHint": "Se crea un canal en Whapi; escanea el QR para conectar WhatsApp en este dispositivo.",
+      "displayName": "Nombre para mostrar",
+      "displayNamePlaceholder": "p. ej. Soporte WhatsApp",
+      "projectOptional": "Proyecto Whapi (opcional)",
+      "projectPlaceholder": "Proyecto predeterminado",
+      "defaultProject": "Predeterminado",
+      "create": "Crear",
+      "created": "Canal creado. Abre el QR para escanear.",
+      "loading": "Cargando conexiones…",
+      "channelId": "Canal Whapi",
+      "showQr": "Mostrar QR",
+      "syncWebhooks": "Sincronizar webhooks",
+      "rename": "Renombrar",
+      "delete": "Eliminar",
+      "confirmDelete": "¿Eliminar esta conexión Whapi?",
+      "deleted": "Conexión eliminada",
+      "empty": "Aún no hay conexiones Whapi.",
+      "qrTitle": "Escanea el QR con WhatsApp",
+      "qrHint": "WhatsApp → Dispositivos vinculados → Vincular un dispositivo. Si falla el login, espera ~90s tras crear el canal.",
+      "qrError": "No se pudo cargar el QR. Inténtalo de nuevo en un minuto.",
+      "renameTitle": "Renombrar conexión",
+      "renamed": "Nombre actualizado",
+      "webhooksSynced": "Webhooks actualizados"
     },
     "toast": {
       "connectionSuccess": "Conexión completada. Estado actualizado."

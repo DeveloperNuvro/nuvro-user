@@ -20,16 +20,31 @@ import toast from 'react-hot-toast';
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from "@/api/axios";
 import { normalizeApiMediaUrl } from "@/lib/audioUrlNormalize";
-import { fetchAgentConversations, resetAgentConversations, updateConversationEnhanced, addAssignedConversation, removeConversation, updateConversationPreview } from "../features/humanAgent/humanAgentInboxSlice";
+import { fetchAgentConversations, resetAgentConversations, updateConversationEnhanced, addAssignedConversation, removeConversation, updateConversationPreview, closeAllOpenAgentConversations } from "../features/humanAgent/humanAgentInboxSlice";
 import { ConversationInList } from "../features/chatInbox/chatInboxSlice";
 import { fetchMessagesByCustomer, sendHumanMessage, closeConversation, addRealtimeMessage } from "../features/chatInbox/chatInboxSlice";
-import { uploadImage as uploadImageApi, getConversationSummary as getConversationSummaryApi, improveMessage as improveMessageApi, sendInternalNote as sendInternalNoteApi, getAudioPlayUrl as getAudioPlayUrlApi } from "@/api/chatApi";
+import {
+  uploadImage as uploadImageApi,
+  getConversationSummary as getConversationSummaryApi,
+  improveMessage as improveMessageApi,
+  sendInternalNote as sendInternalNoteApi,
+  getAudioPlayUrl as getAudioPlayUrlApi,
+  sendMessageViaConversation,
+} from "@/api/chatApi";
 import { suggestQuickResponses, type SuggestItem } from "@/api/quickResponsesApi";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
 import { fetchChannels } from "@/features/channel/channelSlice";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { getSocket } from "../lib/useSocket"; 
 import ChatInboxSkeleton from "@/components/skeleton/ChatInboxSkeleton";
 import PlatformBadge from "@/components/custom/unipile/PlatformBadge";
@@ -37,6 +52,8 @@ import CountryBadge from "@/components/custom/unipile/CountryBadge";
 import FormattedText from "@/components/custom/FormattedText";
 import SecureDocumentPreview from "@/components/custom/SecureDocumentPreview";
 import SimpleVoiceNote from "@/components/custom/SimpleVoiceNote";
+import { isMetaWhatsAppCloudApiSession } from "@/utils/whatsappSession";
+import { whatsappConnectionBadgeLabel } from "@/utils/whatsappInboxLabels";
 
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
@@ -222,6 +239,8 @@ export default function AgentInbox() {
   const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
   const [tagsDialogOpen, setTagsDialogOpen] = useState(false);
   const [notesDialogOpen, setNotesDialogOpen] = useState(false);
+  const [closeAllOpenDialogOpen, setCloseAllOpenDialogOpen] = useState(false);
+  const [closeAllOpenLoading, setCloseAllOpenLoading] = useState(false);
   const [summaryDialogOpen, setSummaryDialogOpen] = useState(false);
   const [summaryText, setSummaryText] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
@@ -237,7 +256,7 @@ export default function AgentInbox() {
     lastMessageTimestamp: string | null;
     requiresTemplate: boolean;
     optIn?: { status: 'opted_in' | 'opted_out' | 'pending'; optedInAt?: string | null; optedOutAt?: string | null; optInSource?: string | null };
-    source?: 'meta' | 'unipile';
+    source?: 'meta' | 'unipile' | 'whapi';
   } | null>(null);
   const [whatsappTemplates, setWhatsappTemplates] = useState<{ id?: string; name: string; status?: string; language?: string }[]>([]);
   const [selectedTemplateName, setSelectedTemplateName] = useState<string>('');
@@ -248,6 +267,17 @@ export default function AgentInbox() {
   const [optInSourceValue, setOptInSourceValue] = useState('');
 
   const messageListRef = useRef<HTMLDivElement | null>(null);
+  /** Coalesce socket-driven full list refetches so Whapi/history bursts do not N× hit GET /agents/my-conversations (each loads Unipile). */
+  const socketOpenListRefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRefetchOpenAgentListFromSocket = useCallback(() => {
+    if (socketOpenListRefetchTimerRef.current) {
+      clearTimeout(socketOpenListRefetchTimerRef.current);
+    }
+    socketOpenListRefetchTimerRef.current = setTimeout(() => {
+      socketOpenListRefetchTimerRef.current = null;
+      dispatch(fetchAgentConversations({ page: 1, status: 'open' }));
+    }, 650);
+  }, [dispatch]);
   const prevScrollHeightRef = useRef<number>(0);
   const [isInitialMessageLoad, setIsInitialMessageLoad] = useState(true);
   const [selectedImage, setSelectedImage] = useState<{ src: string; alt: string } | null>(null);
@@ -313,6 +343,15 @@ export default function AgentInbox() {
   }, [socketReconnectCount]);
 
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
+
+  useEffect(
+    () => () => {
+      if (socketOpenListRefetchTimerRef.current) {
+        clearTimeout(socketOpenListRefetchTimerRef.current);
+      }
+    },
+    []
+  );
 
   // 🔧 Audio: when API doesn't return audioSrc, fetch play URL on demand so playback works
   const [audioUrlByMessageId, setAudioUrlByMessageId] = useState<Record<string, string>>({});
@@ -394,7 +433,7 @@ export default function AgentInbox() {
             source: session.source,
           });
         }
-        if (connectionId && !cancelled && session.source !== 'unipile') {
+        if (connectionId && !cancelled && isMetaWhatsAppCloudApiSession(session.source)) {
           const res = await api.get(`/api/v1/whatsapp-business/templates?connectionId=${connectionId}`);
           const list = res.data?.data?.templates || [];
           const approved = list.filter((t: any) => (t.status || t.message_template_status || '').toLowerCase() === 'approved');
@@ -542,14 +581,14 @@ export default function AgentInbox() {
       } else {
         // Not in list (e.g. was closed and just reopened by customer message) — refetch open list so it appears
         console.log('✅ AgentInbox: Conversation not in list (reopened?), refetching open list');
-        dispatch(fetchAgentConversations({ page: 1, status: 'open' }));
+        scheduleRefetchOpenAgentListFromSocket();
       }
     } else {
       console.log('⚠️ AgentInbox: Conversation not found in list and not assigned to this agent');
       console.log('Conversation ID:', conversationId);
       console.log('Current conversations:', conversations.map(c => ({ id: c.id, assignedAgentId: c.assignedAgentId })));
     }
-  }, [agentId, conversations, dispatch]);
+  }, [agentId, conversations, dispatch, scheduleRefetchOpenAgentListFromSocket]);
 
   // 🔧 OPTIMIZED: Handle conversation assignment — ensure inbox updates in real time without refresh
   const handleConversationAssigned = useCallback((data: any) => {
@@ -573,10 +612,10 @@ export default function AgentInbox() {
         }));
       } else {
         // Not in list yet: refetch agent conversations so the new assignment appears immediately (no manual refresh)
-        dispatch(fetchAgentConversations({ page: 1, status: 'open' }));
+        scheduleRefetchOpenAgentListFromSocket();
       }
     }
-  }, [agentId, conversations, dispatch]);
+  }, [agentId, conversations, dispatch, scheduleRefetchOpenAgentListFromSocket]);
 
   // 🔧 OPTIMIZED: Handle conversation removal
   const handleConversationRemoved = useCallback((data: { conversationId: string }) => {
@@ -624,10 +663,10 @@ export default function AgentInbox() {
         }));
       } else {
         // Conversation not in list (e.g. closed chat reopened by customer) — refetch open list so it appears
-        dispatch(fetchAgentConversations({ page: 1, status: 'open' }));
+        scheduleRefetchOpenAgentListFromSocket();
       }
     }
-  }, [conversations, dispatch]);
+  }, [conversations, dispatch, scheduleRefetchOpenAgentListFromSocket]);
 
   // 🔧 OPTIMIZED: Real-time event listeners for conversation updates and transfers
   useEffect(() => {
@@ -744,30 +783,33 @@ export default function AgentInbox() {
         toast.error('Connection error. Please refresh the page.');
         return;
       }
-      dispatch(sendHumanMessage({ businessId, customerId: selectedCustomer, message: messageText, senderSocketId: socket.id ?? "" }))
+      dispatch(
+        sendHumanMessage({
+          businessId,
+          customerId: selectedCustomer,
+          message: messageText,
+          senderSocketId: socket.id ?? "",
+          ...(currentConversation?.id ? { conversationId: currentConversation.id } : {}),
+        })
+      )
         .unwrap()
-        .catch(error => toast.error(error.message || t('chatInbox.toastMessageFailed')));
+        .catch((error) => toast.error(error || t('chatInbox.toastMessageFailed')));
       return;
     }
 
-    // For Instagram, WhatsApp, Telegram - use Unipile API
+    // Instagram, WhatsApp, Telegram — same endpoint as business Chat Inbox (Unipile / Whapi / Meta routing on server)
     if (platform === 'instagram' || platform === 'whatsapp' || platform === 'telegram') {
       try {
-        const payload: any = {
+        const payload: Parameters<typeof sendMessageViaConversation>[0] = {
           conversationId: currentConversation.id,
           message: messageText || (imageUrl ? '📷 Image' : ''),
           businessId: businessId,
         };
-        
-        // 🔧 NEW: Add image URL if available
         if (imageUrl) {
           payload.imageUrl = imageUrl;
           payload.messageType = 'image';
         }
-        
-        await api.post('/api/v1/unipile/messages/send-via-conversation', payload);
-        
-        // The message will be updated via socket when it arrives
+        await sendMessageViaConversation(payload);
         toast.success(imageUrl ? 'Image sent!' : 'Message sent!');
       } catch (error: any) {
         const errorData = error.response?.data;
@@ -811,7 +853,22 @@ export default function AgentInbox() {
             toast.error(errorData?.message || errorData?.data?.message || 'The account appears to be disconnected. Please reconnect in settings.');
           }
         } else {
-          toast.error(error.response?.data?.message || error.message || 'Failed to send message');
+          const errPayload = error.response?.data?.error;
+          if (errPayload?.code === 'REQUIRES_TEMPLATE' || errPayload?.requiresTemplate) {
+            setWhatsappSession((prev) =>
+              prev
+                ? { ...prev, requiresTemplate: true }
+                : {
+                    withinWindow: false,
+                    hoursRemaining: 0,
+                    lastMessageTimestamp: null,
+                    requiresTemplate: true,
+                  }
+            );
+            toast.error('24-hour window expired. Use a template to message this customer.');
+          } else {
+            toast.error(error.response?.data?.message || error.message || 'Failed to send message');
+          }
         }
         setNewMessage(messageText); // Restore message on error
       }
@@ -823,9 +880,17 @@ export default function AgentInbox() {
       toast.error('Connection error. Please refresh the page.');
       return;
     }
-    dispatch(sendHumanMessage({ businessId, customerId: selectedCustomer, message: messageText, senderSocketId: socket.id ?? "" }))
+    dispatch(
+      sendHumanMessage({
+        businessId,
+        customerId: selectedCustomer,
+        message: messageText,
+        senderSocketId: socket.id ?? "",
+        ...(currentConversation?.id ? { conversationId: currentConversation.id } : {}),
+      })
+    )
       .unwrap()
-      .catch(error => toast.error(error.message || t('chatInbox.toastMessageFailed')));
+      .catch((error) => toast.error(error || t('chatInbox.toastMessageFailed')));
   }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t, selectedImageFile, uploadImage, handleRemoveImage]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
@@ -836,6 +901,32 @@ export default function AgentInbox() {
   };
 
   const handleCloseConversation = () => { if (currentConversation?.id && businessId) { dispatch(closeConversation({ conversationId: currentConversation.id, businessId })).unwrap().then(() => { toast.success(t('chatInbox.toastCloseSuccess')); setSelectedCustomer(null); }).catch(err => toast.error(err || t('chatInbox.toastCloseFailed'))); } };
+
+  const handleConfirmCloseAllOpen = useCallback(async () => {
+    if (!agentId) return;
+    setCloseAllOpenLoading(true);
+    try {
+      const r = await dispatch(closeAllOpenAgentConversations()).unwrap();
+      toast.success(t('agentInbox.closeAllOpenSuccess', { count: r.closed }));
+      if (r.failed > 0) {
+        toast.error(t('agentInbox.closeAllOpenSomeFailed', { count: r.failed }));
+      }
+      setSelectedCustomer(null);
+      setCloseAllOpenDialogOpen(false);
+      await dispatch(
+        fetchAgentConversations({
+          page: 1,
+          searchQuery: debouncedSearchQuery,
+          status: activeFilter,
+          platform: activePlatform,
+        })
+      ).unwrap();
+    } catch (err: unknown) {
+      toast.error(typeof err === 'string' ? err : t('agentInbox.closeAllOpenFailed'));
+    } finally {
+      setCloseAllOpenLoading(false);
+    }
+  }, [agentId, dispatch, debouncedSearchQuery, activeFilter, activePlatform, t]);
 
   // 🔧 OPTIMIZED: Memoize pagination handlers
   const handleNextPage = useCallback(() => {
@@ -912,10 +1003,21 @@ export default function AgentInbox() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 p-2 border-b">
-          <Button variant={activeFilter === 'open' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('open')}>{t('agentInbox.filters.open')}</Button>
-          <Button variant={activeFilter === 'closed' ? 'default' : 'ghost'} className="flex-1 h-8" onClick={() => setActiveFilter('closed')}>{t('agentInbox.filters.closed')}</Button>
-        </div>
+          <div className="flex flex-wrap items-center gap-2 p-2 border-b">
+            <Button variant={activeFilter === 'open' ? 'default' : 'ghost'} className="flex-1 min-w-[100px] h-8" onClick={() => setActiveFilter('open')}>{t('agentInbox.filters.open')}</Button>
+            <Button variant={activeFilter === 'closed' ? 'default' : 'ghost'} className="flex-1 min-w-[100px] h-8" onClick={() => setActiveFilter('closed')}>{t('agentInbox.filters.closed')}</Button>
+            {activeFilter === 'open' && agentId ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 shrink-0 text-destructive border-destructive/40 hover:bg-destructive/10"
+                onClick={() => setCloseAllOpenDialogOpen(true)}
+              >
+                {t('agentInbox.closeAllOpenButton')}
+              </Button>
+            ) : null}
+          </div>
         <div className="px-2 my-4">
           <Input placeholder={t('agentInbox.searchPlaceholder')} className="bg-muted border-none" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} />
         </div>
@@ -931,7 +1033,7 @@ export default function AgentInbox() {
                   key={convo.id}
                   onClick={() => setSelectedCustomer(convo.customer!.id)} 
                   className={cn(
-                    "flex items-center gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg cursor-pointer transition-colors min-w-0",
+                    "flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg cursor-pointer transition-colors min-w-0",
                     platform === 'whatsapp' && (isSelected ? "bg-[#dcf8c6] dark:bg-[#1f2c33]" : "hover:bg-[#dcf8c6]/50 dark:hover:bg-[#1f2c33]/50"),
                     platform === 'instagram' && (isSelected ? "bg-gradient-to-r from-[#faf0f8] to-[#f5e8f1] dark:from-[#2d1a2e] dark:to-[#1a1a1a]" : "hover:bg-gradient-to-r hover:from-[#faf0f8]/50 hover:to-[#f5e8f1]/50"),
                     platform === 'telegram' && (isSelected ? "bg-[#e8f5e9] dark:bg-[#1a2b2e]" : "hover:bg-[#e8f5e9]/50 dark:hover:bg-[#1a2b2e]/50"),
@@ -948,72 +1050,70 @@ export default function AgentInbox() {
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    <div className="flex justify-between items-center gap-2">
-                      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
-                        {/* 🔧 NEW: Priority indicator */}
-                        {convo.priority && convo.priority !== 'normal' && (
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <Circle className={cn("h-2.5 w-2.5 shrink-0", getPriorityColor(convo.priority))} />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Priority: {convo.priority}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        <p className="font-semibold truncate text-sm sm:text-base">{convo.customer?.name ?? '—'}</p>
-                        {convo.platformInfo?.platform && (
-                          <PlatformBadge platform={convo.platformInfo.platform} />
-                        )}
-                        {/* 🔧 NEW: Country badge in conversation list */}
-                        {convo.country && (
-                          <CountryBadge country={convo.country} />
-                        )}
+                  <div className="flex-1 min-w-0 overflow-hidden flex flex-col gap-1.5">
+                    <div className="flex items-start justify-between gap-2 min-w-0">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <p
+                          className="font-semibold text-[0.9375rem] sm:text-base leading-snug tracking-tight text-foreground line-clamp-2 sm:line-clamp-1 sm:truncate"
+                          title={convo.customer?.name ?? undefined}
+                        >
+                          {convo.customer?.name ?? '—'}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                          {convo.priority && convo.priority !== 'normal' && (
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Circle className={cn("h-2.5 w-2.5 shrink-0", getPriorityColor(convo.priority))} />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Priority: {convo.priority}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {convo.platformInfo?.platform && (
+                            <PlatformBadge
+                              platform={convo.platformInfo.platform}
+                              labelOverride={
+                                convo.platformInfo.platform === 'whatsapp'
+                                  ? whatsappConnectionBadgeLabel(convo.whatsappConnection)
+                                  : undefined
+                              }
+                            />
+                          )}
+                          {convo.country && <CountryBadge country={convo.country} />}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* 🔧 NEW: Notes icon if notes exist */}
+                      <div className="flex flex-col items-end gap-1 shrink-0 pt-0.5 text-right">
+                        {convo.latestMessageTimestamp && (
+                          <p className="text-[11px] sm:text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                            {dayjs(convo.latestMessageTimestamp).isToday()
+                              ? dayjs(convo.latestMessageTimestamp).format("h:mm A")
+                              : dayjs(convo.latestMessageTimestamp).isYesterday()
+                              ? "Yesterday"
+                              : dayjs(convo.latestMessageTimestamp).format("MMM D")}
+                          </p>
+                        )}
                         {convo.notes && (
                           <Tooltip>
-                            <TooltipTrigger>
-                              <FileText className="h-3 w-3 text-muted-foreground" />
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-foreground rounded-sm p-0.5 -m-0.5"
+                                aria-label={t('chatInbox.internalNote', 'Internal note')}
+                              >
+                                <FileText className="h-3.5 w-3.5" aria-hidden />
+                              </button>
                             </TooltipTrigger>
                             <TooltipContent>
                               <p className="max-w-xs break-words">{convo.notes}</p>
                             </TooltipContent>
                           </Tooltip>
                         )}
-                        {convo.latestMessageTimestamp && (
-                          <p className="text-xs text-muted-foreground shrink-0 whitespace-nowrap">
-                            {dayjs(convo.latestMessageTimestamp).isToday() 
-                              ? dayjs(convo.latestMessageTimestamp).format("h:mm A")
-                              : dayjs(convo.latestMessageTimestamp).isYesterday()
-                              ? "Yesterday"
-                              : dayjs(convo.latestMessageTimestamp).format("MMM D")
-                            }
-                          </p>
-                        )}
                       </div>
                     </div>
-                    {/* 🔧 WhatsApp connection name: responsive row so it never cramps the title row */}
-                    {convo.platformInfo?.platform === 'whatsapp' && (convo.whatsappConnection?.displayName || convo.whatsappConnection?.id) && (
-                      <div className="mt-1 flex items-center min-w-0">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="inline-flex items-center max-w-full min-w-0 rounded-md bg-[#dcf8c6]/60 dark:bg-[#25D366]/20 text-[10px] sm:text-xs font-medium text-[#128C7E] dark:text-[#25D366] px-1.5 sm:px-2 py-0.5 truncate border border-[#25D366]/20 dark:border-[#25D366]/30">
-                              {convo.whatsappConnection?.displayName ?? convo.whatsappConnection?.id ?? 'WhatsApp'}
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[200px]">
-                            <p className="font-medium">Connection</p>
-                            <p className="text-muted-foreground break-words">{convo.whatsappConnection?.displayName ?? convo.whatsappConnection?.id ?? 'WhatsApp'}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center mt-0.5 gap-2">
+                    <div className="flex justify-between items-end gap-2 min-w-0">
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs sm:text-sm text-muted-foreground truncate min-w-0">
+                        <p className="text-xs sm:text-sm text-muted-foreground leading-snug line-clamp-2 sm:line-clamp-1 min-w-0">
                           {isTyping[convo.customer?.id ?? ''] ? (
                             <span className="text-primary italic">{t('chatInbox.typing')}</span>
                           ) : (
@@ -1023,7 +1123,7 @@ export default function AgentInbox() {
                         {/* 🔧 NEW: Tags display (exclude platform tag to avoid duplicate with PlatformBadge) */}
                         {(() => {
                           const platformKey = (convo.platformInfo?.platform || (convo as any).source || '').toLowerCase();
-                          const filteredTags = (convo.tags || []).filter(t => t.toLowerCase() !== platformKey);
+                          const filteredTags = (convo.tags || []).filter((t) => t.toLowerCase() !== platformKey);
                           if (filteredTags.length === 0) return null;
                           return (
                             <div className="flex items-center gap-1 mt-1 flex-wrap">
@@ -1039,18 +1139,7 @@ export default function AgentInbox() {
                           );
                         })()}
                       </div>
-                      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                        {/* 🔧 NEW: Notes icon if notes exist */}
-                        {convo.notes && (
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <FileText className="h-3 w-3 text-muted-foreground" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="max-w-xs break-words">{convo.notes}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
+                      <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 self-end">
                         {convo.status === 'live' && <Tooltip><TooltipTrigger><User className="h-3 w-3 text-green-500" /></TooltipTrigger><TooltipContent><p>{t('chatInbox.tooltipAssignedTo', { agentName: agents.find(a => a._id === convo.assignedAgentId)?.name || t('chatInbox.anAgent') })}</p></TooltipContent></Tooltip>}
                         {convo.status === 'ticket' && <Tooltip><TooltipTrigger><Ticket className="h-3 w-3 text-orange-500" /></TooltipTrigger><TooltipContent><p>{t('chatInbox.tooltipTicketCreated')}</p></TooltipContent></Tooltip>}
                         {convo.status === 'ai_only' && <Tooltip><TooltipTrigger><Bot className="h-3 w-3 text-blue-500" /></TooltipTrigger><TooltipContent><p>{t('chatInbox.tooltipHandledByAI')}</p></TooltipContent></Tooltip>}
@@ -1090,65 +1179,73 @@ export default function AgentInbox() {
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center"><MessageSquareText className="h-12 w-12 sm:h-16 sm:w-16 mb-4" /><h2 className="text-lg sm:text-xl font-medium">{t('agentInbox.empty.title')}</h2><p className="text-sm sm:text-base">{t('agentInbox.empty.subtitle')}</p></div>
         ) : (
           <>
-              <div className="flex items-center justify-between p-3 sm:p-4 border-b gap-2 min-w-0">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                  <h2 className="font-semibold text-sm sm:text-base truncate">{currentConversation?.customer?.name}</h2>
-                  {currentConversation?.platformInfo?.platform && (
-                    <PlatformBadge platform={currentConversation.platformInfo.platform} />
-                  )}
-                  {/* 🔧 WhatsApp connection name (যে নাম দিয়ে Unipile/Meta এ connection create করেছিলেন) */}
-                  {currentConversation?.platformInfo?.platform === 'whatsapp' && currentConversation?.whatsappConnection && (
-                    <span className="text-xs text-muted-foreground truncate max-w-[160px] font-medium" title={currentConversation.whatsappConnection?.displayName ?? currentConversation.whatsappConnection?.id ?? undefined}>
-                      Connection: {currentConversation.whatsappConnection?.displayName ?? currentConversation.whatsappConnection?.id ?? 'WhatsApp'}
-                    </span>
-                  )}
-                  {/* 🔧 NEW: Country badge in header */}
-                  {currentConversation?.country && (
-                    <CountryBadge country={currentConversation.country} />
-                  )}
-                  {/* 🔧 NEW: Priority indicator in header */}
-                  {currentConversation?.priority && currentConversation.priority !== 'normal' && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <Circle className={cn("h-3 w-3", getPriorityColor(currentConversation.priority))} />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Priority: {currentConversation.priority}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {/* 🔧 NEW: Response time display */}
-                  {currentConversation?.firstResponseAt && currentConversation?.createdAt && (
-                    <Tooltip>
-                      <TooltipTrigger>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>Responded in {dayjs(currentConversation.firstResponseAt).from(dayjs(currentConversation.createdAt), true)}</span>
+              <div className="flex items-start sm:items-center justify-between p-3 sm:p-4 border-b gap-2 min-w-0">
+                <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                  <div className="flex flex-col gap-2 min-[400px]:flex-row min-[400px]:flex-wrap min-[400px]:items-center min-w-0">
+                    <h2
+                      className="font-semibold text-base sm:text-lg leading-tight tracking-tight text-foreground min-w-0 line-clamp-2 min-[400px]:line-clamp-1 min-[400px]:truncate flex-1 min-[400px]:flex-none min-[400px]:max-w-[min(100%,28rem)]"
+                      title={currentConversation?.customer?.name ?? undefined}
+                    >
+                      {currentConversation?.customer?.name}
+                    </h2>
+                    {currentConversation?.platformInfo?.platform && (
+                      <PlatformBadge
+                        platform={currentConversation.platformInfo.platform}
+                        labelOverride={
+                          currentConversation.platformInfo.platform === 'whatsapp'
+                            ? whatsappConnectionBadgeLabel(currentConversation.whatsappConnection)
+                            : undefined
+                        }
+                      />
+                    )}
+                    {/* 🔧 NEW: Country badge in header */}
+                    {currentConversation?.country && (
+                      <CountryBadge country={currentConversation.country} />
+                    )}
+                    {/* 🔧 NEW: Priority indicator in header */}
+                    {currentConversation?.priority && currentConversation.priority !== 'normal' && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <Circle className={cn("h-3 w-3", getPriorityColor(currentConversation.priority))} />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Priority: {currentConversation.priority}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {/* 🔧 NEW: Response time display */}
+                    {currentConversation?.firstResponseAt && currentConversation?.createdAt && (
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>Responded in {dayjs(currentConversation.firstResponseAt).from(dayjs(currentConversation.createdAt), true)}</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>First response: {dayjs(currentConversation.firstResponseAt).format('MMM D, YYYY h:mm A')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    {/* 🔧 NEW: Tags in header (exclude platform to avoid duplicate with PlatformBadge) */}
+                    {(() => {
+                      const platformKey = (currentConversation?.platformInfo?.platform || (currentConversation as any)?.source || '').toLowerCase();
+                      const headerTags = (currentConversation?.tags || []).filter((t) => t.toLowerCase() !== platformKey);
+                      if (!headerTags.length) return null;
+                      return (
+                        <div className="flex items-center gap-1">
+                          {headerTags.slice(0, 2).map((tag, i) => (
+                            <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                              {tag}
+                            </span>
+                          ))}
+                          {headerTags.length > 2 && (
+                            <span className="text-xs text-muted-foreground">+{headerTags.length - 2}</span>
+                          )}
                         </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>First response: {dayjs(currentConversation.firstResponseAt).format('MMM D, YYYY h:mm A')}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                  {/* 🔧 NEW: Tags in header (exclude platform to avoid duplicate with PlatformBadge) */}
-                  {(() => {
-                    const platformKey = (currentConversation?.platformInfo?.platform || (currentConversation as any)?.source || '').toLowerCase();
-                    const headerTags = (currentConversation?.tags || []).filter(t => t.toLowerCase() !== platformKey);
-                    if (!headerTags.length) return null;
-                    return (
-                      <div className="flex items-center gap-1">
-                        {headerTags.slice(0, 2).map((tag, i) => (
-                          <span key={i} className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
-                            {tag}
-                          </span>
-                        ))}
-                        {headerTags.length > 2 && (
-                          <span className="text-xs text-muted-foreground">+{headerTags.length - 2}</span>
-                        )}
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                 <DropdownMenu>
@@ -1620,7 +1717,7 @@ export default function AgentInbox() {
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <Loader2 className="h-3 w-3 animate-spin" /> Checking session...
                     </p>
-                  ) : whatsappSession && whatsappSession.source !== 'unipile' && (
+                  ) : whatsappSession && isMetaWhatsAppCloudApiSession(whatsappSession.source) && (
                     <>
                       {whatsappSession.withinWindow ? (
                         <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
@@ -1805,7 +1902,7 @@ export default function AgentInbox() {
                     className="w-full resize-none p-3 sm:p-4 pr-28 sm:pr-32 rounded-lg bg-muted border-none focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base" 
                     rows={1} 
                     spellCheck={true}
-                    disabled={currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && whatsappSession?.source !== 'unipile'}
+                    disabled={currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && isMetaWhatsAppCloudApiSession(whatsappSession?.source)}
                   />
                   {(snippetSuggestions.length > 0 || snippetSuggestLoading) && (newMessage || '').trim().startsWith('/') && (
                     <div className="absolute bottom-full left-0 right-0 mb-1 max-h-[220px] overflow-y-auto rounded-lg border bg-popover text-popover-foreground z-50 py-1">
@@ -1871,7 +1968,7 @@ export default function AgentInbox() {
                   <Button 
                     onClick={handleSendMessage} 
                     size="icon" 
-                    disabled={isUploadingImage || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && whatsappSession?.source !== 'unipile') || (!newMessage.trim() && !selectedImageFile)}
+                    disabled={isUploadingImage || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && isMetaWhatsAppCloudApiSession(whatsappSession?.source)) || (!newMessage.trim() && !selectedImageFile)}
                     className="absolute right-2 sm:right-3 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9 bg-primary cursor-pointer hover:bg-primary/90 disabled:opacity-50"
                   >
                     {isUploadingImage ? (
@@ -1917,6 +2014,31 @@ export default function AgentInbox() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={closeAllOpenDialogOpen} onOpenChange={setCloseAllOpenDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogTitle>{t('agentInbox.closeAllOpenConfirmTitle')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('agentInbox.closeAllOpenConfirmDescription')}</AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={closeAllOpenLoading}>{t('workflow.cancel')}</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={closeAllOpenLoading}
+              onClick={() => void handleConfirmCloseAllOpen()}
+            >
+              {closeAllOpenLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+                  {t('agentInbox.closeAllOpenConfirmAction')}
+                </>
+              ) : (
+                t('agentInbox.closeAllOpenConfirmAction')
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </TooltipProvider>
   );
 }

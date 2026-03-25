@@ -243,15 +243,42 @@ export const fetchMessagesByCustomer = createAsyncThunk<
     }
 });
 
-export const sendHumanMessage = createAsyncThunk<Message, { businessId: string; customerId: string; message: string; senderSocketId: string; }, { rejectValue: string }>("chatInbox/sendHumanMessage", async (payload, thunkAPI) => {
-    try {
+export type SendHumanMessagePayload = {
+    businessId: string;
+    customerId: string;
+    message: string;
+    senderSocketId: string;
+    /** Matches active thread — required for correct WhatsApp relay when customer has multiple open conversations. */
+    conversationId?: string;
+};
 
-        const { data } = await api.post('/api/v1/messages/send-human', payload);
-        return data.data.message;
-    } catch (error: any) {
-        return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to send message");
+export const sendHumanMessage = createAsyncThunk<Message, SendHumanMessagePayload, { rejectValue: string }>(
+    "chatInbox/sendHumanMessage",
+    async (payload, thunkAPI) => {
+        try {
+            const body: Record<string, string> = {
+                businessId: payload.businessId,
+                customerId: payload.customerId,
+                message: payload.message,
+                senderSocketId: payload.senderSocketId,
+            };
+            if (payload.conversationId?.trim()) {
+                body.conversationId = payload.conversationId.trim();
+            }
+            const { data } = await api.post('/api/v1/messages/send-human', body);
+            return data.data.message;
+        } catch (error: any) {
+            const d = error.response?.data;
+            const msg =
+                (typeof d?.message === 'string' && d.message) ||
+                (d?.error && typeof d.error === 'object' && typeof (d.error as { message?: string }).message === 'string'
+                    ? (d.error as { message: string }).message
+                    : null) ||
+                "Failed to send message";
+            return thunkAPI.rejectWithValue(msg);
+        }
     }
-});
+);
 
 export const closeConversation = createAsyncThunk<
     string,
@@ -269,7 +296,37 @@ export const closeConversation = createAsyncThunk<
     }
 );
 
+export type CloseAllOpenPayload = {
+    closed: number;
+    alreadyClosed: number;
+    failed: number;
+    totalCandidates: number;
+};
 
+/** Business Chat Inbox: closes every open conversation for this business (backend cap CLOSE_ALL_OPEN_MAX). */
+export const closeAllOpenConversations = createAsyncThunk<
+    CloseAllOpenPayload,
+    { businessId: string },
+    { rejectValue: string }
+>(
+    "chatInbox/closeAllOpenConversations",
+    async ({ businessId }, thunkAPI) => {
+        try {
+            const res = await api.post("/api/v1/chat-inbox/conversations/close-all-open", { businessId });
+            const d = res.data?.data ?? res.data;
+            return {
+                closed: Number(d?.closed) || 0,
+                alreadyClosed: Number(d?.alreadyClosed) || 0,
+                failed: Number(d?.failed) || 0,
+                totalCandidates: Number(d?.totalCandidates) || 0,
+            };
+        } catch (error: any) {
+            return thunkAPI.rejectWithValue(
+                error.response?.data?.message || "Failed to close all open conversations"
+            );
+        }
+    }
+);
 
 
 const chatInboxSlice = createSlice({

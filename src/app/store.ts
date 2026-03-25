@@ -16,6 +16,7 @@ import channel from '../features/channel/channelSlice';
 import humanAgentInbox from '../features/humanAgent/humanAgentInboxSlice';
 import agentTicket from '../features/SupportTicket/agentTicketSlice';
 import unipileReducer from '../features/unipile/unipileSlice';
+import whapiReducer from '../features/whapi/whapiSlice';
 import wooCommerceReducer from '../features/wooCommerce/wooCommerceSlice';
 import shopifyReducer from '../features/shopify/shopifySlice';
 import whatsappBusinessReducer from '../features/whatsappBusiness/whatsappBusinessSlice';
@@ -42,6 +43,7 @@ export const store = configureStore({
     agentInbox: humanAgentInbox,
     agentTickets: agentTicket,
     unipile: unipileReducer,
+    whapi: whapiReducer,
     wooCommerce: wooCommerceReducer,
     shopify: shopifyReducer,
     whatsappBusiness: whatsappBusinessReducer,

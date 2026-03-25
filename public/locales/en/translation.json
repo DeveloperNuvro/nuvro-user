@@ -178,6 +178,13 @@
     "toastTransferFailed": "Transfer failed.",
     "toastCloseSuccess": "Conversation closed!",
     "toastCloseFailed": "Failed to close conversation.",
+    "closeAllOpenButton": "Close all open",
+    "closeAllOpenConfirmTitle": "Close all open conversations?",
+    "closeAllOpenConfirmDescription": "This closes every open conversation for your business. Customers may get a “chat closed” message on supported channels (e.g. WhatsApp).",
+    "closeAllOpenConfirmAction": "Close all",
+    "closeAllOpenSuccess": "Closed {{count}} conversation(s).",
+    "closeAllOpenSomeFailed": "{{count}} conversation(s) could not be closed.",
+    "closeAllOpenFailed": "Could not close all conversations.",
     "internalNote": "Internal note",
     "addInternalNote": "Add internal note",
     "noteSent": "Note sent",
@@ -1070,7 +1077,14 @@
       "transferFailed": "Transfer failed.",
       "closeSuccess": "Conversation closed!",
       "closeFailed": "Failed to close conversation."
-    }
+    },
+    "closeAllOpenButton": "Close all open",
+    "closeAllOpenConfirmTitle": "Close all open conversations?",
+    "closeAllOpenConfirmDescription": "This closes every open conversation in your inbox (assigned to you or unassigned on your channels). Customers may get a “chat closed” message on supported channels.",
+    "closeAllOpenConfirmAction": "Close all",
+    "closeAllOpenSuccess": "Closed {{count}} conversation(s).",
+    "closeAllOpenSomeFailed": "{{count}} conversation(s) could not be closed.",
+    "closeAllOpenFailed": "Could not close all conversations."
   },
   "trainModelPage": {
     "step1": {
@@ -1175,6 +1189,7 @@
     "title": "Integrations",
     "subtitle": "Connect WhatsApp Business and multi-platform messaging (Unipile). Manage channel settings and working hours here.",
     "tabWhatsApp": "WhatsApp Business",
+    "tabWhapi": "WhatsApp (Whapi)",
     "tabMultiPlatform": "Multi-Platform",
     "fourScenarioNote": "You can connect WhatsApp without an AI agent (human-only). Add an AI agent in Workflows later for AI replies. All 4 scenarios (business hours on/off × with or without AI) are supported.",
     "restrictionAvoidance": {
@@ -1187,6 +1202,36 @@
         "quality": "Check your account in Meta Business Manager and keep reply rates healthy.",
         "volume": "Reply when customers have just written; avoid sudden bursts of messages to many people."
       }
+    },
+    "whapi": {
+      "title": "WhatsApp (linked device — Whapi)",
+      "subtitle": "Create a Whapi channel, scan the QR from your phone, and link inbound/outbound to Nuvro. Uses the same inbox and workflows as the API.",
+      "webhookHint": "Webhook URL (registered by backend):",
+      "addConnection": "Add Whapi connection",
+      "createTitle": "New Whapi channel",
+      "createHint": "A channel is created in Whapi; scan the QR to connect WhatsApp on this device.",
+      "displayName": "Display name",
+      "displayNamePlaceholder": "e.g. Support WhatsApp",
+      "projectOptional": "Whapi project (optional)",
+      "projectPlaceholder": "Default project",
+      "defaultProject": "Default",
+      "create": "Create",
+      "created": "Channel created. Open QR to scan.",
+      "loading": "Loading connections…",
+      "channelId": "Whapi channel",
+      "showQr": "Show QR",
+      "syncWebhooks": "Sync webhooks",
+      "rename": "Rename",
+      "delete": "Delete",
+      "confirmDelete": "Delete this Whapi connection?",
+      "deleted": "Connection removed",
+      "empty": "No Whapi connections yet.",
+      "qrTitle": "Scan QR with WhatsApp",
+      "qrHint": "WhatsApp → Linked devices → Link a device. If login fails, wait ~90s after creating the channel and try again.",
+      "qrError": "Could not load QR code. Try again in a minute.",
+      "renameTitle": "Rename connection",
+      "renamed": "Name updated",
+      "webhooksSynced": "Webhooks updated"
     },
     "toast": {
       "connectionSuccess": "Connection completed. Status updated."

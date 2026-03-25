@@ -49,6 +49,35 @@ export const fetchAgentConversations = createAsyncThunk<
     }
 );
 
+export type CloseAllOpenAgentPayload = {
+    closed: number;
+    alreadyClosed: number;
+    failed: number;
+    totalCandidates: number;
+};
+
+/** Same scope as GET /agents/my-conversations (open). */
+export const closeAllOpenAgentConversations = createAsyncThunk<
+    CloseAllOpenAgentPayload,
+    void,
+    { rejectValue: string }
+>("agentInbox/closeAllOpenAgentConversations", async (_, thunkAPI) => {
+    try {
+        const res = await api.post("/api/v1/agents/close-all-open-conversations", {});
+        const d = res.data?.data ?? res.data;
+        return {
+            closed: Number(d?.closed) || 0,
+            alreadyClosed: Number(d?.alreadyClosed) || 0,
+            failed: Number(d?.failed) || 0,
+            totalCandidates: Number(d?.totalCandidates) || 0,
+        };
+    } catch (error: any) {
+        return thunkAPI.rejectWithValue(
+            error.response?.data?.message || "Failed to close all open conversations"
+        );
+    }
+});
+
 const agentInboxSlice = createSlice({
     name: "agentInbox",
     initialState,

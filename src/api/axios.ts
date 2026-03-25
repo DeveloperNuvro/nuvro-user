@@ -40,6 +40,13 @@ api.interceptors.request.use(
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    // ngrok free: without this, API may return HTML interstitial instead of JSON/image (QR breaks).
+    const apiBase =
+      (typeof config.baseURL === 'string' ? config.baseURL : '') || baseURL || '';
+    const urlHasNgrok = /ngrok/i.test(String(config.url || ''));
+    if ((urlHasNgrok || (apiBase && /ngrok/i.test(apiBase))) && config.headers) {
+      (config.headers as Record<string, string>)['ngrok-skip-browser-warning'] = 'true';
+    }
     return config;
   },
   error => Promise.reject(error)

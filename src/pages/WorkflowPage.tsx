@@ -17,6 +17,7 @@ import {
 import { fetchAiAgentsByBusinessId } from '@/features/aiAgent/aiAgentSlice';
 import { fetchWhatsAppConnections } from '@/features/whatsappBusiness/whatsappBusinessSlice';
 import { fetchUnipileConnections } from '@/features/unipile/unipileSlice';
+import { fetchWhapiConnections } from '@/features/whapi/whapiSlice';
 import { fetchAiIntregationByBusinessId } from '@/features/business/businessSlice';
 import { Link } from 'react-router-dom';
 
@@ -150,6 +151,7 @@ export default function WorkflowPage() {
       dispatch(fetchAiAgentsByBusinessId());
       dispatch(fetchWhatsAppConnections(undefined));
       dispatch(fetchUnipileConnections(undefined));
+      dispatch(fetchWhapiConnections());
     }
     setIsModalOpen(true);
   };
@@ -159,6 +161,7 @@ export default function WorkflowPage() {
     dispatch(fetchAiAgentsByBusinessId());
     dispatch(fetchWhatsAppConnections(undefined));
     dispatch(fetchUnipileConnections(undefined));
+    dispatch(fetchWhapiConnections());
     dispatch(fetchWorkflowById({ businessId, workflowId: w._id }))
       .unwrap()
       .then((wFull) => {
@@ -187,9 +190,10 @@ export default function WorkflowPage() {
   const aiAgents = useSelector((state: RootState) => state.aiAgent?.aiAgents ?? []);
   const whatsappConnections = useSelector((state: RootState) => state.whatsappBusiness?.connections ?? []);
   const unipileConnections = useSelector((state: RootState) => state.unipile?.connections ?? []);
+  const whapiConnections = useSelector((state: RootState) => state.whapi?.connections ?? []);
 
   const workflowChannels = useMemo(() => {
-    const list: { id: string; label: string; source: 'whatsapp' | 'unipile' }[] = [];
+    const list: { id: string; label: string; source: 'whatsapp' | 'unipile' | 'whapi' }[] = [];
     whatsappConnections.forEach((conn: { connectionId?: string; _id?: string; connectionName?: string; phoneNumber?: string }) => {
       const id = conn.connectionId || (conn as any)._id?.toString?.() || '';
       if (id) list.push({ id, label: conn.connectionName || conn.phoneNumber || id, source: 'whatsapp' });
@@ -200,8 +204,14 @@ export default function WorkflowPage() {
         const id = (conn as any)._id || conn.id || conn.connectionId || '';
         if (id) list.push({ id, label: `${conn.name || 'WhatsApp'} (Unipile)`, source: 'unipile' });
       });
+    whapiConnections.forEach((conn) => {
+      const id = conn.id?.trim();
+      if (!id) return;
+      const base = conn.connectionName?.trim() || conn.metadata?.whapiUserName || conn.whapiChannelId || 'WhatsApp';
+      list.push({ id, label: `${base} (Whapi)`, source: 'whapi' });
+    });
     return list;
-  }, [whatsappConnections, unipileConnections]);
+  }, [whatsappConnections, unipileConnections, whapiConnections]);
 
   const handleSubmit = () => {
     if (!name.trim() || !businessId) {
@@ -514,11 +524,19 @@ export default function WorkflowPage() {
                   {t('workflow.channelsLabel', 'Channels (where this workflow runs)')}
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  {t('workflow.channelsHelp', 'Select WhatsApp connections (direct or via Unipile) that will use this workflow. Leave empty to use only on website widget or when assigned from a channel.')}
+                  {t(
+                    'workflow.channelsHelp',
+                    'Select WhatsApp connections (Meta Cloud API, Unipile, or Whapi linked device) for this workflow. Leave empty for website widget only or when assigned from a channel.'
+                  )}
                 </p>
                 <div className="rounded-lg border border-input bg-background/50 p-3 space-y-2 max-h-36 overflow-y-auto">
                   {workflowChannels.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">{t('workflow.noChannels', 'No WhatsApp connections. Add one in Integrations → WhatsApp or Unipile (WhatsApp).')}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t(
+                        'workflow.noChannels',
+                        'No WhatsApp connections. Add one in Integrations: WhatsApp (Meta), Unipile, or Whapi.'
+                      )}
+                    </p>
                   ) : (
                     workflowChannels.map(({ id, label }) => {
                       const checked = selectedChannelIds.includes(id);

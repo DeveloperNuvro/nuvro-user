@@ -34,9 +34,17 @@ interface PlatformBadgeProps {
   className?: string;
   size?: 'xs' | 'sm' | 'md';
   showText?: boolean;
+  /** Inbox: WhatsApp line name from API (replaces generic "Whatsapp" text). */
+  labelOverride?: string | null;
 }
 
-export const PlatformBadge = ({ platform, className = "", size = 'sm', showText = true }: PlatformBadgeProps) => {
+export const PlatformBadge = ({
+  platform,
+  className = "",
+  size = 'sm',
+  showText = true,
+  labelOverride,
+}: PlatformBadgeProps) => {
   const IconComponent = platformIcons[platform] || Globe;
   const colorClass = platformColors[platform] || "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
   
@@ -61,10 +69,13 @@ export const PlatformBadge = ({ platform, className = "", size = 'sm', showText 
     );
   }
   
+  const defaultLabel = platform.charAt(0).toUpperCase() + platform.slice(1);
+  const text = (labelOverride && String(labelOverride).trim()) || defaultLabel;
+
   return (
-    <Badge className={`${colorClass} ${className}`}>
-      <IconComponent className={`${iconSizeClasses[size]} mr-1`} />
-      {showText && platform.charAt(0).toUpperCase() + platform.slice(1)}
+    <Badge className={`${colorClass} ${className} max-w-full sm:max-w-[min(200px,55vw)]`} title={text}>
+      <IconComponent className={`${iconSizeClasses[size]} mr-1 shrink-0`} />
+      {showText && <span className="truncate">{text}</span>}
     </Badge>
   );
 };

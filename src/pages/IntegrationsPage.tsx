@@ -6,8 +6,10 @@ import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "@/app/store";
 import { fetchUnipileConnections } from "@/features/unipile/unipileSlice";
+import { fetchWhapiConnections } from "@/features/whapi/whapiSlice";
 import { fetchWhatsAppConnections } from "@/features/whatsappBusiness/whatsappBusinessSlice";
 import UnipileIntegrationTab from "@/components/custom/unipile/UnipileIntegrationTab";
+import WhapiIntegrationTab from "@/components/custom/whapi/WhapiIntegrationTab";
 import WhatsAppBusinessIntegrationTab from "@/components/custom/whatsappBusiness/WhatsAppBusinessIntegrationTab";
 import WhatsAppRestrictionAvoidanceTips from "@/components/custom/integrations/WhatsAppRestrictionAvoidanceTips";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,6 +30,7 @@ export default function IntegrationsPage() {
     const platform = searchParams.get("platform");
     if (status === "success" && platform) {
       dispatch(fetchUnipileConnections(undefined));
+      dispatch(fetchWhapiConnections());
       dispatch(fetchWhatsAppConnections()).catch(() => {});
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
@@ -63,10 +66,14 @@ export default function IntegrationsPage() {
           </div>
         </div>
         <Tabs defaultValue="whatsapp" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-3xl grid-cols-3">
             <TabsTrigger value="whatsapp" className="gap-2">
               <Phone className="h-4 w-4" />
               {t("integrationsPage.tabWhatsApp")}
+            </TabsTrigger>
+            <TabsTrigger value="whapi" className="gap-2">
+              <Phone className="h-4 w-4" />
+              {t("integrationsPage.tabWhapi")}
             </TabsTrigger>
             <TabsTrigger value="unipile" className="gap-2">
               <MessageSquare className="h-4 w-4" />
@@ -75,6 +82,9 @@ export default function IntegrationsPage() {
           </TabsList>
           <TabsContent value="whatsapp" className="mt-6">
             <WhatsAppBusinessIntegrationTab />
+          </TabsContent>
+          <TabsContent value="whapi" className="mt-6">
+            <WhapiIntegrationTab />
           </TabsContent>
           <TabsContent value="unipile" className="mt-6">
             <UnipileIntegrationTab />
