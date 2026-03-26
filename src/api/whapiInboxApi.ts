@@ -1,6 +1,14 @@
 import { api } from './axios';
 
 export type WhapiGateHealth = { ok?: boolean; [key: string]: unknown };
+export type WhapiWorkflowVariantAnalyticsRow = {
+  variantId: string;
+  variantKind: string;
+  sentCount: number;
+  uniqueConversations: number;
+  repliedConversations: number;
+  replyRate: number;
+};
 
 export async function getWhapiGateHealth(connectionId: string): Promise<WhapiGateHealth | null> {
   const res = await api.get(`/api/v1/whapi/connections/${connectionId}/gate-health`);
@@ -9,6 +17,22 @@ export async function getWhapiGateHealth(connectionId: string): Promise<WhapiGat
 
 export async function getWhapiInboxCapabilities(connectionId: string): Promise<Record<string, unknown> | null> {
   const res = await api.get(`/api/v1/whapi/connections/${connectionId}/inbox-capabilities`);
+  return res.data?.data ?? res.data ?? null;
+}
+
+export async function getWhapiWorkflowVariantAnalytics(
+  connectionId: string,
+  days = 14
+): Promise<{
+  connectionId?: string;
+  days?: number;
+  since?: string;
+  variants?: WhapiWorkflowVariantAnalyticsRow[];
+} | null> {
+  const safeDays = Math.min(90, Math.max(1, Number(days) || 14));
+  const res = await api.get(`/api/v1/whapi/connections/${connectionId}/workflow-variant-analytics`, {
+    params: { days: safeDays },
+  });
   return res.data?.data ?? res.data ?? null;
 }
 

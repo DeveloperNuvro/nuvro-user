@@ -14,7 +14,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, Trash2, RefreshCw, QrCode, Settings, Pencil, Link2 } from 'lucide-react';
+import { Loader2, Plus, Trash2, RefreshCw, QrCode, Settings, Pencil, Link2, BarChart3 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
 import {
@@ -35,6 +35,7 @@ import { isAxiosError } from 'axios';
 import { api } from '@/api/axios';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import { getWhapiWorkflowVariantAnalytics, type WhapiWorkflowVariantAnalyticsRow } from '@/api/whapiInboxApi';
 
 interface WhapiIntegrationTabProps {
   agentId?: string;
@@ -107,6 +108,11 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
   const [configFallback, setConfigFallback] = useState<ChannelFallbackBehavior>('route_to_ai');
   const [configFlowId, setConfigFlowId] = useState<string | null>(null);
   const [configSaving, setConfigSaving] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [analyticsConn, setAnalyticsConn] = useState<WhapiConnectionRow | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsDays, setAnalyticsDays] = useState(14);
+  const [analyticsRows, setAnalyticsRows] = useState<WhapiWorkflowVariantAnalyticsRow[]>([]);
 
   const agentIdString = agentId ? String(agentId) : undefined;
 
@@ -210,6 +216,19 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
   };
 
   const webhookUrlDisplay = publicWebhookUrlHint();
+
+  const loadVariantAnalytics = useCallback(async (conn: WhapiConnectionRow, days = analyticsDays) => {
+    setAnalyticsLoading(true);
+    try {
+      const data = await getWhapiWorkflowVariantAnalytics(conn.id, days);
+      setAnalyticsRows(Array.isArray(data?.variants) ? data.variants : []);
+    } catch (e: unknown) {
+      toast.error(typeof e === 'string' ? e : t('integrationsPage.whapi.analyticsError', 'Failed to load variant analytics'));
+      setAnalyticsRows([]);
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [analyticsDays, t]);
 
   return (
     <div className="space-y-6">
@@ -418,6 +437,18 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                 {t('channelSettings.title', 'Channel settings')}
               </Button>
               <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setAnalyticsConn(c);
+                  setAnalyticsOpen(true);
+                  void loadVariantAnalytics(c, analyticsDays);
+                }}
+              >
+                <BarChart3 className="h-4 w-4 mr-1" />
+                {t('integrationsPage.whapi.variantAnalytics', 'Variant analytics')}
+              </Button>
+              <Button
                 variant="destructive"
                 size="sm"
                 onClick={async () => {
@@ -488,6 +519,83 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                 )}
               </p>
             ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={analyticsOpen}
+        onOpenChange={(open) => {
+          setAnalyticsOpen(open);
+          if (!open) {
+            setAnalyticsConn(null);
+            setAnalyticsRows([]);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{t('integrationsPage.whapi.variantAnalyticsTitle', 'Workflow variant analytics')}</DialogTitle>
+            <DialogDescription>
+              {t('integrationsPage.whapi.variantAnalyticsHint', 'Compare first-message variants by reply rate and conversations.')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm">{t('integrationsPage.whapi.lastDays', 'Last days')}</Label>
+            <Input
+              type="number"
+              min={1}
+              max={90}
+              value={analyticsDays}
+              onChange={(e) => setAnalyticsDays(Math.min(90, Math.max(1, Number(e.target.value) || 14)))}
+              className="w-24"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!analyticsConn || analyticsLoading}
+              onClick={() => analyticsConn && void loadVariantAnalytics(analyticsConn, analyticsDays)}
+            >
+              {analyticsLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {t('integrationsPage.whapi.refreshAnalytics', 'Refresh')}
+            </Button>
+          </div>
+          <div className="max-h-[360px] overflow-auto rounded border">
+            {analyticsLoading ? (
+              <div className="p-6 text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {t('integrationsPage.whapi.loadingAnalytics', 'Loading analytics...')}
+              </div>
+            ) : analyticsRows.length === 0 ? (
+              <div className="p-6 text-sm text-muted-foreground">
+                {t('integrationsPage.whapi.noAnalytics', 'No workflow variant data found for this period.')}
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-3 py-2 text-left">Variant</th>
+                    <th className="px-3 py-2 text-left">Kind</th>
+                    <th className="px-3 py-2 text-right">Sent</th>
+                    <th className="px-3 py-2 text-right">Conversations</th>
+                    <th className="px-3 py-2 text-right">Replies</th>
+                    <th className="px-3 py-2 text-right">Reply Rate</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {analyticsRows.map((row) => (
+                    <tr key={`${row.variantId}:${row.variantKind}`} className="border-t">
+                      <td className="px-3 py-2 font-mono text-xs">{row.variantId}</td>
+                      <td className="px-3 py-2">{row.variantKind}</td>
+                      <td className="px-3 py-2 text-right">{row.sentCount}</td>
+                      <td className="px-3 py-2 text-right">{row.uniqueConversations}</td>
+                      <td className="px-3 py-2 text-right">{row.repliedConversations}</td>
+                      <td className="px-3 py-2 text-right">{(row.replyRate * 100).toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </DialogContent>
       </Dialog>
