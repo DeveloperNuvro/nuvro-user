@@ -404,7 +404,18 @@ const chatInboxSlice = createSlice({
                     status: 'succeeded',
                 };
             }
-            const list = state.chatData[customerId].list;
+            let list = state.chatData[customerId].list;
+            const rid =
+                transformedMessage.metadata?.clientRequestId &&
+                typeof transformedMessage.metadata.clientRequestId === 'string'
+                    ? transformedMessage.metadata.clientRequestId
+                    : null;
+            if (rid) {
+                list = list.filter(
+                    (m) => m.metadata?.clientRequestId !== rid && m._id !== `pending_${rid}`
+                );
+                state.chatData[customerId].list = list;
+            }
             const existingIndex = list.findIndex((m) => m._id === transformedMessage._id);
             if (existingIndex !== -1) {
                 // Dedupe: same message already in list (e.g. from optimistic + socket, or multiple socket listeners) – update in place with any extra fields
@@ -420,6 +431,59 @@ const chatInboxSlice = createSlice({
                 state.conversations.splice(convoIndex, 1);
                 state.conversations.unshift(conversationToMove);
             }
+        },
+        /** Optimistic “Sending…” bubble for Whapi/Unipile/Meta outbound (paired with socket `outboundMessagePending` + API `clientRequestId`). */
+        addOutboundPendingMessage: (
+            state,
+            action: PayloadAction<{
+                customerId: string;
+                clientRequestId: string;
+                text: string;
+                messageType?: string;
+            }>
+        ) => {
+            const { customerId, clientRequestId, text, messageType } = action.payload;
+            const id = `pending_${clientRequestId}`;
+            if (!state.chatData[customerId]) {
+                state.chatData[customerId] = {
+                    list: [],
+                    currentPage: 1,
+                    totalPages: 1,
+                    hasMore: false,
+                    status: 'succeeded',
+                };
+            }
+            const list = state.chatData[customerId].list;
+            if (list.some((m) => m._id === id || m.metadata?.clientRequestId === clientRequestId)) return;
+            list.push({
+                _id: id,
+                text,
+                sentBy: 'human',
+                time: new Date().toISOString(),
+                status: 'sending',
+                messageType: (messageType as Message['messageType']) || 'text',
+                metadata: { clientRequestId, outboundPending: true },
+            });
+            const convoIndex = state.conversations.findIndex((c) => c.customer.id === customerId);
+            if (convoIndex !== -1) {
+                const conversationToMove = state.conversations[convoIndex];
+                conversationToMove.preview = text;
+                conversationToMove.latestMessageTimestamp = new Date().toISOString();
+                state.conversations.splice(convoIndex, 1);
+                state.conversations.unshift(conversationToMove);
+            }
+        },
+        removeOutboundPendingMessage: (
+            state,
+            action: PayloadAction<{ customerId: string; clientRequestId: string }>
+        ) => {
+            const { customerId, clientRequestId } = action.payload;
+            const chat = state.chatData[customerId];
+            if (!chat) return;
+            const rid = clientRequestId;
+            chat.list = chat.list.filter(
+                (m) => m.metadata?.clientRequestId !== rid && m._id !== `pending_${rid}`
+            );
         },
         removeConversation: (state, action: PayloadAction<{ conversationId: string }>) => {
             state.conversations = state.conversations.filter(c => c.id !== action.payload.conversationId);
@@ -605,5 +669,14 @@ const chatInboxSlice = createSlice({
     },
 });
 
-export const { addRealtimeMessage, addNewCustomer, updateConversationStatus, updateConversationEnhanced, removeConversation, resetConversations } = chatInboxSlice.actions;
+export const {
+    addRealtimeMessage,
+    addOutboundPendingMessage,
+    removeOutboundPendingMessage,
+    addNewCustomer,
+    updateConversationStatus,
+    updateConversationEnhanced,
+    removeConversation,
+    resetConversations,
+} = chatInboxSlice.actions;
 export default chatInboxSlice.reducer;

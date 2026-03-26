@@ -99,6 +99,8 @@ export const sendMessageViaConversation = async (data: {
       date_time?: { fallback_value: string };
     }>;
   }>;
+  /** Matches backend + socket outbound UX (`outboundMessagePending` / `metadata.clientRequestId`). */
+  clientRequestId?: string;
 }) => {
   const endpoint = '/api/v1/chat-inbox/conversations/send-message';
   const response = await api.post(endpoint, data);

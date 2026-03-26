@@ -31,6 +31,8 @@ import {
   updateConversationStatus,
   updateConversationEnhanced,
   addNewCustomer,
+  addOutboundPendingMessage,
+  removeOutboundPendingMessage,
   ConversationInList,
 } from "@/features/chatInbox/chatInboxSlice";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
@@ -818,6 +820,16 @@ export default function ChatInbox() {
 
     // For Instagram, WhatsApp, Telegram - use Unipile API (send via conversation)
     if (platform === 'instagram' || platform === 'whatsapp' || platform === 'telegram') {
+      const clientRequestId = crypto.randomUUID();
+      const outboundPreview = messageText || (imageUrl ? '📷 Image' : '');
+      dispatch(
+        addOutboundPendingMessage({
+          customerId: selectedCustomer,
+          clientRequestId,
+          text: outboundPreview,
+          messageType: imageUrl ? 'image' : 'text',
+        })
+      );
       try {
         // META WhatsApp Business: 24h session check + template send – commented out. Using Unipile only.
 
@@ -825,6 +837,7 @@ export default function ChatInbox() {
           conversationId: currentConversation.id,
           message: messageText || (imageUrl ? '📷 Image' : ''),
           businessId: businessId,
+          clientRequestId,
         };
 
         if (imageUrl) {
@@ -843,6 +856,7 @@ export default function ChatInbox() {
         if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection)) setWhapiReplyTo(null);
         toast.success(imageUrl ? 'Image sent!' : 'Message sent!');
       } catch (error: any) {
+        dispatch(removeOutboundPendingMessage({ customerId: selectedCustomer, clientRequestId }));
         const errorData = error.response?.data;
         
         // META: Template-required error handling – commented out.
@@ -1940,7 +1954,18 @@ export default function ChatInbox() {
                                 size="sm"
                                 disabled={!selectedTemplateName || !currentConversation?.id || !businessId}
                                 onClick={async () => {
-                                  if (!selectedTemplateName || !currentConversation?.id || !businessId) return;
+                                  if (!selectedTemplateName || !currentConversation?.id || !businessId || !selectedCustomer)
+                                    return;
+                                  const clientRequestId = crypto.randomUUID();
+                                  const tplPreview = `[Template: ${selectedTemplateName}]`;
+                                  dispatch(
+                                    addOutboundPendingMessage({
+                                      customerId: selectedCustomer,
+                                      clientRequestId,
+                                      text: tplPreview,
+                                      messageType: 'text',
+                                    })
+                                  );
                                   try {
                                     const { sendMessageViaConversation } = await import('@/api/chatApi');
                                     const components = templateBodyParam.trim()
@@ -1954,6 +1979,7 @@ export default function ChatInbox() {
                                       templateName: selectedTemplateName,
                                       templateLanguage: 'en',
                                       templateComponents: components,
+                                      clientRequestId,
                                     });
                                     toast.success('Template sent');
                                     setTemplateBodyParam('');
@@ -1969,6 +1995,12 @@ export default function ChatInbox() {
                                       source: session.source,
                                     });
                                   } catch (err: any) {
+                                    dispatch(
+                                      removeOutboundPendingMessage({
+                                        customerId: selectedCustomer,
+                                        clientRequestId,
+                                      })
+                                    );
                                     toast.error(err.response?.data?.message || err.message || 'Failed to send template');
                                   }
                                 }}

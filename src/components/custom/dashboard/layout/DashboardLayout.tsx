@@ -22,6 +22,8 @@ import { menuRoutes } from "@/appRoutes";
 import { initSocket, disconnectSocket, getSocket } from "../../../../lib/useSocket";
 import {
   addRealtimeMessage,
+  addOutboundPendingMessage,
+  removeOutboundPendingMessage,
   addNewCustomer,
   removeConversation,
   updateConversationStatus,
@@ -203,6 +205,54 @@ export default function DashboardLayout() {
     }
   }, [user, dispatch, t, myChannelIds]);
 
+  const handleOutboundMessagePending = useCallback(
+    (data: {
+      clientRequestId?: string;
+      customerId?: string;
+      conversationId?: string;
+      message?: string;
+      messageType?: string;
+      startedAt?: string;
+    }) => {
+      const customerId = data?.customerId;
+      const clientRequestId = data?.clientRequestId;
+      if (!customerId || !clientRequestId) return;
+      dispatch(
+        addOutboundPendingMessage({
+          customerId: String(customerId),
+          clientRequestId: String(clientRequestId),
+          text: String(data.message ?? ''),
+          messageType: data.messageType || 'text',
+        })
+      );
+      if (data.conversationId && user.role === 'agent') {
+        dispatch(
+          updateConversationPreview({
+            conversationId: String(data.conversationId),
+            preview: String(data.message ?? ''),
+            latestMessageTimestamp: data.startedAt ?? new Date().toISOString(),
+          })
+        );
+      }
+    },
+    [dispatch, user.role]
+  );
+
+  const handleOutboundMessageFailed = useCallback(
+    (data: { clientRequestId?: string; customerId?: string }) => {
+      const customerId = data?.customerId;
+      const clientRequestId = data?.clientRequestId;
+      if (!customerId || !clientRequestId) return;
+      dispatch(
+        removeOutboundPendingMessage({
+          customerId: String(customerId),
+          clientRequestId: String(clientRequestId),
+        })
+      );
+    },
+    [dispatch]
+  );
+
   const handleNewAssignment = useCallback((data: ConversationInList & { conversationId?: string }) => {
     // Workflow channel assignment may emit newChatAssigned without customer (conversationId, status, channelId, channelName only)
     if (!data?.customer) {
@@ -300,6 +350,8 @@ export default function DashboardLayout() {
     socket.on("initialAgentStatuses", handleInitialAgentStatuses);
     socket.on("agentStatusUpdate", handleAgentStatusUpdate);
     socket.on("newMessage", handleNewMessage);
+    socket.on("outboundMessagePending", handleOutboundMessagePending);
+    socket.on("outboundMessageFailed", handleOutboundMessageFailed);
     socket.on("newConversation", handleNewConversation);
     socket.on("newChatAssigned", handleNewAssignment);
     socket.on("conversationRemoved", handleConversationRemoved);
@@ -314,6 +366,8 @@ export default function DashboardLayout() {
       socket.off("initialAgentStatuses", handleInitialAgentStatuses);
       socket.off("agentStatusUpdate", handleAgentStatusUpdate);
       socket.off("newMessage", handleNewMessage);
+      socket.off("outboundMessagePending", handleOutboundMessagePending);
+      socket.off("outboundMessageFailed", handleOutboundMessageFailed);
       socket.off("newConversation", handleNewConversation);
       socket.off("newChatAssigned", handleNewAssignment);
       socket.off("conversationRemoved", handleConversationRemoved);
@@ -322,7 +376,7 @@ export default function DashboardLayout() {
       socket.off("conversationTransferred", handleNewAssignment);
       socket.off("newTicketCreated", handleConversationUpdate);
     };
-  }, [user, accessToken, handleNewMessage, handleNewAssignment, handleNewConversation, handleInitialAgentStatuses, handleAgentStatusUpdate, handleConversationRemoved, handleConversationClosedByAgent, handleConversationUpdate]);
+  }, [user, accessToken, handleNewMessage, handleOutboundMessagePending, handleOutboundMessageFailed, handleNewAssignment, handleNewConversation, handleInitialAgentStatuses, handleAgentStatusUpdate, handleConversationRemoved, handleConversationClosedByAgent, handleConversationUpdate]);
 
   const menuItems = useMemo(() => {
     if (!user) return [];

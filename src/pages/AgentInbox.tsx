@@ -22,7 +22,14 @@ import { api } from "@/api/axios";
 import { normalizeApiMediaUrl } from "@/lib/audioUrlNormalize";
 import { fetchAgentConversations, resetAgentConversations, updateConversationEnhanced, addAssignedConversation, removeConversation, updateConversationPreview, closeAllOpenAgentConversations } from "../features/humanAgent/humanAgentInboxSlice";
 import { ConversationInList } from "../features/chatInbox/chatInboxSlice";
-import { fetchMessagesByCustomer, sendHumanMessage, closeConversation, addRealtimeMessage } from "../features/chatInbox/chatInboxSlice";
+import {
+  fetchMessagesByCustomer,
+  sendHumanMessage,
+  closeConversation,
+  addRealtimeMessage,
+  addOutboundPendingMessage,
+  removeOutboundPendingMessage,
+} from "../features/chatInbox/chatInboxSlice";
 import {
   uploadImage as uploadImageApi,
   getConversationSummary as getConversationSummaryApi,
@@ -831,11 +838,31 @@ export default function AgentInbox() {
 
     // Instagram, WhatsApp, Telegram — same endpoint as business Chat Inbox (Unipile / Whapi / Meta routing on server)
     if (platform === 'instagram' || platform === 'whatsapp' || platform === 'telegram') {
+      const clientRequestId = crypto.randomUUID();
+      const outboundPreview = messageText || (imageUrl ? '📷 Image' : '');
+      dispatch(
+        addOutboundPendingMessage({
+          customerId: selectedCustomer,
+          clientRequestId,
+          text: outboundPreview,
+          messageType: imageUrl ? 'image' : 'text',
+        })
+      );
+      if (currentConversation?.id) {
+        dispatch(
+          updateConversationPreview({
+            conversationId: currentConversation.id,
+            preview: outboundPreview,
+            latestMessageTimestamp: new Date().toISOString(),
+          })
+        );
+      }
       try {
         const payload: Parameters<typeof sendMessageViaConversation>[0] = {
           conversationId: currentConversation.id,
           message: messageText || (imageUrl ? '📷 Image' : ''),
           businessId: businessId,
+          clientRequestId,
         };
         if (imageUrl) {
           payload.imageUrl = imageUrl;
@@ -849,6 +876,7 @@ export default function AgentInbox() {
         if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection)) setWhapiReplyTo(null);
         toast.success(imageUrl ? 'Image sent!' : 'Message sent!');
       } catch (error: any) {
+        dispatch(removeOutboundPendingMessage({ customerId: selectedCustomer, clientRequestId }));
         const errorData = error.response?.data;
         
         // Check if it's a disconnected account error
@@ -928,7 +956,18 @@ export default function AgentInbox() {
     )
       .unwrap()
       .catch((error) => toast.error(error || t('chatInbox.toastMessageFailed')));
-  }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t, selectedImageFile, uploadImage, handleRemoveImage, whapiReplyTo]);
+  }, [
+    newMessage,
+    selectedCustomer,
+    businessId,
+    currentConversation,
+    dispatch,
+    t,
+    selectedImageFile,
+    uploadImage,
+    handleRemoveImage,
+    whapiReplyTo,
+  ]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
     if (!currentConversation?.id) { toast.error(t('chatInbox.toastTransferNoId')); return; }
@@ -1752,6 +1791,15 @@ export default function AgentInbox() {
                                       <p>Read {dayjs(msg.readAt).fromNow()}</p>
                                     </TooltipContent>
                                   </Tooltip>
+                                ) : msg.status === 'sending' ? (
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Loader2 className="h-3 w-3 text-muted-foreground animate-spin" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{t('chatInbox.sending', 'Sending…')}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 ) : null}
                               </div>
                             )}
@@ -1853,7 +1901,25 @@ export default function AgentInbox() {
                               size="sm"
                               disabled={!selectedTemplateName || !currentConversation?.id || !businessId}
                               onClick={async () => {
-                                if (!selectedTemplateName || !currentConversation?.id || !businessId) return;
+                                if (!selectedTemplateName || !currentConversation?.id || !businessId || !selectedCustomer)
+                                  return;
+                                const clientRequestId = crypto.randomUUID();
+                                const tplPreview = `[Template: ${selectedTemplateName}]`;
+                                dispatch(
+                                  addOutboundPendingMessage({
+                                    customerId: selectedCustomer,
+                                    clientRequestId,
+                                    text: tplPreview,
+                                    messageType: 'text',
+                                  })
+                                );
+                                dispatch(
+                                  updateConversationPreview({
+                                    conversationId: currentConversation.id,
+                                    preview: tplPreview,
+                                    latestMessageTimestamp: new Date().toISOString(),
+                                  })
+                                );
                                 try {
                                   const { sendMessageViaConversation, getWhatsAppSessionByConversation } = await import('@/api/chatApi');
                                   const components = templateBodyParam.trim()
@@ -1867,6 +1933,7 @@ export default function AgentInbox() {
                                     templateName: selectedTemplateName,
                                     templateLanguage: 'en',
                                     templateComponents: components,
+                                    clientRequestId,
                                   });
                                   toast.success('Template sent');
                                   setTemplateBodyParam('');
@@ -1881,6 +1948,12 @@ export default function AgentInbox() {
                                     source: session.source,
                                   });
                                 } catch (err: any) {
+                                  dispatch(
+                                    removeOutboundPendingMessage({
+                                      customerId: selectedCustomer,
+                                      clientRequestId,
+                                    })
+                                  );
                                   toast.error(err.response?.data?.message || err.message || 'Failed to send template');
                                 }
                               }}
