@@ -1,24 +1,18 @@
 import { useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, Phone, Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { MessageSquare, Phone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "@/app/store";
 import { fetchUnipileConnections } from "@/features/unipile/unipileSlice";
 import { fetchWhapiConnections } from "@/features/whapi/whapiSlice";
-import { fetchWhatsAppConnections } from "@/features/whatsappBusiness/whatsappBusinessSlice";
 import UnipileIntegrationTab from "@/components/custom/unipile/UnipileIntegrationTab";
 import WhapiIntegrationTab from "@/components/custom/whapi/WhapiIntegrationTab";
-import WhatsAppBusinessIntegrationTab from "@/components/custom/whatsappBusiness/WhatsAppBusinessIntegrationTab";
-import WhatsAppRestrictionAvoidanceTips from "@/components/custom/integrations/WhatsAppRestrictionAvoidanceTips";
-import { Card, CardContent } from "@/components/ui/card";
 import toast from "react-hot-toast";
 
-/**
- * Dashboard-level Integrations: WhatsApp & Multi-Platform (Unipile).
- * Aligned with 4 scenarios: connect with or without AI; add AI in Workflow later if needed.
- */
+/** Dashboard Integrations: primary WhatsApp tab + optional secondary channels. */
 export default function IntegrationsPage() {
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
@@ -31,7 +25,6 @@ export default function IntegrationsPage() {
     if (status === "success" && platform) {
       dispatch(fetchUnipileConnections(undefined));
       dispatch(fetchWhapiConnections());
-      dispatch(fetchWhatsAppConnections()).catch(() => {});
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.delete("status");
@@ -49,45 +42,29 @@ export default function IntegrationsPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             {t("integrationsPage.title")}
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {t("integrationsPage.subtitle")}
-          </p>
-          <Card className="mt-3 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/20">
-            <CardContent className="p-4 flex gap-3">
-              <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-900 dark:text-blue-200">
-                {t("integrationsPage.fourScenarioNote") ||
-                  "You can connect WhatsApp without an AI agent (human-only). Add an AI agent in Workflows later for AI replies. All 4 scenarios (business hours on/off × with or without AI) are supported."}
-              </div>
-            </CardContent>
-          </Card>
-          <div className="mt-4">
-            <WhatsAppRestrictionAvoidanceTips />
-          </div>
         </div>
-        <Tabs defaultValue="whatsapp" className="w-full">
-          <TabsList className="grid w-full max-w-3xl grid-cols-3">
-            <TabsTrigger value="whatsapp" className="gap-2">
-              <Phone className="h-4 w-4" />
-              {t("integrationsPage.tabWhatsApp")}
-            </TabsTrigger>
-            <TabsTrigger value="whapi" className="gap-2">
-              <Phone className="h-4 w-4" />
-              {t("integrationsPage.tabWhapi")}
+        <Tabs defaultValue="whapi" className="w-full">
+          <TabsList className="grid w-full max-w-3xl grid-cols-2">
+            <TabsTrigger value="whapi" className="gap-1.5 sm:gap-2 px-2 sm:px-3">
+              <Phone className="h-4 w-4 shrink-0" />
+              <span className="truncate">{t("integrationsPage.tabPrimaryWhatsApp")}</span>
+              <Badge
+                variant="secondary"
+                className="shrink-0 text-[10px] px-1.5 py-0 h-5 font-medium leading-none uppercase tracking-wide"
+              >
+                {t("integrationsPage.tabRecommended")}
+              </Badge>
             </TabsTrigger>
             <TabsTrigger value="unipile" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              {t("integrationsPage.tabMultiPlatform")}
+              <MessageSquare className="h-4 w-4 shrink-0" />
+              <span className="truncate">{t("integrationsPage.tabMoreChannels")}</span>
             </TabsTrigger>
           </TabsList>
-          <TabsContent value="whatsapp" className="mt-6">
-            <WhatsAppBusinessIntegrationTab />
-          </TabsContent>
           <TabsContent value="whapi" className="mt-6">
             <WhapiIntegrationTab />
           </TabsContent>
           <TabsContent value="unipile" className="mt-6">
-            <UnipileIntegrationTab />
+            <UnipileIntegrationTab neutralIntegrationsCopy />
           </TabsContent>
         </Tabs>
       </div>

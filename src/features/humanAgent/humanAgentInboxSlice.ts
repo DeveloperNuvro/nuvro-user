@@ -4,6 +4,8 @@ import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/api/axios";
 import { ConversationInList } from "../chatInbox/chatInboxSlice";
 
+export type AgentInboxQueueCounts = { mine: number; unassigned: number; all: number };
+
 // --- STATE INTERFACE ---
 interface AgentInboxState {
     conversations: ConversationInList[];
@@ -11,6 +13,8 @@ interface AgentInboxState {
     error: string | null;
     currentPage: number;
     totalPages: number;
+    /** Open-conversation counts for All / Mine / Unassigned (from API when includeCounts=true). */
+    inboxQueueCounts: AgentInboxQueueCounts | null;
 }
 
 // --- INITIAL STATE ---
@@ -20,22 +24,44 @@ const initialState: AgentInboxState = {
     error: null,
     currentPage: 1,
     totalPages: 1,
+    inboxQueueCounts: null,
 };
 
 // --- ASYNC THUNKS ---
 export const fetchAgentConversations = createAsyncThunk<
-    { page: number; conversations: ConversationInList[]; totalPages: number },
-    { page: number; searchQuery?: string; status: 'open' | 'closed'; platform?: 'all' | 'whatsapp' | 'instagram' | 'telegram' | 'website' },
+    {
+        page: number;
+        conversations: ConversationInList[];
+        totalPages: number;
+        counts?: AgentInboxQueueCounts;
+    },
+    {
+        page: number;
+        searchQuery?: string;
+        status: 'open' | 'closed';
+        platform?: 'all' | 'whatsapp' | 'instagram' | 'telegram' | 'website';
+        inboxView?: 'all' | 'mine' | 'unassigned';
+        includeCounts?: boolean;
+    },
     { rejectValue: string }
 >(
     "agentInbox/fetchAgentConversations",
-    async ({ page, searchQuery, status, platform }, thunkAPI) => {
+    async ({ page, searchQuery, status, platform, inboxView = 'all', includeCounts = true }, thunkAPI) => {
         try {
-            const params: any = { page, limit: 15, search: searchQuery || "", status };
+            const params: Record<string, string | number | boolean> = {
+                page,
+                limit: 15,
+                search: searchQuery || "",
+                status,
+                inboxView,
+            };
+            if (includeCounts) {
+                params.includeCounts = true;
+            }
             if (platform && platform !== 'all') {
                 params.platform = platform;
             }
-            
+
             const response = await api.get("/api/v1/agents/my-conversations", { params });
 
             const responsePayload = response.data.data;
@@ -75,8 +101,16 @@ export const fetchAgentConversations = createAsyncThunk<
                     : {}),
             }));
             const totalPages = responsePayload.pagination?.totalPages || 1;
+            const rawCounts = responsePayload.counts;
+            const counts: AgentInboxQueueCounts | undefined =
+                rawCounts &&
+                typeof rawCounts.mine === 'number' &&
+                typeof rawCounts.unassigned === 'number' &&
+                typeof rawCounts.all === 'number'
+                    ? { mine: rawCounts.mine, unassigned: rawCounts.unassigned, all: rawCounts.all }
+                    : undefined;
 
-            return { page, conversations, totalPages };
+            return { page, conversations, totalPages, ...(counts ? { counts } : {}) };
         } catch (error: any) {
             return thunkAPI.rejectWithValue(error.response?.data?.message || "Failed to fetch agent conversations");
         }
@@ -121,6 +155,7 @@ const agentInboxSlice = createSlice({
             state.currentPage = 1;
             state.totalPages = 1;
             state.status = 'idle';
+            state.inboxQueueCounts = null;
         },
         addAssignedConversation: (state, action: PayloadAction<ConversationInList>) => {
             const exists = state.conversations.some(c => c.id === action.payload.id);
@@ -166,10 +201,13 @@ const agentInboxSlice = createSlice({
                 state.status = "loading";
             })
             .addCase(fetchAgentConversations.fulfilled, (state, action) => {
-                const { conversations, page, totalPages } = action.payload;
+                const { conversations, page, totalPages, counts } = action.payload;
                 state.conversations = conversations;
                 state.currentPage = page;
                 state.totalPages = totalPages;
+                if (counts) {
+                    state.inboxQueueCounts = counts;
+                }
                 state.status = "succeeded";
             })
             .addCase(fetchAgentConversations.rejected, (state, action) => {

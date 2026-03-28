@@ -29,11 +29,9 @@ import {
   Trash2,
   RefreshCw,
   QrCode,
-  Settings,
   Pencil,
   Link2,
   BarChart3,
-  CalendarPlus,
   AlertTriangle,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -43,16 +41,12 @@ import {
   fetchWhapiPartnerProjects,
   createWhapiConnectionThunk,
   deleteWhapiConnectionThunk,
-  extendWhapiConnectionThunk,
   updateWhapiConnectionNameThunk,
-  updateWhapiChannelConfigThunk,
   syncWhapiWebhooksThunk,
   clearWhapiError,
   type WhapiConnectionRow,
 } from '@/features/whapi/whapiSlice';
-import { fetchWorkflows } from '@/features/workflow/workflowSlice';
 import { fetchAiIntregationByBusinessId } from '@/features/business/businessSlice';
-import type { ChannelMode, ChannelFallbackBehavior } from '@/features/unipile/unipileSlice';
 import { isAxiosError } from 'axios';
 import { api } from '@/api/axios';
 import toast from 'react-hot-toast';
@@ -104,7 +98,6 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
   const { connections, status, error, projects, projectsStatus } = useSelector((s: RootState) => s.whapi);
-  const workflows = useSelector((s: RootState) => s.workflow?.workflows ?? []);
   const user = useSelector((s: RootState) => s.auth.user);
   const businessId = user?.businessId ?? '';
 
@@ -124,23 +117,11 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
   const [renameValue, setRenameValue] = useState('');
   const [renameSaving, setRenameSaving] = useState(false);
 
-  const [configOpen, setConfigOpen] = useState(false);
-  const [configConn, setConfigConn] = useState<WhapiConnectionRow | null>(null);
-  const [configMode, setConfigMode] = useState<ChannelMode>('hybrid');
-  const [configFallback, setConfigFallback] = useState<ChannelFallbackBehavior>('route_to_ai');
-  const [configFlowId, setConfigFlowId] = useState<string | null>(null);
-  const [configSaving, setConfigSaving] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [analyticsConn, setAnalyticsConn] = useState<WhapiConnectionRow | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsDays, setAnalyticsDays] = useState(14);
   const [analyticsRows, setAnalyticsRows] = useState<WhapiWorkflowVariantAnalyticsRow[]>([]);
-
-  const [extendOpen, setExtendOpen] = useState(false);
-  const [extendConn, setExtendConn] = useState<WhapiConnectionRow | null>(null);
-  const [extendDays, setExtendDays] = useState(30);
-  const [extendComment, setExtendComment] = useState('');
-  const [extendSaving, setExtendSaving] = useState(false);
 
   const [deleteConfirmConn, setDeleteConfirmConn] = useState<WhapiConnectionRow | null>(null);
   const [deleteDeleting, setDeleteDeleting] = useState(false);
@@ -155,7 +136,6 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
   useEffect(() => {
     dispatch(fetchWhapiConnections());
     dispatch(fetchWhapiPartnerProjects());
-    if (businessId) dispatch(fetchWorkflows({ businessId }));
   }, [dispatch, businessId]);
 
   useEffect(() => {
@@ -221,33 +201,6 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
     void loadQr(conn);
   };
 
-  const handleSaveConfig = async () => {
-    if (!configConn) return;
-    setConfigSaving(true);
-    try {
-      await dispatch(
-        updateWhapiChannelConfigThunk({
-          connectionId: configConn.id,
-          mode: configMode,
-          defaultFlowId: configFlowId,
-          fallbackBehavior: configFallback,
-        })
-      ).unwrap();
-      toast.success(t('channelSettings.saved'));
-      setConfigOpen(false);
-      setConfigConn(null);
-      dispatch(fetchWhapiConnections());
-    } catch (e: unknown) {
-      toast.error(
-        typeof e === 'string' ? e : t('channelSettings.saveError', 'Failed to save settings')
-      );
-    } finally {
-      setConfigSaving(false);
-    }
-  };
-
-  const webhookUrlDisplay = publicWebhookUrlHint();
-
   const loadVariantAnalytics = useCallback(async (conn: WhapiConnectionRow, days = analyticsDays) => {
     setAnalyticsLoading(true);
     try {
@@ -261,64 +214,53 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
     }
   }, [analyticsDays, t]);
 
+  const statusLabel = (s: string | undefined) => {
+    const v = (s || '').toLowerCase();
+    if (v === 'connected' || v === 'active') return t('integrationsPage.whapi.statusConnected', 'Connected');
+    if (v === 'pending') return t('integrationsPage.whapi.statusPending', 'Pending');
+    if (v === 'disconnected' || v === 'inactive') return t('integrationsPage.whapi.statusDisconnected', 'Disconnected');
+    return s || '—';
+  };
+
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Link2 className="h-5 w-5" />
-            {t('integrationsPage.whapi.title', 'WhatsApp (linked device — Whapi)')}
-          </CardTitle>
-          <CardDescription>
-            {t(
-              'integrationsPage.whapi.subtitle',
-              'Create a Whapi channel, scan the QR from your phone, and link inbound/outbound to Nuvro. Uses the same inbox and workflows as the API.'
-            )}
-          </CardDescription>
-          <p className="text-xs text-muted-foreground mt-2 leading-relaxed max-w-3xl">
-            {t(
-              'integrationsPage.whapi.trialLiveNote',
-              'Whapi creates channels in trial by default. After we add days from your partner balance, the backend switches the channel to LIVE so paid time applies and unused days can return to your balance on delete. Trial-only channels do not refund days.'
-            )}{' '}
-            <a
-              href="https://support.whapi.cloud/help-desk/partner-documentation/partner-documentation/changing-channel-mode"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline underline-offset-2 font-medium"
-            >
-              {t('integrationsPage.whapi.trialLiveDocsLink', 'Whapi: changing channel mode')}
-            </a>
-          </p>
-          {webhookUrlDisplay && (
-            <p className="text-xs text-muted-foreground mt-2 break-all">
-              {t('integrationsPage.whapi.webhookHint', 'Webhook URL (registered by backend):')}{' '}
-              <code className="rounded bg-muted px-1 py-0.5">{webhookUrlDisplay}</code>
-            </p>
-          )}
-          {webhookUrlDisplay && /localhost|127\.0\.0\.1/i.test(webhookUrlDisplay) ? (
-            <p className="text-xs text-amber-600 dark:text-amber-500 mt-1.5">
-              {t(
-                'integrationsPage.whapi.webhookLocalhostWarn',
-                'Whapi’s cloud cannot call localhost, so “connected” in the panel may not update here until we poll the gate—or set API_BASE_URL to a public URL (e.g. ngrok), restart the API, and use Sync webhooks so inbound messages work.'
-              )}
-            </p>
-          ) : null}
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                {t('integrationsPage.whapi.addConnection', 'Add Whapi connection')}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+    <div className="space-y-4 sm:space-y-5">
+      <Card className="overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm ring-1 ring-black/[0.03] dark:border-border/40 dark:bg-card/90 dark:ring-white/[0.04]">
+        <CardHeader className="space-y-0 p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="flex min-w-0 gap-3">
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 sm:h-10 sm:w-10 sm:rounded-xl"
+                aria-hidden
+              >
+                <Link2 className="h-4 w-4 sm:h-[18px] sm:w-[18px]" strokeWidth={2} />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <CardTitle className="text-base font-semibold tracking-tight sm:text-lg">
+                  {t('integrationsPage.whapi.title', 'WhatsApp')}
+                </CardTitle>
+                <CardDescription className="text-xs leading-snug text-muted-foreground sm:text-sm sm:leading-relaxed max-w-xl line-clamp-2">
+                  {t(
+                    'integrationsPage.whapi.subtitle',
+                    'Scan the QR code with your phone to link WhatsApp. Customer messages will appear in your team inbox like your other channels.'
+                  )}
+                </CardDescription>
+              </div>
+            </div>
+            <div className="shrink-0 sm:pl-1">
+              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="h-9 w-full rounded-lg px-4 shadow-none sm:w-auto sm:min-w-[9.5rem]">
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    {t('integrationsPage.whapi.addConnection', 'Add WhatsApp')}
+                  </Button>
+                </DialogTrigger>
+            <DialogContent className="gap-4 sm:max-w-md">
               <DialogHeader>
-                <DialogTitle>{t('integrationsPage.whapi.createTitle', 'New Whapi channel')}</DialogTitle>
+                <DialogTitle>{t('integrationsPage.whapi.createTitle', 'Connect WhatsApp')}</DialogTitle>
                 <DialogDescription>
                   {t(
                     'integrationsPage.whapi.createHint',
-                    'A channel is created in Whapi; scan the QR to connect WhatsApp on this device.'
+                    'We will prepare a QR code. Scan it with WhatsApp on your phone to finish linking.'
                   )}
                 </DialogDescription>
               </DialogHeader>
@@ -332,7 +274,7 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label>{t('integrationsPage.whapi.projectOptional', 'Whapi project (optional)')}</Label>
+                  <Label>{t('integrationsPage.whapi.projectOptional', 'Project (optional)')}</Label>
                   <Select
                     value={projectId || 'none'}
                     onValueChange={(v) => setProjectId(v === 'none' ? '' : v)}
@@ -368,7 +310,7 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                   <p className="text-xs text-muted-foreground">
                     {t(
                       'integrationsPage.whapi.phoneHint',
-                      'Whapi API: optional. If set, digits only (7–15).'
+                      'Optional. Digits only, 7–15 with country code (no +).'
                     )}
                   </p>
                 </div>
@@ -390,7 +332,7 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                           phone: createPhone.trim() || undefined,
                         })
                       ).unwrap()) as Record<string, unknown>;
-                      toast.success(t('integrationsPage.whapi.created', 'Channel created. Open QR to scan.'));
+                      toast.success(t('integrationsPage.whapi.created', 'Ready. Open QR to scan with your phone.'));
                       const liveWarn =
                         typeof created?.liveModeWarning === 'string' ? created.liveModeWarning.trim() : '';
                       if (liveWarn) {
@@ -414,159 +356,201 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </CardContent>
+            </div>
+          </div>
+        </CardHeader>
       </Card>
 
       {status === 'loading' && filteredConnections.length === 0 ? (
-        <div className="flex items-center gap-2 text-muted-foreground text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> {t('integrationsPage.whapi.loading', 'Loading connections…')}
+        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/60 bg-muted/15 px-4 py-8 text-center sm:py-9">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
+          <p className="text-xs text-muted-foreground sm:text-sm">
+            {t('integrationsPage.whapi.loading', 'Loading connections…')}
+          </p>
         </div>
       ) : null}
 
-      <div className="grid gap-4">
-        {filteredConnections.map((c) => (
-          <Card key={c.id}>
-            <CardHeader className="pb-2">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <CardTitle className="text-lg">{c.connectionName}</CardTitle>
-                  <CardDescription className="font-mono text-xs mt-1">
-                    {t('integrationsPage.whapi.channelId', 'Whapi channel')}: {c.whapiChannelId}
-                  </CardDescription>
-                  <div
-                    className="flex flex-wrap items-center gap-2 mt-2.5"
-                    title={t(
-                      'integrationsPage.whapi.partnerDaysHint',
-                      'Remaining days are read from Whapi when this list loads. “Allocated” sums days added via Nuvro (create + Add days), not changes made only in the Whapi panel.'
-                    )}
-                  >
-                    <Badge
-                      variant="secondary"
-                      className="text-xs font-medium tabular-nums shadow-none"
-                    >
-                      {c.partnerDaysAllocatedTotal != null
-                        ? t('integrationsPage.whapi.partnerDaysAllocated', '{{count}} d · Nuvro', {
-                            count: c.partnerDaysAllocatedTotal,
-                          })
-                        : t('integrationsPage.whapi.partnerDaysAllocatedUnknown', 'Allocated: —')}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs font-medium tabular-nums ${
-                        c.partnerDaysRemaining === 0
-                          ? 'border-destructive/45 bg-destructive/8 text-destructive'
-                          : ''
+      <div className="grid grid-cols-1 gap-3 sm:gap-3.5">
+        {filteredConnections.map((c) => {
+          const isLive =
+            c.status === 'connected' || c.status === 'active' || String(c.status).toLowerCase() === 'connected';
+          const daysHint = t(
+            'integrationsPage.whapi.partnerDaysHint',
+            'Time added from this dashboard vs. time still available on the line.'
+          );
+          const btnClass =
+            'h-8 w-full justify-center gap-1 rounded-md px-2 text-[11px] font-medium sm:h-8 sm:text-xs';
+          return (
+            <Card
+              key={c.id}
+              className="group overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm ring-1 ring-black/[0.02] transition-[border-color,box-shadow] hover:border-border/70 hover:shadow-md dark:border-border/40 dark:bg-card/90 dark:ring-white/[0.03] dark:hover:border-border/55"
+            >
+              <div className="p-3 sm:p-3.5">
+                <div className="flex min-w-0 flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                  <div className="flex min-w-0 flex-1 gap-2.5">
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 sm:h-9 sm:w-9 ${
+                        isLive
+                          ? 'bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-400'
+                          : 'bg-muted/50 text-muted-foreground ring-border/60'
                       }`}
+                      aria-hidden
                     >
-                      {c.partnerDaysRemaining == null
-                        ? t('integrationsPage.whapi.partnerDaysRemainingUnknown', 'Remaining: —')
-                        : c.partnerDaysRemaining === 0
-                          ? t('integrationsPage.whapi.partnerDaysRemainingExpired', 'Expired')
-                          : t('integrationsPage.whapi.partnerDaysRemaining', '{{count}} d left', {
-                              count: c.partnerDaysRemaining,
-                            })}
-                    </Badge>
+                      <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={2} />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5 gap-y-1">
+                        <CardTitle className="truncate text-sm font-semibold leading-tight tracking-tight sm:text-[0.9375rem]">
+                          {c.connectionName}
+                        </CardTitle>
+                        <Badge
+                          variant={isLive ? 'default' : 'secondary'}
+                          className="h-5 shrink-0 px-1.5 py-0 text-[10px] font-medium capitalize leading-none"
+                        >
+                          {statusLabel(c.status)}
+                        </Badge>
+                      </div>
+                      <p
+                        className="truncate font-mono text-[10px] leading-tight text-muted-foreground sm:text-[11px]"
+                        title={c.whapiChannelId}
+                      >
+                        <span className="mr-1 text-[9px] font-sans font-medium uppercase tracking-wide text-muted-foreground/80">
+                          {t('integrationsPage.whapi.channelId', 'Reference')}
+                        </span>
+                        {c.whapiChannelId}
+                      </p>
+                      <div className="flex flex-wrap gap-1" title={daysHint}>
+                        <Badge
+                          variant="secondary"
+                          className="h-5 border-0 bg-muted/80 px-1.5 py-0 text-[10px] font-medium tabular-nums shadow-none dark:bg-muted/40"
+                        >
+                          {c.partnerDaysAllocatedTotal != null
+                            ? t('integrationsPage.whapi.partnerDaysAllocated', '{{count}} d · added', {
+                                count: c.partnerDaysAllocatedTotal,
+                              })
+                            : t('integrationsPage.whapi.partnerDaysAllocatedUnknown', 'Allocated: —')}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={`h-5 px-1.5 py-0 text-[10px] font-medium tabular-nums ${
+                            c.partnerDaysRemaining === 0
+                              ? 'border-destructive/40 bg-destructive/5 text-destructive'
+                              : 'border-border/60'
+                          }`}
+                        >
+                          {c.partnerDaysRemaining == null
+                            ? t('integrationsPage.whapi.partnerDaysRemainingUnknown', 'Remaining: —')
+                            : c.partnerDaysRemaining === 0
+                              ? t('integrationsPage.whapi.partnerDaysRemainingExpired', 'Expired')
+                              : t('integrationsPage.whapi.partnerDaysRemaining', '{{count}} d left', {
+                                  count: c.partnerDaysRemaining,
+                                })}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
-                  {c.whapiLiveModePending ? (
-                    <p
-                      className="mt-2 rounded-md border border-destructive/35 bg-destructive/5 px-3 py-2 text-xs text-destructive leading-snug max-w-xl"
-                      role="status"
-                    >
-                      {t(
-                        'integrationsPage.whapi.liveModePendingBanner',
-                        'LIVE mode was not confirmed in Whapi after adding paid days. Open the Whapi partner panel and set this channel to LIVE — otherwise it may stay on trial and unused days may not return to your balance when deleted.'
-                      )}
-                    </p>
-                  ) : null}
                 </div>
-                <Badge variant={c.status === 'connected' || c.status === 'active' ? 'default' : 'secondary'}>
-                  {c.status}
-                </Badge>
+                {c.whapiLiveModePending ? (
+                  <p
+                    className="mt-2.5 rounded-md border border-amber-500/30 bg-amber-500/[0.07] px-2.5 py-1.5 text-[11px] leading-snug text-amber-950 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100/95 sm:text-xs"
+                    role="status"
+                  >
+                    {t(
+                      'integrationsPage.whapi.liveModePendingBanner',
+                      'Paid time is still activating. If messages do not sync, use Refresh connection or contact support.'
+                    )}
+                  </p>
+                ) : null}
+                <div className="mt-3 border-t border-border/40 pt-3 dark:border-border/30">
+                  <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
+                    {t('integrationsPage.whapi.actionsHeading', 'Actions')}
+                  </p>
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+                    <Button variant="outline" size="sm" className={btnClass} onClick={() => openQr(c)}>
+                      <QrCode className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                      <span className="truncate">{t('integrationsPage.whapi.showQr', 'Show QR')}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={btnClass}
+                      onClick={async () => {
+                        try {
+                          await dispatch(syncWhapiWebhooksThunk(c.id)).unwrap();
+                          toast.success(t('integrationsPage.whapi.webhooksSynced', 'Connection refreshed'));
+                          await dispatch(fetchWhapiConnections());
+                        } catch (e: unknown) {
+                          toast.error(typeof e === 'string' ? e : 'Sync failed');
+                        }
+                      }}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                      <span className="truncate">{t('integrationsPage.whapi.syncWebhooks', 'Refresh connection')}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={btnClass}
+                      onClick={() => {
+                        setRenameConn(c);
+                        setRenameValue(c.connectionName);
+                        setRenameOpen(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                      <span className="truncate">{t('integrationsPage.whapi.rename', 'Rename')}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={btnClass}
+                      onClick={() => {
+                        setAnalyticsConn(c);
+                        setAnalyticsOpen(true);
+                        void loadVariantAnalytics(c, analyticsDays);
+                      }}
+                    >
+                      <BarChart3 className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                      <span className="truncate">{t('integrationsPage.whapi.variantAnalytics', 'Variant analytics')}</span>
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className={`${btnClass} col-span-2 border-destructive/25 bg-destructive/5 hover:bg-destructive/15 sm:col-span-2 lg:col-span-2 xl:col-span-1`}
+                      onClick={() => setDeleteConfirmConn(c)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{t('integrationsPage.whapi.delete', 'Delete')}</span>
+                    </Button>
+                  </div>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => openQr(c)}>
-                <QrCode className="h-4 w-4 mr-1" />
-                {t('integrationsPage.whapi.showQr', 'Show QR')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    await dispatch(syncWhapiWebhooksThunk(c.id)).unwrap();
-                    toast.success(t('integrationsPage.whapi.webhooksSynced', 'Webhooks updated'));
-                    await dispatch(fetchWhapiConnections());
-                  } catch (e: unknown) {
-                    toast.error(typeof e === 'string' ? e : 'Sync failed');
-                  }
-                }}
-              >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                {t('integrationsPage.whapi.syncWebhooks', 'Sync webhooks')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setRenameConn(c);
-                  setRenameValue(c.connectionName);
-                  setRenameOpen(true);
-                }}
-              >
-                <Pencil className="h-4 w-4 mr-1" />
-                {t('integrationsPage.whapi.rename', 'Rename')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setConfigConn(c);
-                  setConfigMode((c.mode as ChannelMode) || 'hybrid');
-                  setConfigFallback(c.fallbackBehavior || 'route_to_ai');
-                  setConfigFlowId(c.defaultFlowId ?? null);
-                  setConfigOpen(true);
-                }}
-              >
-                <Settings className="h-4 w-4 mr-1" />
-                {t('channelSettings.title', 'Channel settings')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setAnalyticsConn(c);
-                  setAnalyticsOpen(true);
-                  void loadVariantAnalytics(c, analyticsDays);
-                }}
-              >
-                <BarChart3 className="h-4 w-4 mr-1" />
-                {t('integrationsPage.whapi.variantAnalytics', 'Variant analytics')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setExtendConn(c);
-                  setExtendDays(30);
-                  setExtendComment('');
-                  setExtendOpen(true);
-                }}
-              >
-                <CalendarPlus className="h-4 w-4 mr-1" />
-                {t('integrationsPage.whapi.extendDays', 'Add days')}
-              </Button>
-              <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmConn(c)}>
-                <Trash2 className="h-4 w-4 mr-1" />
-                {t('integrationsPage.whapi.delete', 'Delete')}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
       {filteredConnections.length === 0 && status !== 'loading' ? (
-        <p className="text-sm text-muted-foreground">{t('integrationsPage.whapi.empty', 'No Whapi connections yet.')}</p>
+        <Card className="rounded-xl border-dashed border-border/60 bg-muted/10 shadow-none dark:border-border/50 dark:bg-muted/5">
+          <CardContent className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center sm:py-9">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground ring-1 ring-border/40 dark:bg-muted/30">
+              <Link2 className="h-5 w-5 opacity-85" strokeWidth={1.75} />
+            </div>
+            <p className="max-w-xs text-xs leading-relaxed text-muted-foreground sm:text-sm">
+              {t('integrationsPage.whapi.empty', 'No WhatsApp connections yet.')}
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="mt-0.5 h-8 rounded-md text-xs"
+              onClick={() => setCreateOpen(true)}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              {t('integrationsPage.whapi.addConnection', 'Add WhatsApp')}
+            </Button>
+          </CardContent>
+        </Card>
       ) : null}
 
       <AlertDialog
@@ -588,21 +572,21 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
             </div>
             <AlertDialogHeader className="flex-1 space-y-2 text-left sm:text-left">
               <AlertDialogTitle className="text-xl font-semibold tracking-tight pr-2 leading-snug">
-                {t('integrationsPage.whapi.deleteModalTitle', 'Delete this Whapi connection?')}
+                {t('integrationsPage.whapi.deleteModalTitle', 'Remove this WhatsApp connection?')}
               </AlertDialogTitle>
               {deleteConfirmConn ? (
                 <AlertDialogDescription asChild>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {t(
                       'integrationsPage.whapi.deleteModalLead',
-                      '{{name}} will be removed from Nuvro and its channel deleted in Whapi.',
+                      '{{name}} will be disconnected from this dashboard.',
                       { name: deleteConfirmConn.connectionName }
                     )}
                   </p>
                 </AlertDialogDescription>
               ) : (
                 <AlertDialogDescription className="sr-only">
-                  {t('integrationsPage.whapi.confirmDelete', 'Delete this Whapi connection?')}
+                  {t('integrationsPage.whapi.confirmDelete', 'Remove this connection?')}
                 </AlertDialogDescription>
               )}
             </AlertDialogHeader>
@@ -616,7 +600,7 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
             <p className="text-sm text-muted-foreground leading-relaxed border-l-2 border-amber-500/60 pl-3 py-0.5">
               {t(
                 'integrationsPage.whapi.deleteModalBody',
-                'WhatsApp linked here will stop working in Nuvro. This cannot be undone. Unused prepaid days may return to your Whapi partner balance per their rules.'
+                'Customers will no longer reach you through this linked number here. This cannot be undone. Any unused prepaid time may be credited according to your plan.'
               )}
             </p>
           ) : null}
@@ -679,7 +663,7 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
               <p className="text-sm text-muted-foreground text-center">
                 {t(
                   'integrationsPage.whapi.qrLoadingDetail',
-                  'Loading QR from your server… Whapi may need up to about 2 minutes right after a channel is created (spinner is normal).'
+                  'Loading QR code… This can take up to a couple of minutes right after setup (this is normal).'
                 )}
               </p>
             ) : null}
@@ -688,7 +672,11 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
             {qrLoading || !qrObjectUrl ? (
               <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
             ) : (
-              <img src={qrObjectUrl} alt="Whapi QR" className="max-w-[280px] rounded border bg-white p-2" />
+              <img
+                src={qrObjectUrl}
+                alt={t('integrationsPage.whapi.qrImageAlt', 'QR code to link WhatsApp')}
+                className="max-w-[280px] rounded border bg-white p-2"
+              />
             )}
             {qrFor ? (
               <p className="text-xs text-muted-foreground text-center max-w-full">
@@ -780,106 +768,6 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
       </Dialog>
 
       <Dialog
-        open={extendOpen}
-        onOpenChange={(open) => {
-          setExtendOpen(open);
-          if (!open) {
-            setExtendConn(null);
-            setExtendComment('');
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('integrationsPage.whapi.extendTitle', 'Extend channel (partner balance)')}</DialogTitle>
-            <DialogDescription>
-              {t(
-                'integrationsPage.whapi.extendHint',
-                'Days are deducted from your Whapi partner account balance. Ensure you have enough days in the partner panel.'
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="grid gap-2">
-              <Label>{t('integrationsPage.whapi.extendDaysLabel', 'Days to add')}</Label>
-              <Input
-                type="number"
-                min={1}
-                max={366}
-                value={extendDays}
-                onChange={(e) =>
-                  setExtendDays(Math.min(366, Math.max(1, Math.floor(Number(e.target.value) || 1))))
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('integrationsPage.whapi.extendCommentLabel', 'Note (optional)')}</Label>
-              <Input
-                value={extendComment}
-                onChange={(e) => setExtendComment(e.target.value)}
-                placeholder={t(
-                  'integrationsPage.whapi.extendCommentPlaceholder',
-                  'e.g. Customer renewal'
-                )}
-                maxLength={500}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setExtendOpen(false)}>
-              {t('channelSettings.cancel', 'Cancel')}
-            </Button>
-            <Button
-              disabled={extendSaving || extendDays < 1}
-              onClick={async () => {
-                if (!extendConn) return;
-                setExtendSaving(true);
-                try {
-                  const payload = await dispatch(
-                    extendWhapiConnectionThunk({
-                      id: extendConn.id,
-                      days: extendDays,
-                      comment: extendComment.trim() || undefined,
-                    })
-                  ).unwrap();
-                  const daysAdded = payload.daysAdded ?? extendDays;
-                  let msg = t('integrationsPage.whapi.extendSuccess', 'Added {{days}} day(s) to this channel.', {
-                    days: daysAdded,
-                  });
-                  if (payload.activeTill != null && typeof payload.activeTill === 'number') {
-                    const ts = payload.activeTill;
-                    const ms = ts > 1e12 ? ts : ts * 1000;
-                    msg += ` ${t('integrationsPage.whapi.extendSuccessActiveTill', 'Active until {{date}}', {
-                      date: new Date(ms).toLocaleString(),
-                    })}`;
-                  }
-                  toast.success(msg, { duration: 6000 });
-                  const ew = typeof payload.liveModeWarning === 'string' ? payload.liveModeWarning.trim() : '';
-                  if (ew) {
-                    toast.error(ew, { duration: 12000 });
-                  }
-                  setExtendOpen(false);
-                  setExtendConn(null);
-                  await dispatch(fetchWhapiConnections());
-                } catch (e: unknown) {
-                  toast.error(
-                    typeof e === 'string'
-                      ? e
-                      : t('integrationsPage.whapi.extendError', 'Could not extend channel')
-                  );
-                } finally {
-                  setExtendSaving(false);
-                }
-              }}
-            >
-              {extendSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {t('integrationsPage.whapi.extendSubmit', 'Add days')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
         open={renameOpen}
         onOpenChange={(open) => {
           setRenameOpen(open);
@@ -923,83 +811,6 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog
-        open={configOpen}
-        onOpenChange={(open) => {
-          setConfigOpen(open);
-          if (!open) setConfigConn(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('channelSettings.title', 'Channel settings')}</DialogTitle>
-            <DialogDescription>{t('channelSettings.intro', '')}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-2">
-            <div className="grid gap-2">
-              <Label>{t('channelSettings.modeLabel', 'Mode')}</Label>
-              <Select value={configMode} onValueChange={(v) => setConfigMode(v as ChannelMode)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="human_only">{t('channelSettings.modeHumanOnly')}</SelectItem>
-                  <SelectItem value="hybrid">{t('channelSettings.modeHybrid')}</SelectItem>
-                  <SelectItem value="ai_only">{t('channelSettings.modeAiOnly')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('channelSettings.fallbackLabel', 'Fallback')}</Label>
-              <Select value={configFallback} onValueChange={(v) => setConfigFallback(v as ChannelFallbackBehavior)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="route_to_ai">{t('channelSettings.fallbackRouteToAi')}</SelectItem>
-                  <SelectItem value="assign_to_human">{t('channelSettings.fallbackAssignToHuman')}</SelectItem>
-                  <SelectItem value="create_ticket">{t('channelSettings.fallbackCreateTicket')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label>{t('channelSettings.workflowLabel', 'Default workflow')}</Label>
-              <Select
-                value={configFlowId ?? 'none'}
-                onValueChange={(v) => setConfigFlowId(v === 'none' ? null : v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t('channelSettings.workflowNone')}</SelectItem>
-                  {workflows.filter((w) => w.active).map((w) => (
-                    <SelectItem key={w._id} value={w._id}>
-                      {w.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfigOpen(false)}>
-              {t('channelSettings.cancel', 'Cancel')}
-            </Button>
-            <Button onClick={handleSaveConfig} disabled={configSaving}>
-              {configSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {t('channelSettings.save', 'Save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
-}
-
-function publicWebhookUrlHint(): string {
-  const base = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') || '';
-  if (!base) return '';
-  return `${base}/api/v1/whapi/webhook`;
 }

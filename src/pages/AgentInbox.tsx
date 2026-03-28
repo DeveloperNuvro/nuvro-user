@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X, Sparkles, Reply } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X, Sparkles, Reply, UserMinus } from "lucide-react";
 import { cn, toCloudinaryMp3Url } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -37,6 +37,11 @@ import {
   sendInternalNote as sendInternalNoteApi,
   getAudioPlayUrl as getAudioPlayUrlApi,
   sendMessageViaConversation,
+  markConversationAsRead,
+  updateConversationPriority as updateConversationPriorityApi,
+  updateConversationTags as updateConversationTagsApi,
+  assignConversation as assignConversationApi,
+  releaseConversationToQueue,
 } from "@/api/chatApi";
 import { suggestQuickResponses, type SuggestItem } from "@/api/quickResponsesApi";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
@@ -244,6 +249,7 @@ export default function AgentInbox() {
   const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState<'open' | 'closed'>('open');
   const [activePlatform, setActivePlatform] = useState<'all' | 'website' | 'whatsapp'>('all');
+  const [activeInboxView, setActiveInboxView] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [isTyping] = useState<{ [key: string]: boolean }>({});
   // 🔧 NEW: Dialog states for enhanced features
   const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
@@ -278,17 +284,10 @@ export default function AgentInbox() {
   const [optInSourceValue, setOptInSourceValue] = useState('');
 
   const messageListRef = useRef<HTMLDivElement | null>(null);
-  /** Coalesce socket-driven full list refetches so Whapi/history bursts do not N× hit GET /agents/my-conversations (each loads Unipile). */
-  const socketOpenListRefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scheduleRefetchOpenAgentListFromSocket = useCallback(() => {
-    if (socketOpenListRefetchTimerRef.current) {
-      clearTimeout(socketOpenListRefetchTimerRef.current);
-    }
-    socketOpenListRefetchTimerRef.current = setTimeout(() => {
-      socketOpenListRefetchTimerRef.current = null;
-      dispatch(fetchAgentConversations({ page: 1, status: 'open' }));
-    }, 650);
-  }, [dispatch]);
+  const activeInboxViewRef = useRef(activeInboxView);
+  useEffect(() => {
+    activeInboxViewRef.current = activeInboxView;
+  }, [activeInboxView]);
   const prevScrollHeightRef = useRef<number>(0);
   const [isInitialMessageLoad, setIsInitialMessageLoad] = useState(true);
   const [selectedImage, setSelectedImage] = useState<{ src: string; alt: string } | null>(null);
@@ -302,7 +301,9 @@ export default function AgentInbox() {
   const { user }: any = useSelector((state: RootState) => state.auth);
   const { channels } = useSelector((state: RootState) => state.channel);
   const { agents } = useSelector((state: RootState) => state.humanAgent);
-  const { conversations, status: agentInboxStatus, currentPage, totalPages } = useSelector((state: RootState) => state.agentInbox);
+  const { conversations, status: agentInboxStatus, currentPage, totalPages, inboxQueueCounts } = useSelector(
+    (state: RootState) => state.agentInbox
+  );
   const messagesData = useSelector((state: RootState) => selectedCustomer ? state.chatInbox.chatData[selectedCustomer] : null);
   const socketReconnectCount = useSelector((state: RootState) => state.socket?.reconnectCount ?? 0);
 
@@ -310,6 +311,42 @@ export default function AgentInbox() {
   const agentId = user?._id;
   const debouncedSearchQuery = useDebounce(searchInput, 500);
 
+  const listFetchParamsRef = useRef({
+    debouncedSearchQuery: '',
+    activeFilter: 'open' as 'open' | 'closed',
+    activePlatform: 'all' as 'all' | 'website' | 'whatsapp',
+    activeInboxView: 'all' as 'all' | 'mine' | 'unassigned',
+  });
+  useEffect(() => {
+    listFetchParamsRef.current = {
+      debouncedSearchQuery,
+      activeFilter,
+      activePlatform,
+      activeInboxView,
+    };
+  }, [debouncedSearchQuery, activeFilter, activePlatform, activeInboxView]);
+
+  /** Coalesce socket-driven full list refetches so Whapi/history bursts do not N× hit GET /agents/my-conversations (each loads Unipile). */
+  const socketOpenListRefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleRefetchOpenAgentListFromSocket = useCallback(() => {
+    if (socketOpenListRefetchTimerRef.current) {
+      clearTimeout(socketOpenListRefetchTimerRef.current);
+    }
+    socketOpenListRefetchTimerRef.current = setTimeout(() => {
+      socketOpenListRefetchTimerRef.current = null;
+      const p = listFetchParamsRef.current;
+      dispatch(
+        fetchAgentConversations({
+          page: 1,
+          searchQuery: p.debouncedSearchQuery,
+          status: p.activeFilter,
+          platform: p.activePlatform,
+          inboxView: p.activeInboxView,
+          includeCounts: true,
+        })
+      );
+    }, 650);
+  }, [dispatch]);
 
   // 🔧 OPTIMIZED: Memoize conversation lookup to avoid repeated finds
   const currentConversation = useMemo(() => { 
@@ -372,14 +409,38 @@ export default function AgentInbox() {
     }
   }, [businessId, dispatch]);
   
-  useEffect(() => { if (agentId) { dispatch(resetAgentConversations()); dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform })); } }, [dispatch, agentId, debouncedSearchQuery, activeFilter, activePlatform]);
+  useEffect(() => {
+    if (agentId) {
+      dispatch(resetAgentConversations());
+      dispatch(
+        fetchAgentConversations({
+          page: 1,
+          searchQuery: debouncedSearchQuery,
+          status: activeFilter,
+          platform: activePlatform,
+          inboxView: activeInboxView,
+          includeCounts: true,
+        })
+      );
+    }
+  }, [dispatch, agentId, debouncedSearchQuery, activeFilter, activePlatform, activeInboxView]);
 
   // 🔧 Refetch agent chat list when socket reconnects so realtime updates resume (e.g. after 5+ min idle)
   useEffect(() => {
     if (socketReconnectCount > 0 && agentId) {
-      dispatch(fetchAgentConversations({ page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+      const p = listFetchParamsRef.current;
+      dispatch(
+        fetchAgentConversations({
+          page: 1,
+          searchQuery: p.debouncedSearchQuery,
+          status: p.activeFilter,
+          platform: p.activePlatform,
+          inboxView: p.activeInboxView,
+          includeCounts: true,
+        })
+      );
     }
-  }, [socketReconnectCount]);
+  }, [socketReconnectCount, dispatch, agentId]);
 
   useEffect(() => { if (selectedCustomer) { setIsInitialMessageLoad(true); dispatch(fetchMessagesByCustomer({ customerId: selectedCustomer, page: 1 })); } }, [selectedCustomer, dispatch]);
 
@@ -503,7 +564,7 @@ export default function AgentInbox() {
   // 🔧 NEW: Mark conversation as read
   const handleMarkAsRead = useCallback(async (conversationId: string) => {
     try {
-      await api.post(`/api/v1/customer/conversations/${conversationId}/mark-read`);
+      await markConversationAsRead(conversationId);
     } catch (error: any) {
       console.error('Failed to mark as read:', error);
     }
@@ -513,7 +574,7 @@ export default function AgentInbox() {
   const handleUpdatePriority = useCallback(async (priority: 'low' | 'normal' | 'high' | 'urgent') => {
     if (!currentConversation?.id) return;
     try {
-      await api.patch(`/api/v1/customer/conversations/${currentConversation.id}/priority`, { priority });
+      await updateConversationPriorityApi(currentConversation.id, priority);
       dispatch(updateConversationEnhanced({ conversationId: currentConversation.id, priority }));
       toast.success(`Priority set to ${priority}`);
       setPriorityDialogOpen(false);
@@ -526,7 +587,7 @@ export default function AgentInbox() {
   const handleUpdateTags = useCallback(async (tags: string[]) => {
     if (!currentConversation?.id) return;
     try {
-      await api.patch(`/api/v1/customer/conversations/${currentConversation.id}/tags`, { tags });
+      await updateConversationTagsApi(currentConversation.id, tags);
       dispatch(updateConversationEnhanced({ conversationId: currentConversation.id, tags }));
       toast.success('Tags updated');
       setTagsDialogOpen(false);
@@ -549,21 +610,45 @@ export default function AgentInbox() {
   }, [currentConversation, t]);
   
   // 🔧 OPTIMIZED: Assign conversation (using memoized currentConversation)
-  const handleAssignConversation = useCallback(async (agentId: string) => {
-    if (!currentConversation?.id) return;
+  const handleAssignConversation = useCallback(
+    async (targetAgentId: string) => {
+      if (!currentConversation?.id) return;
+      try {
+        await assignConversationApi(currentConversation.id, targetAgentId);
+        dispatch(
+          updateConversationEnhanced({
+            conversationId: currentConversation.id,
+            assignedAgentId: targetAgentId,
+            status: 'live',
+            unreadCount: 0,
+          })
+        );
+        toast.success(t('agentInbox.toastAssignSuccess', 'Conversation assigned'));
+        scheduleRefetchOpenAgentListFromSocket();
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || t('agentInbox.toastAssignFailed', 'Failed to assign conversation'));
+      }
+    },
+    [currentConversation, dispatch, t, scheduleRefetchOpenAgentListFromSocket]
+  );
+
+  const handleReleaseToQueue = useCallback(async () => {
+    if (!currentConversation?.id || !agentId) return;
     try {
-      await api.post(`/api/v1/customer/conversations/${currentConversation.id}/assign`, { agentId });
-      dispatch(updateConversationEnhanced({ 
-        conversationId: currentConversation.id, 
-        assignedAgentId: agentId,
-        status: 'live',
-        unreadCount: 0
-      }));
-      toast.success('Conversation assigned');
+      await releaseConversationToQueue(currentConversation.id);
+      dispatch(
+        updateConversationEnhanced({
+          conversationId: currentConversation.id,
+          assignedAgentId: undefined,
+        })
+      );
+      toast.success(t('agentInbox.toastReleaseSuccess', 'Conversation released to the team queue'));
+      setSelectedCustomer(null);
+      scheduleRefetchOpenAgentListFromSocket();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to assign conversation');
+      toast.error(error.response?.data?.message || t('agentInbox.toastReleaseFailed', 'Failed to release conversation'));
     }
-  }, [currentConversation, dispatch]);
+  }, [currentConversation, agentId, dispatch, t, scheduleRefetchOpenAgentListFromSocket]);
   
   // 🔧 NEW: Mark conversation as read when opened
   useEffect(() => {
@@ -595,39 +680,54 @@ export default function AgentInbox() {
   }, [agentId, conversations, dispatch]);
 
   // 🔧 OPTIMIZED: Handle conversation updates
-  const handleConversationUpdated = useCallback((data: any) => {
-    const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
-    console.log('🔔 AgentInbox: Received conversationUpdated event:', data);
-    console.log('Current agentId:', agentId);
-    console.log('Event assignedAgentId:', assignedAgentId);
-    
-    // Check if this conversation is in the agent's list OR if it's assigned to this agent
-    const conversation = conversations.find(c => c.id === conversationId);
-    
-    // Update if conversation is in list OR if it's assigned to this agent (might not be in list yet)
-    if (conversation || assignedAgentId === agentId) {
-      if (conversation) {
-        console.log('✅ AgentInbox: Conversation found, updating...');
-        dispatch(updateConversationEnhanced({
-          conversationId,
-          unreadCount,
-          priority,
-          tags,
-          notes,
-          assignedAgentId,
-          status,
-        }));
+  const handleConversationUpdated = useCallback(
+    (data: any) => {
+      const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
+      console.log('🔔 AgentInbox: Received conversationUpdated event:', data);
+      console.log('Current agentId:', agentId);
+      console.log('Event assignedAgentId:', assignedAgentId);
+
+      const conversation = conversations.find((c) => c.id === conversationId);
+      const view = activeInboxViewRef.current;
+      const mine = String(agentId || '');
+      const assignee = assignedAgentId != null ? String(assignedAgentId) : '';
+
+      if (conversation || assignee === mine) {
+        if (conversation) {
+          if (view === 'mine' && assignee !== mine) {
+            dispatch(removeConversation({ conversationId }));
+            scheduleRefetchOpenAgentListFromSocket();
+            return;
+          }
+          if (view === 'unassigned' && assignee !== '') {
+            dispatch(removeConversation({ conversationId }));
+            scheduleRefetchOpenAgentListFromSocket();
+            return;
+          }
+          console.log('✅ AgentInbox: Conversation found, updating...');
+          dispatch(
+            updateConversationEnhanced({
+              conversationId,
+              unreadCount,
+              priority,
+              tags,
+              notes,
+              assignedAgentId,
+              status,
+            })
+          );
+        } else {
+          console.log('✅ AgentInbox: Conversation not in list (reopened?), refetching open list');
+          scheduleRefetchOpenAgentListFromSocket();
+        }
       } else {
-        // Not in list (e.g. was closed and just reopened by customer message) — refetch open list so it appears
-        console.log('✅ AgentInbox: Conversation not in list (reopened?), refetching open list');
-        scheduleRefetchOpenAgentListFromSocket();
+        console.log('⚠️ AgentInbox: Conversation not found in list and not assigned to this agent');
+        console.log('Conversation ID:', conversationId);
+        console.log('Current conversations:', conversations.map((c) => ({ id: c.id, assignedAgentId: c.assignedAgentId })));
       }
-    } else {
-      console.log('⚠️ AgentInbox: Conversation not found in list and not assigned to this agent');
-      console.log('Conversation ID:', conversationId);
-      console.log('Current conversations:', conversations.map(c => ({ id: c.id, assignedAgentId: c.assignedAgentId })));
-    }
-  }, [agentId, conversations, dispatch, scheduleRefetchOpenAgentListFromSocket]);
+    },
+    [agentId, conversations, dispatch, scheduleRefetchOpenAgentListFromSocket]
+  );
 
   // 🔧 OPTIMIZED: Handle conversation assignment — ensure inbox updates in real time without refresh
   const handleConversationAssigned = useCallback((data: any) => {
@@ -995,6 +1095,8 @@ export default function AgentInbox() {
           searchQuery: debouncedSearchQuery,
           status: activeFilter,
           platform: activePlatform,
+          inboxView: activeInboxView,
+          includeCounts: true,
         })
       ).unwrap();
     } catch (err: unknown) {
@@ -1002,20 +1104,38 @@ export default function AgentInbox() {
     } finally {
       setCloseAllOpenLoading(false);
     }
-  }, [agentId, dispatch, debouncedSearchQuery, activeFilter, activePlatform, t]);
+  }, [agentId, dispatch, debouncedSearchQuery, activeFilter, activePlatform, activeInboxView, t]);
 
   // 🔧 OPTIMIZED: Memoize pagination handlers
   const handleNextPage = useCallback(() => {
     if (currentPage < totalPages && agentId) {
-      dispatch(fetchAgentConversations({ page: currentPage + 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+      dispatch(
+        fetchAgentConversations({
+          page: currentPage + 1,
+          searchQuery: debouncedSearchQuery,
+          status: activeFilter,
+          platform: activePlatform,
+          inboxView: activeInboxView,
+          includeCounts: true,
+        })
+      );
     }
-  }, [currentPage, totalPages, agentId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
+  }, [currentPage, totalPages, agentId, dispatch, debouncedSearchQuery, activeFilter, activePlatform, activeInboxView]);
 
   const handlePrevPage = useCallback(() => {
     if (currentPage > 1 && agentId) {
-      dispatch(fetchAgentConversations({ page: currentPage - 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+      dispatch(
+        fetchAgentConversations({
+          page: currentPage - 1,
+          searchQuery: debouncedSearchQuery,
+          status: activeFilter,
+          platform: activePlatform,
+          inboxView: activeInboxView,
+          includeCounts: true,
+        })
+      );
     }
-  }, [currentPage, agentId, dispatch, debouncedSearchQuery, activeFilter, activePlatform]);
+  }, [currentPage, agentId, dispatch, debouncedSearchQuery, activeFilter, activePlatform, activeInboxView]);
 
   const handleLoadMoreMessages = useCallback(() => {
     if (selectedCustomer && messagesData?.hasMore && messagesData.status !== 'loading' && messageListRef.current) {
@@ -1039,6 +1159,43 @@ export default function AgentInbox() {
           "bg-card border-border"
         )}>
           <h1 className="text-2xl font-bold mb-4 px-2">{t('agentInbox.title')}</h1>
+
+          {/* Queue scope: All / Mine / Unassigned (matches GET /agents/my-conversations inboxView) */}
+          <div className="flex items-center gap-1 mb-3 p-1 bg-muted/70 rounded-lg overflow-x-auto scrollbar-hide">
+            {(['all', 'mine', 'unassigned'] as const).map((key) => {
+              const openCount =
+                activeFilter === 'open' && inboxQueueCounts
+                  ? key === 'all'
+                    ? inboxQueueCounts.all
+                    : key === 'mine'
+                      ? inboxQueueCounts.mine
+                      : inboxQueueCounts.unassigned
+                  : undefined;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveInboxView(key)}
+                  className={cn(
+                    'flex-shrink-0 px-2 sm:px-3 py-2 text-xs font-medium rounded-md transition-all whitespace-nowrap inline-flex items-center gap-1.5',
+                    activeInboxView === key ? 'bg-background shadow-sm' : 'hover:bg-background/50'
+                  )}
+                  title={
+                    activeFilter === 'closed'
+                      ? undefined
+                      : t('agentInbox.inboxViewCountHint', 'Open conversations in this queue')
+                  }
+                >
+                  {t(`agentInbox.inboxView.${key}`)}
+                  {openCount != null && openCount > 0 && (
+                    <span className="tabular-nums rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px] font-semibold min-w-[1.25rem] text-center">
+                      {openCount > 99 ? '99+' : openCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
           
           {/* Platform Tabs: All, Website Chat, WhatsApp Chat */}
           <div className="flex items-center gap-1 mb-3 p-1 bg-muted rounded-lg overflow-x-auto scrollbar-hide">
@@ -1364,12 +1521,29 @@ export default function AgentInbox() {
                       <MessageSquareText className="mr-2 h-4 w-4" />
                       {t('agentInbox.aiSummary', 'AI Summary')}
                     </DropdownMenuItem>
+                    {agentId &&
+                      currentConversation?.assignedAgentId &&
+                      String(currentConversation.assignedAgentId) === String(agentId) && (
+                        <DropdownMenuItem onSelect={() => void handleReleaseToQueue()}>
+                          <UserMinus className="mr-2 h-4 w-4" />
+                          {t('agentInbox.releaseToQueue', 'Release to queue')}
+                        </DropdownMenuItem>
+                      )}
+                    {!currentConversation?.assignedAgentId && agentId && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => handleAssignConversation(String(agentId))}>
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          {t('agentInbox.claimConversation', 'Claim conversation')}
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     {!currentConversation?.assignedAgentId && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Assign To</DropdownMenuLabel>
+                        <DropdownMenuLabel>{t('agentInbox.assignTo', 'Assign to')}</DropdownMenuLabel>
                         {onlineAgents.length > 0 ? (
-                          onlineAgents.map(agent => (
+                          onlineAgents.map((agent) => (
                             <DropdownMenuItem key={agent._id} onSelect={() => handleAssignConversation(agent._id)}>
                               <div className="flex items-center">
                                 <span className="relative flex h-2 w-2 mr-2">
@@ -1381,7 +1555,7 @@ export default function AgentInbox() {
                             </DropdownMenuItem>
                           ))
                         ) : (
-                          <DropdownMenuItem disabled>No agents online</DropdownMenuItem>
+                          <DropdownMenuItem disabled>{t('agentInbox.noAgentsOnlineAssign', 'No agents online')}</DropdownMenuItem>
                         )}
                       </>
                     )}

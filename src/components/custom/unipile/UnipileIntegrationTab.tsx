@@ -46,9 +46,11 @@ interface ConnectionFormData {
 
 interface UnipileIntegrationTabProps {
   agentId?: string; // 🔧 NEW: Optional agentId prop to filter connections
+  /** Integrations page: generic header without vendor/product names */
+  neutralIntegrationsCopy?: boolean;
 }
 
-const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
+const UnipileIntegrationTab = ({ agentId, neutralIntegrationsCopy }: UnipileIntegrationTabProps) => {
   const { t } = useTranslation();
   const dispatch = useDispatch<AppDispatch>();
   const { connections: rawConnections, status, error } = useSelector((state: RootState) => state.unipile);
@@ -585,9 +587,15 @@ const UnipileIntegrationTab = ({ agentId }: UnipileIntegrationTabProps) => {
       {/* Header Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">{t('singleAiAgentPage.multiPlatform.title')}</h3>
+          <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            {neutralIntegrationsCopy
+              ? t('integrationsPage.moreChannelsTitle')
+              : t('singleAiAgentPage.multiPlatform.title')}
+          </h3>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            {t('singleAiAgentPage.multiPlatform.subtitle')}
+            {neutralIntegrationsCopy
+              ? t('integrationsPage.moreChannelsSubtitle')
+              : t('singleAiAgentPage.multiPlatform.subtitle')}
           </p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

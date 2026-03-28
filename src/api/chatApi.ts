@@ -164,6 +164,12 @@ export const assignConversation = async (
   return response.data.data;
 };
 
+/** Return conversation to the team queue (clear assignee). */
+export const releaseConversationToQueue = async (conversationId: string) => {
+  const response = await api.post(`/api/v1/chat-inbox/conversations/${conversationId}/release`, {});
+  return response.data.data;
+};
+
 // 🔧 NEW: Unipile Chat Management API
 export const listUnipileChats = async (params?: {
   unread?: boolean;
