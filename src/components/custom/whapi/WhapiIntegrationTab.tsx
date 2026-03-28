@@ -13,8 +13,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, Trash2, RefreshCw, QrCode, Settings, Pencil, Link2, BarChart3 } from 'lucide-react';
+import {
+  Loader2,
+  Plus,
+  Trash2,
+  RefreshCw,
+  QrCode,
+  Settings,
+  Pencil,
+  Link2,
+  BarChart3,
+  CalendarPlus,
+  AlertTriangle,
+} from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/app/store';
 import {
@@ -22,6 +43,7 @@ import {
   fetchWhapiPartnerProjects,
   createWhapiConnectionThunk,
   deleteWhapiConnectionThunk,
+  extendWhapiConnectionThunk,
   updateWhapiConnectionNameThunk,
   updateWhapiChannelConfigThunk,
   syncWhapiWebhooksThunk,
@@ -113,6 +135,15 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsDays, setAnalyticsDays] = useState(14);
   const [analyticsRows, setAnalyticsRows] = useState<WhapiWorkflowVariantAnalyticsRow[]>([]);
+
+  const [extendOpen, setExtendOpen] = useState(false);
+  const [extendConn, setExtendConn] = useState<WhapiConnectionRow | null>(null);
+  const [extendDays, setExtendDays] = useState(30);
+  const [extendComment, setExtendComment] = useState('');
+  const [extendSaving, setExtendSaving] = useState(false);
+
+  const [deleteConfirmConn, setDeleteConfirmConn] = useState<WhapiConnectionRow | null>(null);
+  const [deleteDeleting, setDeleteDeleting] = useState(false);
 
   const agentIdString = agentId ? String(agentId) : undefined;
 
@@ -244,6 +275,20 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
               'Create a Whapi channel, scan the QR from your phone, and link inbound/outbound to Nuvro. Uses the same inbox and workflows as the API.'
             )}
           </CardDescription>
+          <p className="text-xs text-muted-foreground mt-2 leading-relaxed max-w-3xl">
+            {t(
+              'integrationsPage.whapi.trialLiveNote',
+              'Whapi creates channels in trial by default. After we add days from your partner balance, the backend switches the channel to LIVE so paid time applies and unused days can return to your balance on delete. Trial-only channels do not refund days.'
+            )}{' '}
+            <a
+              href="https://support.whapi.cloud/help-desk/partner-documentation/partner-documentation/changing-channel-mode"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline underline-offset-2 font-medium"
+            >
+              {t('integrationsPage.whapi.trialLiveDocsLink', 'Whapi: changing channel mode')}
+            </a>
+          </p>
           {webhookUrlDisplay && (
             <p className="text-xs text-muted-foreground mt-2 break-all">
               {t('integrationsPage.whapi.webhookHint', 'Webhook URL (registered by backend):')}{' '}
@@ -337,15 +382,20 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                   onClick={async () => {
                     setCreating(true);
                     try {
-                      await dispatch(
+                      const created = (await dispatch(
                         createWhapiConnectionThunk({
                           name: createName.trim(),
                           projectId: projectId || undefined,
                           agentId: agentIdString,
                           phone: createPhone.trim() || undefined,
                         })
-                      ).unwrap();
+                      ).unwrap()) as Record<string, unknown>;
                       toast.success(t('integrationsPage.whapi.created', 'Channel created. Open QR to scan.'));
+                      const liveWarn =
+                        typeof created?.liveModeWarning === 'string' ? created.liveModeWarning.trim() : '';
+                      if (liveWarn) {
+                        toast.error(liveWarn, { duration: 12000 });
+                      }
                       setCreateOpen(false);
                       setCreateName('');
                       setProjectId('');
@@ -383,6 +433,51 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                   <CardDescription className="font-mono text-xs mt-1">
                     {t('integrationsPage.whapi.channelId', 'Whapi channel')}: {c.whapiChannelId}
                   </CardDescription>
+                  <div
+                    className="flex flex-wrap items-center gap-2 mt-2.5"
+                    title={t(
+                      'integrationsPage.whapi.partnerDaysHint',
+                      'Remaining days are read from Whapi when this list loads. “Allocated” sums days added via Nuvro (create + Add days), not changes made only in the Whapi panel.'
+                    )}
+                  >
+                    <Badge
+                      variant="secondary"
+                      className="text-xs font-medium tabular-nums shadow-none"
+                    >
+                      {c.partnerDaysAllocatedTotal != null
+                        ? t('integrationsPage.whapi.partnerDaysAllocated', '{{count}} d · Nuvro', {
+                            count: c.partnerDaysAllocatedTotal,
+                          })
+                        : t('integrationsPage.whapi.partnerDaysAllocatedUnknown', 'Allocated: —')}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs font-medium tabular-nums ${
+                        c.partnerDaysRemaining === 0
+                          ? 'border-destructive/45 bg-destructive/8 text-destructive'
+                          : ''
+                      }`}
+                    >
+                      {c.partnerDaysRemaining == null
+                        ? t('integrationsPage.whapi.partnerDaysRemainingUnknown', 'Remaining: —')
+                        : c.partnerDaysRemaining === 0
+                          ? t('integrationsPage.whapi.partnerDaysRemainingExpired', 'Expired')
+                          : t('integrationsPage.whapi.partnerDaysRemaining', '{{count}} d left', {
+                              count: c.partnerDaysRemaining,
+                            })}
+                    </Badge>
+                  </div>
+                  {c.whapiLiveModePending ? (
+                    <p
+                      className="mt-2 rounded-md border border-destructive/35 bg-destructive/5 px-3 py-2 text-xs text-destructive leading-snug max-w-xl"
+                      role="status"
+                    >
+                      {t(
+                        'integrationsPage.whapi.liveModePendingBanner',
+                        'LIVE mode was not confirmed in Whapi after adding paid days. Open the Whapi partner panel and set this channel to LIVE — otherwise it may stay on trial and unused days may not return to your balance when deleted.'
+                      )}
+                    </p>
+                  ) : null}
                 </div>
                 <Badge variant={c.status === 'connected' || c.status === 'active' ? 'default' : 'secondary'}>
                   {c.status}
@@ -449,19 +544,19 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                 {t('integrationsPage.whapi.variantAnalytics', 'Variant analytics')}
               </Button>
               <Button
-                variant="destructive"
+                variant="outline"
                 size="sm"
-                onClick={async () => {
-                  if (!window.confirm(t('integrationsPage.whapi.confirmDelete', 'Delete this Whapi connection?'))) return;
-                  try {
-                    await dispatch(deleteWhapiConnectionThunk(c.id)).unwrap();
-                    toast.success(t('integrationsPage.whapi.deleted', 'Connection removed'));
-                    await dispatch(fetchWhapiConnections());
-                  } catch (e: unknown) {
-                    toast.error(typeof e === 'string' ? e : 'Delete failed');
-                  }
+                onClick={() => {
+                  setExtendConn(c);
+                  setExtendDays(30);
+                  setExtendComment('');
+                  setExtendOpen(true);
                 }}
               >
+                <CalendarPlus className="h-4 w-4 mr-1" />
+                {t('integrationsPage.whapi.extendDays', 'Add days')}
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setDeleteConfirmConn(c)}>
                 <Trash2 className="h-4 w-4 mr-1" />
                 {t('integrationsPage.whapi.delete', 'Delete')}
               </Button>
@@ -473,6 +568,90 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
       {filteredConnections.length === 0 && status !== 'loading' ? (
         <p className="text-sm text-muted-foreground">{t('integrationsPage.whapi.empty', 'No Whapi connections yet.')}</p>
       ) : null}
+
+      <AlertDialog
+        open={deleteConfirmConn !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (deleteDeleting) return;
+            setDeleteConfirmConn(null);
+          }
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-[440px] border-destructive/20 shadow-lg">
+          <div className="flex gap-4">
+            <div
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-destructive/10 ring-1 ring-destructive/15"
+              aria-hidden
+            >
+              <AlertTriangle className="h-6 w-6 text-destructive" strokeWidth={2} />
+            </div>
+            <AlertDialogHeader className="flex-1 space-y-2 text-left sm:text-left">
+              <AlertDialogTitle className="text-xl font-semibold tracking-tight pr-2 leading-snug">
+                {t('integrationsPage.whapi.deleteModalTitle', 'Delete this Whapi connection?')}
+              </AlertDialogTitle>
+              {deleteConfirmConn ? (
+                <AlertDialogDescription asChild>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {t(
+                      'integrationsPage.whapi.deleteModalLead',
+                      '{{name}} will be removed from Nuvro and its channel deleted in Whapi.',
+                      { name: deleteConfirmConn.connectionName }
+                    )}
+                  </p>
+                </AlertDialogDescription>
+              ) : (
+                <AlertDialogDescription className="sr-only">
+                  {t('integrationsPage.whapi.confirmDelete', 'Delete this Whapi connection?')}
+                </AlertDialogDescription>
+              )}
+            </AlertDialogHeader>
+          </div>
+          {deleteConfirmConn ? (
+            <div className="rounded-lg border border-border/80 bg-muted/50 px-3 py-2.5 text-xs font-mono text-muted-foreground break-all shadow-inner">
+              {deleteConfirmConn.whapiChannelId}
+            </div>
+          ) : null}
+          {deleteConfirmConn ? (
+            <p className="text-sm text-muted-foreground leading-relaxed border-l-2 border-amber-500/60 pl-3 py-0.5">
+              {t(
+                'integrationsPage.whapi.deleteModalBody',
+                'WhatsApp linked here will stop working in Nuvro. This cannot be undone. Unused prepaid days may return to your Whapi partner balance per their rules.'
+              )}
+            </p>
+          ) : null}
+          <AlertDialogFooter className="gap-2 sm:gap-2 pt-2">
+            <AlertDialogCancel disabled={deleteDeleting} className="mt-0">
+              {t('integrationsPage.whapi.deleteModalCancel', 'Cancel')}
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={deleteDeleting}
+              className="gap-2"
+              onClick={async () => {
+                if (!deleteConfirmConn) return;
+                setDeleteDeleting(true);
+                try {
+                  const del = await dispatch(deleteWhapiConnectionThunk(deleteConfirmConn.id)).unwrap();
+                  toast.success(t('integrationsPage.whapi.deleted', 'Connection removed'));
+                  if (del.partnerBalanceNote) {
+                    toast(del.partnerBalanceNote, { duration: 8000 });
+                  }
+                  setDeleteConfirmConn(null);
+                  await dispatch(fetchWhapiConnections());
+                } catch (e: unknown) {
+                  toast.error(typeof e === 'string' ? e : t('integrationsPage.whapi.deleteError', 'Delete failed'));
+                } finally {
+                  setDeleteDeleting(false);
+                }
+              }}
+            >
+              {deleteDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {t('integrationsPage.whapi.deleteModalConfirm', 'Delete connection')}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog
         open={qrOpen}
@@ -597,6 +776,106 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
               </table>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={extendOpen}
+        onOpenChange={(open) => {
+          setExtendOpen(open);
+          if (!open) {
+            setExtendConn(null);
+            setExtendComment('');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('integrationsPage.whapi.extendTitle', 'Extend channel (partner balance)')}</DialogTitle>
+            <DialogDescription>
+              {t(
+                'integrationsPage.whapi.extendHint',
+                'Days are deducted from your Whapi partner account balance. Ensure you have enough days in the partner panel.'
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="grid gap-2">
+              <Label>{t('integrationsPage.whapi.extendDaysLabel', 'Days to add')}</Label>
+              <Input
+                type="number"
+                min={1}
+                max={366}
+                value={extendDays}
+                onChange={(e) =>
+                  setExtendDays(Math.min(366, Math.max(1, Math.floor(Number(e.target.value) || 1))))
+                }
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>{t('integrationsPage.whapi.extendCommentLabel', 'Note (optional)')}</Label>
+              <Input
+                value={extendComment}
+                onChange={(e) => setExtendComment(e.target.value)}
+                placeholder={t(
+                  'integrationsPage.whapi.extendCommentPlaceholder',
+                  'e.g. Customer renewal'
+                )}
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExtendOpen(false)}>
+              {t('channelSettings.cancel', 'Cancel')}
+            </Button>
+            <Button
+              disabled={extendSaving || extendDays < 1}
+              onClick={async () => {
+                if (!extendConn) return;
+                setExtendSaving(true);
+                try {
+                  const payload = await dispatch(
+                    extendWhapiConnectionThunk({
+                      id: extendConn.id,
+                      days: extendDays,
+                      comment: extendComment.trim() || undefined,
+                    })
+                  ).unwrap();
+                  const daysAdded = payload.daysAdded ?? extendDays;
+                  let msg = t('integrationsPage.whapi.extendSuccess', 'Added {{days}} day(s) to this channel.', {
+                    days: daysAdded,
+                  });
+                  if (payload.activeTill != null && typeof payload.activeTill === 'number') {
+                    const ts = payload.activeTill;
+                    const ms = ts > 1e12 ? ts : ts * 1000;
+                    msg += ` ${t('integrationsPage.whapi.extendSuccessActiveTill', 'Active until {{date}}', {
+                      date: new Date(ms).toLocaleString(),
+                    })}`;
+                  }
+                  toast.success(msg, { duration: 6000 });
+                  const ew = typeof payload.liveModeWarning === 'string' ? payload.liveModeWarning.trim() : '';
+                  if (ew) {
+                    toast.error(ew, { duration: 12000 });
+                  }
+                  setExtendOpen(false);
+                  setExtendConn(null);
+                  await dispatch(fetchWhapiConnections());
+                } catch (e: unknown) {
+                  toast.error(
+                    typeof e === 'string'
+                      ? e
+                      : t('integrationsPage.whapi.extendError', 'Could not extend channel')
+                  );
+                } finally {
+                  setExtendSaving(false);
+                }
+              }}
+            >
+              {extendSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {t('integrationsPage.whapi.extendSubmit', 'Add days')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

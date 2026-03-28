@@ -19,7 +19,14 @@ export interface WhapiConnectionRow {
   workingHours?: ChannelWorkingHours | null;
   outsideHoursBehavior?: OutsideHoursBehavior | null;
   fallbackBehavior?: ChannelFallbackBehavior;
-  metadata?: { phoneNumber?: string; whapiUserName?: string };
+  metadata?: { phoneNumber?: string; whapiUserName?: string; partnerDaysAllocatedTotal?: number };
+  /** Partner balance days added via Nuvro (create + extend). Null if unknown (e.g. old connection). */
+  partnerDaysAllocatedTotal?: number | null;
+  /** Whole days until Whapi `activeTill` (ceil). Null if partner list unavailable / unknown. */
+  partnerDaysRemaining?: number | null;
+  whapiActiveTill?: number | null;
+  /** Backend could not confirm Whapi LIVE mode after extend — refunds on delete may not apply until fixed in panel. */
+  whapiLiveModePending?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -35,6 +42,20 @@ export interface CreateWhapiConnectionRequest {
   agentId?: string;
   /** Optional — Whapi manager API: 7–15 digits only */
   phone?: string;
+}
+
+export interface ExtendWhapiConnectionRequest {
+  id: string;
+  days: number;
+  comment?: string;
+}
+
+export interface ExtendWhapiConnectionResult {
+  whapiChannelId?: string;
+  daysAdded?: number;
+  activeTill?: number | null;
+  liveModeApplied?: boolean;
+  liveModeWarning?: string;
 }
 
 export interface UpdateWhapiChannelConfigPayload {
@@ -56,6 +77,10 @@ interface WhapiState {
 
 function mapConn(raw: Record<string, unknown>): WhapiConnectionRow {
   const id = String(raw._id ?? raw.id ?? '');
+  const pad = raw.partnerDaysAllocatedTotal;
+  const pr = raw.partnerDaysRemaining;
+  const wat = raw.whapiActiveTill;
+  const wlp = raw.whapiLiveModePending;
   return {
     id,
     whapiChannelId: String(raw.whapiChannelId ?? ''),
@@ -69,6 +94,10 @@ function mapConn(raw: Record<string, unknown>): WhapiConnectionRow {
     outsideHoursBehavior: (raw.outsideHoursBehavior as OutsideHoursBehavior) ?? null,
     fallbackBehavior: raw.fallbackBehavior as ChannelFallbackBehavior | undefined,
     metadata: raw.metadata as WhapiConnectionRow['metadata'],
+    partnerDaysAllocatedTotal: typeof pad === 'number' ? pad : pad === null ? null : undefined,
+    partnerDaysRemaining: typeof pr === 'number' ? pr : pr === null ? null : undefined,
+    whapiActiveTill: typeof wat === 'number' ? wat : wat === null ? null : undefined,
+    whapiLiveModePending: wlp === true,
     createdAt: raw.createdAt ? String(raw.createdAt) : undefined,
     updatedAt: raw.updatedAt ? String(raw.updatedAt) : undefined,
   };
@@ -134,10 +163,38 @@ export const deleteWhapiConnectionThunk = createAsyncThunk(
   'whapi/deleteConnection',
   async (id: string, { rejectWithValue }) => {
     try {
-      await api.delete(`/api/v1/whapi/connections/${encodeURIComponent(id)}`);
-      return id;
+      const res = await api.delete(`/api/v1/whapi/connections/${encodeURIComponent(id)}`);
+      const data = res.data?.data as { partnerBalanceNote?: string } | undefined;
+      return {
+        id,
+        partnerBalanceNote: typeof data?.partnerBalanceNote === 'string' ? data.partnerBalanceNote : undefined,
+      };
     } catch (e) {
       return rejectWithValue(errMsg(e, 'Failed to delete connection'));
+    }
+  }
+);
+
+export const extendWhapiConnectionThunk = createAsyncThunk(
+  'whapi/extendConnection',
+  async ({ id, days, comment }: ExtendWhapiConnectionRequest, { rejectWithValue }) => {
+    try {
+      const d = Math.floor(Number(days));
+      const body: { days: number; comment?: string } = { days: d };
+      const c = comment?.trim();
+      if (c) body.comment = c;
+      const res = await api.post(`/api/v1/whapi/connections/${encodeURIComponent(id)}/extend`, body);
+      const raw = (res.data?.data ?? res.data) as Record<string, unknown>;
+      const result: ExtendWhapiConnectionResult = {
+        whapiChannelId: raw.whapiChannelId != null ? String(raw.whapiChannelId) : undefined,
+        daysAdded: typeof raw.daysAdded === 'number' ? raw.daysAdded : d,
+        activeTill: typeof raw.activeTill === 'number' ? raw.activeTill : raw.activeTill === null ? null : undefined,
+        liveModeApplied: raw.liveModeApplied === true,
+        liveModeWarning: typeof raw.liveModeWarning === 'string' ? raw.liveModeWarning : undefined,
+      };
+      return result;
+    } catch (e) {
+      return rejectWithValue(errMsg(e, 'Failed to extend channel'));
     }
   }
 );
@@ -218,7 +275,7 @@ const whapiSlice = createSlice({
         state.error = (action.payload as string) || 'Create failed';
       })
       .addCase(deleteWhapiConnectionThunk.fulfilled, (state, action) => {
-        state.connections = state.connections.filter((c) => c.id !== action.payload);
+        state.connections = state.connections.filter((c) => c.id !== action.payload.id);
       })
       .addCase(updateWhapiConnectionNameThunk.fulfilled, (state, action) => {
         const { id, connectionName } = action.payload;
