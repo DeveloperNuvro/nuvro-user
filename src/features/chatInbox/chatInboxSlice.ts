@@ -4,6 +4,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/api/axios";
 import { normalizeApiMediaUrl } from "@/lib/audioUrlNormalize";
+import { mergeConversationWithSocketHints, normalizeConversationPlatformFields } from "@/utils/conversationUiPlatform";
 
 // --- INTERFACES ---
 
@@ -370,8 +371,11 @@ const chatInboxSlice = createSlice({
             state.totalPages = 1;
             state.status = 'idle';
         },
-        addRealtimeMessage: (state, action: PayloadAction<{ customerId: string; message: any }>) => {
-            const { customerId, message: rawMessage } = action.payload;
+        addRealtimeMessage: (
+            state,
+            action: PayloadAction<{ customerId: string; message: any; conversationSource?: string }>
+        ) => {
+            const { customerId, message: rawMessage, conversationSource } = action.payload;
             
             // 🔧 FIX: Transform socket message to match expected Message format
             // Socket messages might have different field names (message vs text, sender vs sentBy, createdAt vs time)
@@ -423,11 +427,17 @@ const chatInboxSlice = createSlice({
             } else {
                 list.push(transformedMessage);
             }
-            const convoIndex = state.conversations.findIndex(c => c.customer.id === customerId);
+            const convoIndex = state.conversations.findIndex((c) => c.customer.id === customerId);
             if (convoIndex !== -1) {
-                const conversationToMove = state.conversations[convoIndex];
-                conversationToMove.preview = transformedMessage.text;
-                conversationToMove.latestMessageTimestamp = transformedMessage.time;
+                const merged = mergeConversationWithSocketHints(state.conversations[convoIndex], {
+                    topLevelSource: conversationSource,
+                    metadata: transformedMessage.metadata,
+                });
+                const conversationToMove = {
+                    ...merged,
+                    preview: transformedMessage.text,
+                    latestMessageTimestamp: transformedMessage.time,
+                };
                 state.conversations.splice(convoIndex, 1);
                 state.conversations.unshift(conversationToMove);
             }
@@ -489,16 +499,17 @@ const chatInboxSlice = createSlice({
             state.conversations = state.conversations.filter(c => c.id !== action.payload.conversationId);
         },
         addNewCustomer: (state, action: PayloadAction<ConversationInList>) => {
-            const conversation = action.payload;
+            const conversation = normalizeConversationPlatformFields(action.payload);
             const exists = state.conversations.some((c) => c.id === conversation.id);
             if (!exists) {
                 state.conversations.unshift(conversation);
             } else {
-                // If exists, update it (might have new platformInfo)
                 const index = state.conversations.findIndex((c) => c.id === conversation.id);
                 if (index !== -1) {
-                    // Merge the new data with existing, preserving platformInfo
-                    state.conversations[index] = { ...state.conversations[index], ...conversation };
+                    state.conversations[index] = normalizeConversationPlatformFields({
+                        ...state.conversations[index],
+                        ...action.payload,
+                    });
                 }
             }
         },
@@ -537,8 +548,7 @@ const chatInboxSlice = createSlice({
             })
             .addCase(fetchCustomersByBusiness.fulfilled, (state, action) => {
                 const { conversations, page, totalPages } = action.payload;
-                // ALWAYS replace the list for classic pagination
-                state.conversations = conversations;
+                state.conversations = conversations.map(normalizeConversationPlatformFields);
                 state.currentPage = page;
                 state.totalPages = totalPages;
                 state.status = "succeeded";

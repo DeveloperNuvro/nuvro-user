@@ -63,6 +63,7 @@ import SecureDocumentPreview from "@/components/custom/SecureDocumentPreview";
 import SimpleVoiceNote from "@/components/custom/SimpleVoiceNote";
 import { isMetaWhatsAppCloudApiSession } from "@/utils/whatsappSession";
 import { whatsappConnectionBadgeLabel, isWhapiLinkedWhatsApp, whapiQuoteMessageIdFromMessage } from "@/utils/whatsappInboxLabels";
+import { getConversationUiPlatform } from "@/utils/conversationUiPlatform";
 import WhapiInboxToolbar from "@/components/chatInbox/WhapiInboxToolbar";
 import MessageQuotedPreview from "@/components/chatInbox/MessageQuotedPreview";
 import { putWhapiMessageReaction } from "@/api/whapiInboxApi";
@@ -408,6 +409,14 @@ export default function ChatInbox() {
   }, [conversations, activePlatform]);
 
   const currentConversation = useMemo(() => filteredConversations.find((c) => c.customer.id === selectedCustomer), [filteredConversations, selectedCustomer]);
+
+  // When Open/Closed, platform, search, or pagination changes the list, drop selection if that row is no longer shown — avoids stale Redux messages + wrong header/chrome.
+  useEffect(() => {
+    if (!selectedCustomer) return;
+    const inList = filteredConversations.some((c) => c.customer?.id === selectedCustomer);
+    if (!inList) setSelectedCustomer(null);
+  }, [filteredConversations, selectedCustomer]);
+
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== user?._id) : [], [agents, user?._id]);
   const offlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'offline' && agent._id !== user?._id) : [], [agents, user?._id]);
   const groupedMessages = useMemo(() => { const allMessages = messagesData?.list || []; return allMessages.reduce((acc: { [key: string]: any[] }, msg: any) => { const dateLabel = dayjs(msg.time).isToday() ? t('chatInbox.dateToday') : dayjs(msg.time).isYesterday() ? t('chatInbox.dateYesterday') : dayjs(msg.time).format("MMMM D, YYYY"); if (!acc[dateLabel]) acc[dateLabel] = []; acc[dateLabel].push(msg); return acc; }, {}); }, [messagesData?.list, t]);
@@ -421,19 +430,22 @@ export default function ChatInbox() {
     return null as string | null;
   }, [messagesData?.list]);
 
-  const isWhapiWaThread = useMemo(
-    () =>
-      currentConversation?.platformInfo?.platform === 'whatsapp' &&
-      isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection),
-    [currentConversation?.platformInfo?.platform, currentConversation?.whatsappConnection]
-  );
-
   const isWaThread = useMemo(
     () =>
       String(currentConversation?.platformInfo?.platform || currentConversation?.source || '')
         .toLowerCase()
         .trim() === 'whatsapp',
     [currentConversation?.platformInfo?.platform, currentConversation?.source]
+  );
+
+  const chatSurfacePlatform = useMemo(
+    () => getConversationUiPlatform(currentConversation ?? null),
+    [currentConversation]
+  );
+
+  const isWhapiWaThread = useMemo(
+    () => isWaThread && isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection),
+    [isWaThread, currentConversation?.whatsappConnection]
   );
 
   useEffect(() => {
@@ -475,7 +487,7 @@ export default function ChatInbox() {
   // META: Fetch WhatsApp 24h session + templates when a WhatsApp conversation is selected
   useEffect(() => {
     const conv = filteredConversations.find((c) => c.customer.id === selectedCustomer);
-    const platform = conv?.platformInfo?.platform;
+    const platform = getConversationUiPlatform(conv ?? null);
     const connectionId = conv?.platformInfo?.connectionId;
     if (!conv?.id || platform !== 'whatsapp') {
       setWhatsappSession(null);
@@ -559,15 +571,16 @@ export default function ChatInbox() {
   
   // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
   const handleNewConversation = useCallback((data: ConversationInList) => {
-    // 🔧 FIX: Ensure platformInfo is properly structured for website conversations
-    if (!data.platformInfo) {
-      // If source exists, use it; otherwise default to 'website'
-      const platform = data.source || 'website';
+    // Realtime payloads often set source='whatsapp' but omit platformInfo.platform — normalize so UI theme applies without refresh.
+    if (!data.platformInfo || !data.platformInfo.platform) {
+      const platform = (data.platformInfo?.platform || data.source || 'website') as NonNullable<ConversationInList['platformInfo']>['platform'];
       data.platformInfo = {
-        platform: platform as any,
-        connectionId: '',
-        platformUserId: '',
-        platformUserAvatar: undefined,
+        ...data.platformInfo,
+        connectionId: data.platformInfo?.connectionId ?? '',
+        platformUserId: data.platformInfo?.platformUserId ?? '',
+        platformUserName: data.platformInfo?.platformUserName,
+        platformUserAvatar: data.platformInfo?.platformUserAvatar,
+        platform,
       };
     }
     
@@ -1065,7 +1078,7 @@ export default function ChatInbox() {
               <div className="flex justify-center items-center py-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : filteredConversations.length > 0 ? (
               filteredConversations.map((convo) => {
-                const platform = convo.platformInfo?.platform || 'website';
+                const platform = getConversationUiPlatform(convo);
                 const isSelected = selectedCustomer === convo.customer.id;
                 return (
                 <div 
@@ -1142,25 +1155,16 @@ export default function ChatInbox() {
                               </TooltipContent>
                             </Tooltip>
                           )}
-                          {convo.platformInfo?.platform ? (
+                          {getConversationUiPlatform(convo) !== 'website' && (
                             <PlatformBadge
-                              platform={convo.platformInfo.platform}
+                              platform={getConversationUiPlatform(convo)}
                               labelOverride={
-                                convo.platformInfo.platform === 'whatsapp'
+                                getConversationUiPlatform(convo) === 'whatsapp'
                                   ? whatsappConnectionBadgeLabel(convo.whatsappConnection)
                                   : undefined
                               }
                             />
-                          ) : convo.source ? (
-                            <PlatformBadge
-                              platform={convo.source}
-                              labelOverride={
-                                convo.source === 'whatsapp'
-                                  ? whatsappConnectionBadgeLabel(convo.whatsappConnection)
-                                  : undefined
-                              }
-                            />
-                          ) : null}
+                          )}
                           {convo.country && <CountryBadge country={convo.country} />}
                         </div>
                       </div>
@@ -1249,12 +1253,12 @@ export default function ChatInbox() {
           className={cn(
             "flex flex-col border rounded-xl max-h-screen transition-colors overflow-hidden",
             // Platform-specific main container backgrounds using CSS classes
-            currentConversation?.platformInfo?.platform === 'whatsapp' 
-              ? "chat-bg-whatsapp border-[#c8bfb4] dark:border-[#1e2a32] shadow-sm" 
-              : currentConversation?.platformInfo?.platform === 'instagram' 
-              ? "chat-bg-instagram border-[#e8d4e0] dark:border-[#3d2a42]" 
-              : currentConversation?.platformInfo?.platform === 'telegram' 
-              ? "chat-bg-telegram border-[#d1d5db] dark:border-[#1a2332]" 
+            chatSurfacePlatform === 'whatsapp'
+              ? "chat-bg-whatsapp border-[#c8bfb4] dark:border-[#1e2a32] shadow-sm"
+              : chatSurfacePlatform === 'instagram'
+              ? "chat-bg-instagram border-[#e8d4e0] dark:border-[#3d2a42]"
+              : chatSurfacePlatform === 'telegram'
+              ? "chat-bg-telegram border-[#d1d5db] dark:border-[#1a2332]"
               : "chat-bg-website border-border"
           )}
         >
@@ -1281,12 +1285,12 @@ export default function ChatInbox() {
                       <SessionCountdownTimer sessionInfo={whatsappSessionInfo} ... />
                     )}
                     */}
-                    {currentConversation?.platformInfo?.platform && (
+                    {chatSurfacePlatform !== 'website' && (
                       <PlatformBadge
-                        platform={currentConversation.platformInfo.platform}
+                        platform={chatSurfacePlatform}
                         labelOverride={
-                          currentConversation.platformInfo.platform === 'whatsapp'
-                            ? whatsappConnectionBadgeLabel(currentConversation.whatsappConnection)
+                          chatSurfacePlatform === 'whatsapp'
+                            ? whatsappConnectionBadgeLabel(currentConversation?.whatsappConnection)
                             : undefined
                         }
                       />
@@ -1469,11 +1473,11 @@ export default function ChatInbox() {
                 className={cn(
                   "flex-1 p-3 sm:p-6 space-y-2 overflow-y-auto scrollbar-hide relative",
                   // Platform-specific backgrounds with authentic patterns using CSS classes
-                  currentConversation?.platformInfo?.platform === 'whatsapp' 
+                  chatSurfacePlatform === 'whatsapp'
                     ? "chat-bg-whatsapp"
-                    : currentConversation?.platformInfo?.platform === 'instagram'
+                    : chatSurfacePlatform === 'instagram'
                     ? "chat-bg-instagram"
-                    : currentConversation?.platformInfo?.platform === 'telegram'
+                    : chatSurfacePlatform === 'telegram'
                     ? "chat-bg-telegram"
                     : "chat-bg-website"
                 )}
@@ -1483,7 +1487,7 @@ export default function ChatInbox() {
                   {messagesData?.hasMore && messagesData.status !== 'loading' && (<Button variant="link" onClick={handleLoadMoreMessages}>{t('chatInbox.loadMoreMessages')}</Button>)}
                 </div>
                 {Object.entries(groupedMessages).map(([date, group]) => {
-                  const platform = currentConversation?.platformInfo?.platform || 'website';
+                  const platform = chatSurfacePlatform;
                   const connectionIdFromConversation = currentConversation?.platformInfo?.connectionId;
                   return (
                   <div key={date}>
@@ -1912,7 +1916,7 @@ export default function ChatInbox() {
                   </div>
                 )}
                 {/* META: 24h session badge + template selector when outside window */}
-                {currentConversation?.platformInfo?.platform === 'whatsapp' && (
+                {chatSurfacePlatform === 'whatsapp' && (
                   <div className="mb-3 space-y-2">
                     {isCheckingSession ? (
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -2146,7 +2150,7 @@ export default function ChatInbox() {
                         isWaThread ? 'wa-composer-input' : 'rounded-lg bg-muted border-none'
                       )}
                       rows={1} 
-                      disabled={isUploadingImage || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate)}
+                      disabled={isUploadingImage || (chatSurfacePlatform === 'whatsapp' && whatsappSession?.requiresTemplate)}
                     />
                     {(snippetSuggestions.length > 0 || snippetSuggestLoading) && (newMessage || '').trim().startsWith('/') && (
                       <div className="absolute bottom-full left-0 right-0 mb-1 max-h-[220px] overflow-y-auto rounded-lg border bg-popover text-popover-foreground z-50 py-1">
@@ -2180,7 +2184,7 @@ export default function ChatInbox() {
                         ? 'rounded-full bg-[#25D366] text-white hover:bg-[#20bd5a] shadow-sm border-0'
                         : 'bg-primary hover:bg-primary/90'
                     )}
-                    disabled={isUploadingImage || (whatsappSession?.requiresTemplate && currentConversation?.platformInfo?.platform === 'whatsapp') || (!newMessage.trim() && !selectedImageFile)}
+                    disabled={isUploadingImage || (whatsappSession?.requiresTemplate && chatSurfacePlatform === 'whatsapp') || (!newMessage.trim() && !selectedImageFile)}
                   >
                     {isUploadingImage ? (
                       <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />

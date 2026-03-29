@@ -160,7 +160,19 @@ export default function DashboardLayout() {
     const uniqueConversations = allCurrentConversations.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i);
     const isNewConversation = conversationId ? !uniqueConversations.some(c => c.id === conversationId) : true;
 
-    dispatch(addRealtimeMessage({ customerId: String(customerId), message: formattedMessage }));
+    const conversationSource =
+      typeof data.source === 'string' && data.source.trim()
+        ? data.source.trim()
+        : typeof data.metadata?.platform === 'string' && data.metadata.platform.trim()
+          ? String(data.metadata.platform).trim()
+          : undefined;
+    dispatch(
+      addRealtimeMessage({
+        customerId: String(customerId),
+        message: formattedMessage,
+        ...(conversationSource ? { conversationSource } : {}),
+      })
+    );
 
     // Sound only for the right audience: business = unassigned only; agent = assigned to me AND conversation is in my department (Support vs Sales).
     if (!formattedMessage.isInternalNote) {
@@ -177,12 +189,29 @@ export default function DashboardLayout() {
 
     if (isNewConversation && conversationId && (sender === 'customer' || sender === 'system' || sender === 'ai')) {
       if (user.role === 'business') {
-          dispatch(addNewCustomer({ id: conversationId, customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') }, preview: message, latestMessageTimestamp: new Date().toISOString(), status: 'ai_only' }));
+        dispatch(
+          addNewCustomer({
+            id: conversationId,
+            customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') },
+            preview: message,
+            latestMessageTimestamp: data.createdAt ?? data.timestamp ?? new Date().toISOString(),
+            status: 'ai_only',
+            ...(conversationSource ? { source: conversationSource } : {}),
+          })
+        );
       }
     }
 
-    if (!isNewConversation && conversationId) {
-        dispatch(updateConversationPreview({ conversationId: String(conversationId), preview: message, latestMessageTimestamp: data.createdAt ?? data?.timestamp ?? new Date().toISOString() }));
+    if (!isNewConversation && conversationId && user.role === 'agent') {
+      dispatch(
+        updateConversationPreview({
+          conversationId: String(conversationId),
+          preview: message,
+          latestMessageTimestamp: data.createdAt ?? data?.timestamp ?? new Date().toISOString(),
+          ...(conversationSource ? { conversationSource } : {}),
+          messageMetadata: data.metadata ?? undefined,
+        })
+      );
     }
     
     if (sender === 'customer') {

@@ -66,6 +66,7 @@ import SecureDocumentPreview from "@/components/custom/SecureDocumentPreview";
 import SimpleVoiceNote from "@/components/custom/SimpleVoiceNote";
 import { isMetaWhatsAppCloudApiSession } from "@/utils/whatsappSession";
 import { whatsappConnectionBadgeLabel, isWhapiLinkedWhatsApp, whapiQuoteMessageIdFromMessage } from "@/utils/whatsappInboxLabels";
+import { getConversationUiPlatform } from "@/utils/conversationUiPlatform";
 import WhapiInboxToolbar from "@/components/chatInbox/WhapiInboxToolbar";
 import MessageQuotedPreview from "@/components/chatInbox/MessageQuotedPreview";
 import { putWhapiMessageReaction } from "@/api/whapiInboxApi";
@@ -353,6 +354,12 @@ export default function AgentInbox() {
     if (!Array.isArray(conversations)) return null; 
     return conversations.find((c) => c.customer?.id === selectedCustomer); 
   }, [conversations, selectedCustomer]);
+
+  useEffect(() => {
+    if (!selectedCustomer) return;
+    const inList = Array.isArray(conversations) && conversations.some((c) => c.customer?.id === selectedCustomer);
+    if (!inList) setSelectedCustomer(null);
+  }, [conversations, selectedCustomer]);
   
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== agentId) : [], [agents, agentId]);
   const offlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'offline' && agent._id !== agentId) : [], [agents, agentId]);
@@ -375,19 +382,22 @@ export default function AgentInbox() {
     return null as string | null;
   }, [messagesData?.list]);
 
-  const isWhapiWaThread = useMemo(
-    () =>
-      currentConversation?.platformInfo?.platform === 'whatsapp' &&
-      isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection),
-    [currentConversation?.platformInfo?.platform, currentConversation?.whatsappConnection]
-  );
-
   const isWaThread = useMemo(
     () =>
       String(currentConversation?.platformInfo?.platform || (currentConversation as any)?.source || '')
         .toLowerCase()
         .trim() === 'whatsapp',
     [currentConversation]
+  );
+
+  const chatSurfacePlatform = useMemo(
+    () => getConversationUiPlatform(currentConversation ?? null),
+    [currentConversation]
+  );
+
+  const isWhapiWaThread = useMemo(
+    () => isWaThread && isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection),
+    [isWaThread, currentConversation?.whatsappConnection]
   );
 
   useEffect(() => {
@@ -508,7 +518,7 @@ export default function AgentInbox() {
   // META: Fetch WhatsApp 24h session (and templates for Meta only); hide 24h/opt-in UI for Unipile (same as ChatInbox)
   useEffect(() => {
     const conv = conversations.find((c) => c.customer?.id === selectedCustomer);
-    const platform = conv?.platformInfo?.platform;
+    const platform = getConversationUiPlatform(conv ?? null);
     const connectionId = conv?.platformInfo?.connectionId;
     if (!conv?.id || platform !== 'whatsapp') {
       setWhatsappSession(null);
@@ -791,15 +801,31 @@ export default function AgentInbox() {
       metadata: data.metadata ?? {},
       status: data.status,
     };
-    dispatch(addRealtimeMessage({ customerId: String(customerId), message: formattedMessage }));
+    const conversationSource =
+      typeof data.source === 'string' && data.source.trim()
+        ? data.source.trim()
+        : typeof data.metadata?.platform === 'string' && data.metadata.platform.trim()
+          ? String(data.metadata.platform).trim()
+          : undefined;
+    dispatch(
+      addRealtimeMessage({
+        customerId: String(customerId),
+        message: formattedMessage,
+        ...(conversationSource ? { conversationSource } : {}),
+      })
+    );
     if (conversationId) {
       const inList = conversations.some(c => c.id === String(conversationId));
       if (inList) {
-        dispatch(updateConversationPreview({
-          conversationId: String(conversationId),
-          preview: messageText,
-          latestMessageTimestamp: data.createdAt ?? data.timestamp ?? new Date().toISOString(),
-        }));
+        dispatch(
+          updateConversationPreview({
+            conversationId: String(conversationId),
+            preview: messageText,
+            latestMessageTimestamp: data.createdAt ?? data.timestamp ?? new Date().toISOString(),
+            ...(conversationSource ? { conversationSource } : {}),
+            messageMetadata: formattedMessage.metadata ?? undefined,
+          })
+        );
       } else {
         // Conversation not in list (e.g. closed chat reopened by customer) — refetch open list so it appears
         scheduleRefetchOpenAgentListFromSocket();
@@ -896,7 +922,7 @@ export default function AgentInbox() {
     const socket = getSocket();
     if (socket?.connected && selectedCustomer) socket.emit('agentStoppedTyping', { customerId: selectedCustomer });
 
-    const platform = currentConversation.platformInfo?.platform || 'website';
+    const platform = getConversationUiPlatform(currentConversation);
     const messageText = newMessage.trim();
     let imageUrl: string | null = null;
     
@@ -1259,7 +1285,7 @@ export default function AgentInbox() {
               <div className="flex justify-center items-center py-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
           ) : conversations.length > 0 ? (
               conversations.filter((convo) => convo.customer?.id).map((convo) => {
-                const platform = convo.platformInfo?.platform || 'website';
+                const platform = getConversationUiPlatform(convo);
                 const isSelected = selectedCustomer === convo.customer!.id;
                 return (
                 <div
@@ -1303,11 +1329,11 @@ export default function AgentInbox() {
                               </TooltipContent>
                             </Tooltip>
                           )}
-                          {convo.platformInfo?.platform && (
+                          {getConversationUiPlatform(convo) !== 'website' && (
                             <PlatformBadge
-                              platform={convo.platformInfo.platform}
+                              platform={getConversationUiPlatform(convo)}
                               labelOverride={
-                                convo.platformInfo.platform === 'whatsapp'
+                                getConversationUiPlatform(convo) === 'whatsapp'
                                   ? whatsappConnectionBadgeLabel(convo.whatsappConnection)
                                   : undefined
                               }
@@ -1399,12 +1425,12 @@ export default function AgentInbox() {
           className={cn(
             "flex flex-col border rounded-xl max-h-screen transition-colors overflow-hidden min-h-0",
             // Platform-specific main container backgrounds (same as ChatInbox)
-            currentConversation?.platformInfo?.platform === 'whatsapp' 
-              ? "chat-bg-whatsapp border-[#c8bfb4] dark:border-[#1e2a32] shadow-sm" 
-              : currentConversation?.platformInfo?.platform === 'instagram' 
-              ? "chat-bg-instagram border-[#e8d4e0] dark:border-[#3d2a42]" 
-              : currentConversation?.platformInfo?.platform === 'telegram' 
-              ? "chat-bg-telegram border-[#d1d5db] dark:border-[#1a2332]" 
+            chatSurfacePlatform === 'whatsapp'
+              ? "chat-bg-whatsapp border-[#c8bfb4] dark:border-[#1e2a32] shadow-sm"
+              : chatSurfacePlatform === 'instagram'
+              ? "chat-bg-instagram border-[#e8d4e0] dark:border-[#3d2a42]"
+              : chatSurfacePlatform === 'telegram'
+              ? "chat-bg-telegram border-[#d1d5db] dark:border-[#1a2332]"
               : "chat-bg-website border-border"
           )}
         >
@@ -1426,12 +1452,12 @@ export default function AgentInbox() {
                     >
                       {currentConversation?.customer?.name}
                     </h2>
-                    {currentConversation?.platformInfo?.platform && (
+                    {chatSurfacePlatform !== 'website' && (
                       <PlatformBadge
-                        platform={currentConversation.platformInfo.platform}
+                        platform={chatSurfacePlatform}
                         labelOverride={
-                          currentConversation.platformInfo.platform === 'whatsapp'
-                            ? whatsappConnectionBadgeLabel(currentConversation.whatsappConnection)
+                          chatSurfacePlatform === 'whatsapp'
+                            ? whatsappConnectionBadgeLabel(currentConversation?.whatsappConnection)
                             : undefined
                         }
                       />
@@ -1659,11 +1685,11 @@ export default function AgentInbox() {
               className={cn(
                 "flex-1 min-h-0 p-3 sm:p-6 space-y-2 overflow-y-auto scrollbar-hide relative",
                 // Platform-specific backgrounds (same as ChatInbox)
-                currentConversation?.platformInfo?.platform === 'whatsapp' 
+                chatSurfacePlatform === 'whatsapp'
                   ? "chat-bg-whatsapp"
-                  : currentConversation?.platformInfo?.platform === 'instagram'
+                  : chatSurfacePlatform === 'instagram'
                   ? "chat-bg-instagram"
-                  : currentConversation?.platformInfo?.platform === 'telegram'
+                  : chatSurfacePlatform === 'telegram'
                   ? "chat-bg-telegram"
                   : "chat-bg-website"
               )}
@@ -1673,7 +1699,7 @@ export default function AgentInbox() {
                 {messagesData?.hasMore && messagesData.status !== 'loading' && (<Button variant="link" onClick={handleLoadMoreMessages}>{t('agentInbox.loadMoreMessages')}</Button>)}
               </div>
               {Object.entries(groupedMessages).map(([date, group]) => {
-                const platform = currentConversation?.platformInfo?.platform || 'website';
+                const platform = chatSurfacePlatform;
                 const connectionIdFromConversation = currentConversation?.platformInfo?.connectionId;
                 return (
                   <div key={date}>
@@ -2034,7 +2060,7 @@ export default function AgentInbox() {
                 })}
               </div>
               {/* META: 24h session + opt-in for WhatsApp (hidden for Unipile – same logic as ChatInbox) */}
-              {currentConversation?.platformInfo?.platform === 'whatsapp' && (
+              {chatSurfacePlatform === 'whatsapp' && (
                 <div className="px-3 sm:px-6 pt-2 space-y-2 border-t border-border/50">
                   {isCheckingSession ? (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -2270,7 +2296,7 @@ export default function AgentInbox() {
                     )}
                     rows={1} 
                     spellCheck={true}
-                    disabled={currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && isMetaWhatsAppCloudApiSession(whatsappSession?.source)}
+                    disabled={chatSurfacePlatform === 'whatsapp' && whatsappSession?.requiresTemplate && isMetaWhatsAppCloudApiSession(whatsappSession?.source)}
                   />
                   {(snippetSuggestions.length > 0 || snippetSuggestLoading) && (newMessage || '').trim().startsWith('/') && (
                     <div className="absolute bottom-full left-0 right-0 mb-1 max-h-[220px] overflow-y-auto rounded-lg border bg-popover text-popover-foreground z-50 py-1">
@@ -2336,7 +2362,7 @@ export default function AgentInbox() {
                   <Button 
                     onClick={handleSendMessage} 
                     size="icon" 
-                    disabled={isUploadingImage || (currentConversation?.platformInfo?.platform === 'whatsapp' && whatsappSession?.requiresTemplate && isMetaWhatsAppCloudApiSession(whatsappSession?.source)) || (!newMessage.trim() && !selectedImageFile)}
+                    disabled={isUploadingImage || (chatSurfacePlatform === 'whatsapp' && whatsappSession?.requiresTemplate && isMetaWhatsAppCloudApiSession(whatsappSession?.source)) || (!newMessage.trim() && !selectedImageFile)}
                     className={cn(
                       'absolute right-2 sm:right-3 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9 disabled:opacity-50',
                       isWaThread

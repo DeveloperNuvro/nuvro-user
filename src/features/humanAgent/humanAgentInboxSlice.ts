@@ -3,6 +3,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { api } from "@/api/axios";
 import { ConversationInList } from "../chatInbox/chatInboxSlice";
+import { mergeConversationWithSocketHints, normalizeConversationPlatformFields } from "@/utils/conversationUiPlatform";
 
 export type AgentInboxQueueCounts = { mine: number; unassigned: number; all: number };
 
@@ -158,40 +159,60 @@ const agentInboxSlice = createSlice({
             state.inboxQueueCounts = null;
         },
         addAssignedConversation: (state, action: PayloadAction<ConversationInList>) => {
-            const exists = state.conversations.some(c => c.id === action.payload.id);
+            const normalized = normalizeConversationPlatformFields(action.payload);
+            const exists = state.conversations.some((c) => c.id === normalized.id);
             if (!exists) {
-                state.conversations.unshift(action.payload);
+                state.conversations.unshift(normalized);
             }
         },
         removeConversation: (state, action: PayloadAction<{ conversationId: string }>) => {
             state.conversations = state.conversations.filter(c => c.id !== action.payload.conversationId);
         },
   
-        updateConversationPreview: (state, action: PayloadAction<{ conversationId: string; preview: string; latestMessageTimestamp: string }>) => {
-            const { conversationId, preview, latestMessageTimestamp } = action.payload;
-            const conversationIndex = state.conversations.findIndex(c => c.id === conversationId);
+        updateConversationPreview: (
+            state,
+            action: PayloadAction<{
+                conversationId: string;
+                preview: string;
+                latestMessageTimestamp: string;
+                conversationSource?: string;
+                messageMetadata?: Record<string, unknown> | null;
+            }>
+        ) => {
+            const {
+                conversationId,
+                preview,
+                latestMessageTimestamp,
+                conversationSource,
+                messageMetadata,
+            } = action.payload;
+            const conversationIndex = state.conversations.findIndex((c) => c.id === conversationId);
 
             if (conversationIndex !== -1) {
-            
+                const merged = mergeConversationWithSocketHints(state.conversations[conversationIndex], {
+                    topLevelSource: conversationSource,
+                    metadata: messageMetadata,
+                });
                 const conversationToUpdate = {
-                    ...state.conversations[conversationIndex],
+                    ...merged,
                     preview,
                     latestMessageTimestamp,
                 };
-                
-          
-                const filteredConversations = state.conversations.filter(c => c.id !== conversationId);
-                
-                
+
+                const filteredConversations = state.conversations.filter((c) => c.id !== conversationId);
+
                 state.conversations = [conversationToUpdate, ...filteredConversations];
             }
         },
         // 🔧 NEW: Update conversation with enhanced features (unreadCount, priority, tags, notes, etc.)
         updateConversationEnhanced: (state, action: PayloadAction<{ conversationId: string; [key: string]: any }>) => {
             const { conversationId, ...updates } = action.payload;
-            const convoIndex = state.conversations.findIndex(c => c.id === conversationId);
+            const convoIndex = state.conversations.findIndex((c) => c.id === conversationId);
             if (convoIndex !== -1) {
-                state.conversations[convoIndex] = { ...state.conversations[convoIndex], ...updates };
+                state.conversations[convoIndex] = normalizeConversationPlatformFields({
+                    ...state.conversations[convoIndex],
+                    ...updates,
+                });
             }
         },
     },
@@ -202,7 +223,7 @@ const agentInboxSlice = createSlice({
             })
             .addCase(fetchAgentConversations.fulfilled, (state, action) => {
                 const { conversations, page, totalPages, counts } = action.payload;
-                state.conversations = conversations;
+                state.conversations = conversations.map(normalizeConversationPlatformFields);
                 state.currentPage = page;
                 state.totalPages = totalPages;
                 if (counts) {
