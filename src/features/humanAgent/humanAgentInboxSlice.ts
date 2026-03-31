@@ -5,7 +5,7 @@ import { api } from "@/api/axios";
 import { ConversationInList } from "../chatInbox/chatInboxSlice";
 import { mergeConversationWithSocketHints, normalizeConversationPlatformFields } from "@/utils/conversationUiPlatform";
 
-export type AgentInboxQueueCounts = { mine: number; unassigned: number; all: number };
+export type AgentInboxQueueCounts = { mine: number; team: number; unassigned: number; all: number };
 
 // --- STATE INTERFACE ---
 interface AgentInboxState {
@@ -14,7 +14,7 @@ interface AgentInboxState {
     error: string | null;
     currentPage: number;
     totalPages: number;
-    /** Open-conversation counts for All / Mine / Unassigned (from API when includeCounts=true). */
+    /** Open counts for All / Mine / Team / Unassigned (API). */
     inboxQueueCounts: AgentInboxQueueCounts | null;
 }
 
@@ -41,7 +41,7 @@ export const fetchAgentConversations = createAsyncThunk<
         searchQuery?: string;
         status: 'open' | 'closed';
         platform?: 'all' | 'whatsapp' | 'instagram' | 'telegram' | 'website';
-        inboxView?: 'all' | 'mine' | 'unassigned';
+        inboxView?: 'all' | 'mine' | 'team' | 'unassigned';
         includeCounts?: boolean;
     },
     { rejectValue: string }
@@ -106,9 +106,14 @@ export const fetchAgentConversations = createAsyncThunk<
             const counts: AgentInboxQueueCounts | undefined =
                 rawCounts &&
                 typeof rawCounts.mine === 'number' &&
-                typeof rawCounts.unassigned === 'number' &&
-                typeof rawCounts.all === 'number'
-                    ? { mine: rawCounts.mine, unassigned: rawCounts.unassigned, all: rawCounts.all }
+                typeof rawCounts.all === 'number' &&
+                typeof rawCounts.unassigned === 'number'
+                    ? {
+                          mine: rawCounts.mine,
+                          team: typeof rawCounts.team === 'number' ? rawCounts.team : 0,
+                          unassigned: rawCounts.unassigned,
+                          all: rawCounts.all,
+                      }
                     : undefined;
 
             return { page, conversations, totalPages, ...(counts ? { counts } : {}) };
@@ -215,6 +220,24 @@ const agentInboxSlice = createSlice({
                 });
             }
         },
+        /** Real-time tab badges (Mine / Team / Unassigned / All) from socket `agentInboxCountsUpdated`. */
+        setInboxQueueCountsFromSocket: (state, action: PayloadAction<AgentInboxQueueCounts>) => {
+            const c = action.payload;
+            if (
+                c &&
+                typeof c.mine === 'number' &&
+                typeof c.team === 'number' &&
+                typeof c.unassigned === 'number' &&
+                typeof c.all === 'number'
+            ) {
+                state.inboxQueueCounts = {
+                    mine: c.mine,
+                    team: c.team,
+                    unassigned: c.unassigned,
+                    all: c.all,
+                };
+            }
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -245,6 +268,7 @@ export const {
     resetAgentConversations,
     updateConversationPreview, // <-- Exported
     updateConversationEnhanced, // 🔧 NEW: Exported
+    setInboxQueueCountsFromSocket,
 } = agentInboxSlice.actions;
 
 export default agentInboxSlice.reducer;

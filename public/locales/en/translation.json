@@ -1051,9 +1051,13 @@
     "inboxView": {
       "all": "All",
       "mine": "Mine",
+      "team": "Team",
       "unassigned": "Unassigned"
     },
     "inboxViewCountHint": "Open conversations in this queue",
+    "inboxViewTeamHint": "Open chats in your channels waiting for an agent to claim them.",
+    "inboxViewUnassignedHint": "Chats where the customer has not picked a department or bot option yet (or only sent free text).",
+    "inboxQueueExplainer": "All: every open chat. Mine: assigned to you. Team: your channels, waiting to be claimed. Unassigned: the customer has not finished the bot department step yet.",
     "claimConversation": "Claim conversation",
     "releaseToQueue": "Release to queue",
     "assignTo": "Assign to",
@@ -1115,7 +1119,7 @@
     },
     "closeAllOpenButton": "Close all open",
     "closeAllOpenConfirmTitle": "Close all open conversations?",
-    "closeAllOpenConfirmDescription": "This closes every open conversation in your inbox (assigned to you or unassigned on your channels). Customers may get a “chat closed” message on supported channels.",
+    "closeAllOpenConfirmDescription": "This closes every open conversation in your inbox: assigned to you, waiting in your team queue, or still on the bot’s department step. Customers may get a “chat closed” message on supported channels.",
     "closeAllOpenConfirmAction": "Close all",
     "closeAllOpenSuccess": "Closed {{count}} conversation(s).",
     "closeAllOpenSomeFailed": "{{count}} conversation(s) could not be closed.",

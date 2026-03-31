@@ -1002,9 +1002,13 @@
     "inboxView": {
       "all": "Todas",
       "mine": "Mías",
+      "team": "Equipo",
       "unassigned": "Sin asignar"
     },
     "inboxViewCountHint": "Conversaciones abiertas en esta cola",
+    "inboxViewTeamHint": "Chats abiertos en tus canales esperando a que un agente los tome.",
+    "inboxViewUnassignedHint": "Chats donde el cliente aún no eligió departamento u opción del bot (o solo escribió texto libre).",
+    "inboxQueueExplainer": "Todas: chats abiertos. Mías: asignadas a ti. Equipo: tus canales, pendientes de reclamar. Sin asignar: el cliente aún no terminó el paso de departamento del bot.",
     "claimConversation": "Tomar conversación",
     "releaseToQueue": "Devolver a la cola del equipo",
     "assignTo": "Asignar a",
@@ -1066,7 +1070,7 @@
     },
     "closeAllOpenButton": "Cerrar todas las abiertas",
     "closeAllOpenConfirmTitle": "¿Cerrar todas las conversaciones abiertas?",
-    "closeAllOpenConfirmDescription": "Se cerrarán todas las conversaciones abiertas de tu bandeja (asignadas a ti o sin asignar en tus canales). Los clientes pueden recibir un mensaje de “chat cerrado” en canales compatibles.",
+    "closeAllOpenConfirmDescription": "Se cerrarán todas las conversaciones abiertas de tu bandeja: tuyas, en cola de tu equipo o aún en el paso del bot de departamento. Los clientes pueden recibir un mensaje de “chat cerrado” en canales compatibles.",
     "closeAllOpenConfirmAction": "Cerrar todas",
     "closeAllOpenSuccess": "Se cerraron {{count}} conversación(es).",
     "closeAllOpenSomeFailed": "No se pudieron cerrar {{count}} conversación(es).",

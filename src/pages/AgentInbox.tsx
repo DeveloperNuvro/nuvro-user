@@ -20,7 +20,17 @@ import toast from 'react-hot-toast';
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from "@/api/axios";
 import { normalizeApiMediaUrl } from "@/lib/audioUrlNormalize";
-import { fetchAgentConversations, resetAgentConversations, updateConversationEnhanced, addAssignedConversation, removeConversation, updateConversationPreview, closeAllOpenAgentConversations } from "../features/humanAgent/humanAgentInboxSlice";
+import {
+  fetchAgentConversations,
+  resetAgentConversations,
+  updateConversationEnhanced,
+  addAssignedConversation,
+  removeConversation,
+  updateConversationPreview,
+  closeAllOpenAgentConversations,
+  setInboxQueueCountsFromSocket,
+  type AgentInboxQueueCounts,
+} from "../features/humanAgent/humanAgentInboxSlice";
 import { ConversationInList } from "../features/chatInbox/chatInboxSlice";
 import {
   fetchMessagesByCustomer,
@@ -252,7 +262,7 @@ export default function AgentInbox() {
   const [searchInput, setSearchInput] = useState("");
   const [activeFilter, setActiveFilter] = useState<'open' | 'closed'>('open');
   const [activePlatform, setActivePlatform] = useState<'all' | 'website' | 'whatsapp'>('all');
-  const [activeInboxView, setActiveInboxView] = useState<'all' | 'mine' | 'unassigned'>('all');
+  const [activeInboxView, setActiveInboxView] = useState<'all' | 'mine' | 'team' | 'unassigned'>('all');
   const [isTyping] = useState<{ [key: string]: boolean }>({});
   // 🔧 NEW: Dialog states for enhanced features
   const [priorityDialogOpen, setPriorityDialogOpen] = useState(false);
@@ -337,7 +347,7 @@ export default function AgentInbox() {
     debouncedSearchQuery: '',
     activeFilter: 'open' as 'open' | 'closed',
     activePlatform: 'all' as 'all' | 'website' | 'whatsapp',
-    activeInboxView: 'all' as 'all' | 'mine' | 'unassigned',
+    activeInboxView: 'all' as 'all' | 'mine' | 'team' | 'unassigned',
     /** Must match Redux list pagination so socket/reconnect refetch does not replace the list with page 1 only (drops open chat from page 2+ and unmounts the composer). */
     listCurrentPage: 1,
   });
@@ -373,15 +383,35 @@ export default function AgentInbox() {
     }, 650);
   }, [dispatch]);
 
+  /** Backend emits after assign / release / transfer (see agentInboxCounts.ts). */
+  const handleAgentInboxCountsUpdated = useCallback(
+    (data: { businessId?: string; counts?: AgentInboxQueueCounts }) => {
+      if (!businessId || !data?.counts) return;
+      if (String(data.businessId) !== String(businessId)) return;
+      dispatch(setInboxQueueCountsFromSocket(data.counts));
+    },
+    [businessId, dispatch]
+  );
+
+  const handleAgentInboxCountsRefresh = useCallback(
+    (data: { businessId?: string }) => {
+      if (!businessId || !data?.businessId) return;
+      if (String(data.businessId) !== String(businessId)) return;
+      scheduleRefetchOpenAgentListFromSocket();
+    },
+    [businessId, scheduleRefetchOpenAgentListFromSocket]
+  );
+
   // 🔧 OPTIMIZED: Memoize conversation lookup to avoid repeated finds
   const currentConversation = useMemo(() => { 
     if (!Array.isArray(conversations)) return null; 
     return conversations.find((c) => c.customer?.id === selectedCustomer); 
   }, [conversations, selectedCustomer]);
 
+  // Only drop selection after a successful list load. Avoid idle/empty during reset→fetch (that briefly clears rows and set status idle).
   useEffect(() => {
     if (!selectedCustomer) return;
-    if (agentInboxStatus === 'loading') return;
+    if (agentInboxStatus !== 'succeeded') return;
     const inList = Array.isArray(conversations) && conversations.some((c) => c.customer?.id === selectedCustomer);
     if (!inList) setSelectedCustomer(null);
   }, [conversations, selectedCustomer, agentInboxStatus]);
@@ -717,7 +747,7 @@ export default function AgentInbox() {
   // 🔧 OPTIMIZED: Handle conversation updates
   const handleConversationUpdated = useCallback(
     (data: any) => {
-      const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
+      const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status, channelId, queueState } = data;
       console.log('🔔 AgentInbox: Received conversationUpdated event:', data);
       console.log('Current agentId:', agentId);
       console.log('Event assignedAgentId:', assignedAgentId);
@@ -726,6 +756,11 @@ export default function AgentInbox() {
       const view = activeInboxViewRef.current;
       const mine = String(agentId || '');
       const assignee = assignedAgentId != null ? String(assignedAgentId) : '';
+      const channelSet =
+        channelId != null &&
+        String(channelId).trim() !== '' &&
+        String(channelId).trim().toLowerCase() !== 'null' &&
+        String(channelId).trim().toLowerCase() !== 'undefined';
 
       if (conversation || assignee === mine) {
         if (conversation) {
@@ -734,10 +769,30 @@ export default function AgentInbox() {
             scheduleRefetchOpenAgentListFromSocket();
             return;
           }
-          if (view === 'unassigned' && assignee !== '') {
-            dispatch(removeConversation({ conversationId }));
-            scheduleRefetchOpenAgentListFromSocket();
-            return;
+          const qs = queueState != null ? String(queueState) : null;
+          if (view === 'unassigned') {
+            if (assignee !== '') {
+              dispatch(removeConversation({ conversationId }));
+              scheduleRefetchOpenAgentListFromSocket();
+              return;
+            }
+            if (qs != null && qs !== 'pre_department') {
+              dispatch(removeConversation({ conversationId }));
+              scheduleRefetchOpenAgentListFromSocket();
+              return;
+            }
+          }
+          if (view === 'team') {
+            if (assignee !== '') {
+              dispatch(removeConversation({ conversationId }));
+              scheduleRefetchOpenAgentListFromSocket();
+              return;
+            }
+            if (qs != null && qs !== 'team_queue') {
+              dispatch(removeConversation({ conversationId }));
+              scheduleRefetchOpenAgentListFromSocket();
+              return;
+            }
           }
           console.log('✅ AgentInbox: Conversation found, updating...');
           dispatch(
@@ -749,8 +804,15 @@ export default function AgentInbox() {
               notes,
               assignedAgentId,
               status,
+              ...(channelSet ? { channelId: String(channelId) } : {}),
+              ...(qs != null
+                ? { queueState: qs as ConversationInList['queueState'] }
+                : {}),
             })
           );
+          if (view === 'unassigned' && qs == null && channelSet) {
+            scheduleRefetchOpenAgentListFromSocket();
+          }
         } else {
           console.log('✅ AgentInbox: Conversation not in list (reopened?), refetching open list');
           scheduleRefetchOpenAgentListFromSocket();
@@ -869,6 +931,8 @@ export default function AgentInbox() {
     socket.on('conversationAssigned', handleConversationAssigned);
     socket.on('conversationRemoved', handleConversationRemoved);
     socket.on('conversationClosedByAgent', handleConversationClosedByAgent);
+    socket.on('agentInboxCountsUpdated', handleAgentInboxCountsUpdated);
+    socket.on('agentInboxCountsRefresh', handleAgentInboxCountsRefresh);
 
     return () => {
       socket.off('newMessage', handleNewMessage);
@@ -877,8 +941,20 @@ export default function AgentInbox() {
       socket.off('conversationAssigned', handleConversationAssigned);
       socket.off('conversationRemoved', handleConversationRemoved);
       socket.off('conversationClosedByAgent', handleConversationClosedByAgent);
+      socket.off('agentInboxCountsUpdated', handleAgentInboxCountsUpdated);
+      socket.off('agentInboxCountsRefresh', handleAgentInboxCountsRefresh);
     };
-  }, [agentId, handleNewMessage, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned, handleConversationRemoved, handleConversationClosedByAgent]);
+  }, [
+    agentId,
+    handleNewMessage,
+    handleNewChatAssigned,
+    handleConversationUpdated,
+    handleConversationAssigned,
+    handleConversationRemoved,
+    handleConversationClosedByAgent,
+    handleAgentInboxCountsUpdated,
+    handleAgentInboxCountsRefresh,
+  ]);
   
   useLayoutEffect(() => { 
     if (!messageListRef.current) return; 
@@ -1226,16 +1302,18 @@ export default function AgentInbox() {
         )}>
           <h1 className="text-2xl font-bold mb-4 px-2">{t('agentInbox.title')}</h1>
 
-          {/* Queue scope: All / Mine / Unassigned (matches GET /agents/my-conversations inboxView) */}
-          <div className="flex items-center gap-1 mb-3 p-1 bg-muted/70 rounded-lg overflow-x-auto scrollbar-hide">
-            {(['all', 'mine', 'unassigned'] as const).map((key) => {
+          {/* Queue scope: All / Mine / Team / Unassigned (matches GET /agents/my-conversations inboxView) */}
+          <div className="flex items-center gap-1 mb-2 p-1 bg-muted/70 rounded-lg overflow-x-auto scrollbar-hide">
+            {(['all', 'mine', 'team', 'unassigned'] as const).map((key) => {
               const openCount =
                 activeFilter === 'open' && inboxQueueCounts
                   ? key === 'all'
                     ? inboxQueueCounts.all
                     : key === 'mine'
                       ? inboxQueueCounts.mine
-                      : inboxQueueCounts.unassigned
+                      : key === 'team'
+                        ? inboxQueueCounts.team
+                        : inboxQueueCounts.unassigned
                   : undefined;
               return (
                 <button
@@ -1249,7 +1327,17 @@ export default function AgentInbox() {
                   title={
                     activeFilter === 'closed'
                       ? undefined
-                      : t('agentInbox.inboxViewCountHint', 'Open conversations in this queue')
+                      : key === 'unassigned'
+                        ? t(
+                            'agentInbox.inboxViewUnassignedHint',
+                            'Chats where the customer has not picked a department or bot option yet (or only sent free text).'
+                          )
+                        : key === 'team'
+                          ? t(
+                              'agentInbox.inboxViewTeamHint',
+                              'Open chats in your channels waiting for an agent to claim them.'
+                            )
+                          : t('agentInbox.inboxViewCountHint', 'Open conversations in this queue')
                   }
                 >
                   {t(`agentInbox.inboxView.${key}`)}
@@ -1262,6 +1350,14 @@ export default function AgentInbox() {
               );
             })}
           </div>
+          {activeFilter === 'open' && (
+            <p className="text-[11px] leading-snug text-muted-foreground px-2 mb-3">
+              {t(
+                'agentInbox.inboxQueueExplainer',
+                'All: every open chat. Mine: assigned to you. Team: your channels, waiting to be claimed. Unassigned: the customer has not finished the bot department step yet.'
+              )}
+            </p>
+          )}
           
           {/* Platform Tabs: All, Website Chat, WhatsApp Chat */}
           <div className="flex items-center gap-1 mb-3 p-1 bg-muted rounded-lg overflow-x-auto scrollbar-hide">

@@ -427,9 +427,10 @@ export default function ChatInbox() {
   const currentConversation = useMemo(() => filteredConversations.find((c) => c.customer.id === selectedCustomer), [filteredConversations, selectedCustomer]);
 
   // When Open/Closed, platform, search, or pagination changes the list, drop selection if that row is no longer shown — avoids stale Redux messages + wrong header/chrome.
+  // Only after succeeded load: resetConversations() leaves status idle + [] briefly before fetch pending; clearing here caused the chat pane to close on select.
   useEffect(() => {
     if (!selectedCustomer) return;
-    if (chatListStatus === 'loading') return;
+    if (chatListStatus !== 'succeeded') return;
     const inList = filteredConversations.some((c) => c.customer?.id === selectedCustomer);
     if (!inList) setSelectedCustomer(null);
   }, [filteredConversations, selectedCustomer, chatListStatus]);

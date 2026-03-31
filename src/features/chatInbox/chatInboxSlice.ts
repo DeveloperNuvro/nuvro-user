@@ -19,6 +19,10 @@ export interface ConversationInList {
     latestMessageTimestamp?: string;
     status: 'live' | 'ticket' | 'ai_only' | 'closed';
     assignedAgentId?: string;
+    /** Set when a team/channel is locked on the conversation (socket or API). */
+    channelId?: string;
+    /** Derived inbox queue bucket from the API (pre-department, team queue, etc.). */
+    queueState?: 'pre_department' | 'team_queue' | 'assigned_to_agent' | 'ticket_queue' | 'ai_only' | 'closed';
     aiReplyDisabled?: boolean;
     platformInfo?: {
         platform: 'whatsapp' | 'instagram' | 'telegram' | 'email' | 'website';
