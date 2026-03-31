@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X, Sparkles, Reply, UserMinus } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Paperclip, X, Sparkles, Reply, UserMinus } from "lucide-react";
 import { cn, toCloudinaryMp3Url } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -31,7 +31,7 @@ import {
   removeOutboundPendingMessage,
 } from "../features/chatInbox/chatInboxSlice";
 import {
-  uploadImage as uploadImageApi,
+  uploadChatAttachment as uploadChatAttachmentApi,
   getConversationSummary as getConversationSummaryApi,
   improveMessage as improveMessageApi,
   sendInternalNote as sendInternalNoteApi,
@@ -49,6 +49,7 @@ import { fetchChannels } from "@/features/channel/channelSlice";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ZoomableImageLightbox } from "@/components/chat/ZoomableImageLightbox";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -224,6 +225,7 @@ const MediaImage = ({ src, alt, proxyUrl, className, onClick }: { src: string | 
       alt={alt} 
       className={className}
       onClick={onClick}
+      draggable={false}
       loading="lazy" // Lazy load images
       decoding="async" // Async decoding for better performance
       onError={() => {
@@ -296,8 +298,27 @@ export default function AgentInbox() {
   // 🔧 NEW: State for image upload
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const pdfObjectUrlRef = useRef<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const revokePdfPreviewUrl = useCallback(() => {
+    if (pdfObjectUrlRef.current) {
+      URL.revokeObjectURL(pdfObjectUrlRef.current);
+      pdfObjectUrlRef.current = null;
+    }
+    setPdfPreviewUrl(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pdfObjectUrlRef.current) {
+        URL.revokeObjectURL(pdfObjectUrlRef.current);
+        pdfObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   const { user }: any = useSelector((state: RootState) => state.auth);
   const { channels } = useSelector((state: RootState) => state.channel);
@@ -317,6 +338,8 @@ export default function AgentInbox() {
     activeFilter: 'open' as 'open' | 'closed',
     activePlatform: 'all' as 'all' | 'website' | 'whatsapp',
     activeInboxView: 'all' as 'all' | 'mine' | 'unassigned',
+    /** Must match Redux list pagination so socket/reconnect refetch does not replace the list with page 1 only (drops open chat from page 2+ and unmounts the composer). */
+    listCurrentPage: 1,
   });
   useEffect(() => {
     listFetchParamsRef.current = {
@@ -324,8 +347,9 @@ export default function AgentInbox() {
       activeFilter,
       activePlatform,
       activeInboxView,
+      listCurrentPage: currentPage,
     };
-  }, [debouncedSearchQuery, activeFilter, activePlatform, activeInboxView]);
+  }, [debouncedSearchQuery, activeFilter, activePlatform, activeInboxView, currentPage]);
 
   /** Coalesce socket-driven full list refetches so Whapi/history bursts do not N× hit GET /agents/my-conversations (each loads Unipile). */
   const socketOpenListRefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -338,7 +362,7 @@ export default function AgentInbox() {
       const p = listFetchParamsRef.current;
       dispatch(
         fetchAgentConversations({
-          page: 1,
+          page: p.listCurrentPage,
           searchQuery: p.debouncedSearchQuery,
           status: p.activeFilter,
           platform: p.activePlatform,
@@ -357,9 +381,10 @@ export default function AgentInbox() {
 
   useEffect(() => {
     if (!selectedCustomer) return;
+    if (agentInboxStatus === 'loading') return;
     const inList = Array.isArray(conversations) && conversations.some((c) => c.customer?.id === selectedCustomer);
     if (!inList) setSelectedCustomer(null);
-  }, [conversations, selectedCustomer]);
+  }, [conversations, selectedCustomer, agentInboxStatus]);
   
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== agentId) : [], [agents, agentId]);
   const offlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'offline' && agent._id !== agentId) : [], [agents, agentId]);
@@ -441,7 +466,7 @@ export default function AgentInbox() {
       const p = listFetchParamsRef.current;
       dispatch(
         fetchAgentConversations({
-          page: 1,
+          page: p.listCurrentPage,
           searchQuery: p.debouncedSearchQuery,
           status: p.activeFilter,
           platform: p.activePlatform,
@@ -869,52 +894,48 @@ export default function AgentInbox() {
     }
   }, [messagesData?.list, isInitialMessageLoad]);
 
-  // 🔧 NEW: Handle image file selection
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    if (!isImage && !isPdf) {
+      toast.error('Please select an image or PDF file');
       return;
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Image size must be less than 10MB');
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error('File size must be less than 16MB');
       return;
     }
 
     setSelectedImageFile(file);
-    
-    // Create preview
+
+    if (isPdf) {
+      setImagePreview(null);
+      revokePdfPreviewUrl();
+      const url = URL.createObjectURL(file);
+      pdfObjectUrlRef.current = url;
+      setPdfPreviewUrl(url);
+      return;
+    }
+    revokePdfPreviewUrl();
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [revokePdfPreviewUrl]);
 
-  // 🔧 NEW: Remove selected image
   const handleRemoveImage = useCallback(() => {
+    revokePdfPreviewUrl();
     setSelectedImageFile(null);
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, []);
-
-  // 🔧 NEW: Upload image to get URL
-  const uploadImage = useCallback(async (file: File): Promise<string> => {
-    try {
-      const result = await uploadImageApi(file);
-      return result.url;
-    } catch (error: any) {
-      console.error('Failed to upload image:', error);
-      throw error;
-    }
-  }, []);
+  }, [revokePdfPreviewUrl]);
 
   const handleSendMessage = useCallback(async () => {
     if ((!newMessage.trim() && !selectedImageFile) || !selectedCustomer || !businessId || !currentConversation) return;
@@ -924,15 +945,21 @@ export default function AgentInbox() {
 
     const platform = getConversationUiPlatform(currentConversation);
     const messageText = newMessage.trim();
-    let imageUrl: string | null = null;
-    
-    // 🔧 NEW: Upload image if selected
+    let mediaUrl: string | null = null;
+    let uploadedKind: 'image' | 'document' | null = null;
+    let documentFilename: string | undefined;
+
     if (selectedImageFile) {
       setIsUploadingImage(true);
       try {
-        imageUrl = await uploadImage(selectedImageFile);
+        const result = await uploadChatAttachmentApi(selectedImageFile);
+        mediaUrl = result.url;
+        uploadedKind = result.messageType;
+        if (result.messageType === 'document') {
+          documentFilename = result.fileName || selectedImageFile.name;
+        }
       } catch (error: any) {
-        toast.error(error.response?.data?.message || 'Failed to upload image');
+        toast.error(error.response?.data?.message || 'Failed to upload file');
         setIsUploadingImage(false);
         return;
       }
@@ -965,13 +992,15 @@ export default function AgentInbox() {
     // Instagram, WhatsApp, Telegram — same endpoint as business Chat Inbox (Unipile / Whapi / Meta routing on server)
     if (platform === 'instagram' || platform === 'whatsapp' || platform === 'telegram') {
       const clientRequestId = crypto.randomUUID();
-      const outboundPreview = messageText || (imageUrl ? '📷 Image' : '');
+      const outboundPreview =
+        messageText ||
+        (mediaUrl ? (uploadedKind === 'document' ? '📄 Document' : '📷 Image') : '');
       dispatch(
         addOutboundPendingMessage({
           customerId: selectedCustomer,
           clientRequestId,
           text: outboundPreview,
-          messageType: imageUrl ? 'image' : 'text',
+          messageType: mediaUrl ? (uploadedKind === 'document' ? 'document' : 'image') : 'text',
         })
       );
       if (currentConversation?.id) {
@@ -986,13 +1015,23 @@ export default function AgentInbox() {
       try {
         const payload: Parameters<typeof sendMessageViaConversation>[0] = {
           conversationId: currentConversation.id,
-          message: messageText || (imageUrl ? '📷 Image' : ''),
+          message:
+            messageText ||
+            (mediaUrl ? (uploadedKind === 'document' ? '📄 Document' : '📷 Image') : ''),
           businessId: businessId,
           clientRequestId,
         };
-        if (imageUrl) {
-          payload.imageUrl = imageUrl;
-          payload.messageType = 'image';
+        if (mediaUrl) {
+          if (uploadedKind === 'document') {
+            payload.mediaUrl = mediaUrl;
+            payload.messageType = 'document';
+            const fn = documentFilename || 'document.pdf';
+            payload.documentFilename = fn;
+            payload.filename = fn;
+          } else {
+            payload.imageUrl = mediaUrl;
+            payload.messageType = 'image';
+          }
         }
         if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection) && whapiReplyTo?.id) {
           payload.quotedWhapiMessageId = whapiReplyTo.id;
@@ -1000,7 +1039,9 @@ export default function AgentInbox() {
         }
         await sendMessageViaConversation(payload);
         if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection)) setWhapiReplyTo(null);
-        toast.success(imageUrl ? 'Image sent!' : 'Message sent!');
+        toast.success(
+          mediaUrl ? (uploadedKind === 'document' ? 'PDF sent!' : 'Image sent!') : 'Message sent!'
+        );
       } catch (error: any) {
         dispatch(removeOutboundPendingMessage({ customerId: selectedCustomer, clientRequestId }));
         const errorData = error.response?.data;
@@ -1090,7 +1131,6 @@ export default function AgentInbox() {
     dispatch,
     t,
     selectedImageFile,
-    uploadImage,
     handleRemoveImage,
     whapiReplyTo,
   ]);
@@ -2245,29 +2285,53 @@ export default function AgentInbox() {
                     </Button>
                   </div>
                 )}
-                {/* Image preview */}
-                {imagePreview && (
-                  <div className="mb-3 relative inline-block">
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
-                      className="max-w-[200px] max-h-[200px] rounded-lg object-cover border border-border"
-                    />
-                    <Button
-                      size="icon"
-                      variant="destructive"
-                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                      onClick={handleRemoveImage}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
+                {selectedImageFile && (
+                  <div className="mb-3 relative inline-block max-w-full">
+                    <div className="relative rounded-lg overflow-hidden border border-border bg-muted/50">
+                      {pdfPreviewUrl ? (
+                        <div className="w-[min(100vw-2rem,280px)] h-[240px] sm:w-[280px] flex flex-col">
+                          <iframe
+                            title={selectedImageFile.name}
+                            src={`${pdfPreviewUrl}#view=FitH&toolbar=0&navpanes=0`}
+                            className="w-full flex-1 min-h-0 border-0 bg-background"
+                          />
+                          <div className="flex items-center gap-2 px-2 py-1.5 border-t border-border bg-background/95 text-xs text-muted-foreground shrink-0">
+                            <FileText className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate" title={selectedImageFile.name}>
+                              {selectedImageFile.name}
+                            </span>
+                          </div>
+                        </div>
+                      ) : imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="max-w-[200px] max-h-[200px] object-cover"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 px-3 py-2 max-w-[220px]">
+                          <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
+                          <span className="text-sm truncate" title={selectedImageFile.name}>
+                            {selectedImageFile.name}
+                          </span>
+                        </div>
+                      )}
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        className="absolute -top-2 -right-2 z-20 h-6 w-6 rounded-full shadow-sm"
+                        onClick={handleRemoveImage}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 )}
                 <div className="relative">
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,application/pdf,.pdf"
                     onChange={handleImageSelect}
                     className="hidden"
                     id="image-upload-agent"
@@ -2344,7 +2408,6 @@ export default function AgentInbox() {
                   >
                     {improveLoading ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />}
                   </Button>
-                  {/* 🔧 NEW: Image upload button */}
                   <Button
                     type="button"
                     size="icon"
@@ -2352,11 +2415,12 @@ export default function AgentInbox() {
                     disabled={isUploadingImage}
                     onClick={() => fileInputRef.current?.click()}
                     className="absolute right-12 sm:right-14 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9"
+                    title="Attach image or PDF"
                   >
                     {isUploadingImage ? (
                       <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
                     ) : (
-                      <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                      <Paperclip className="h-3 w-3 sm:h-4 sm:w-4" />
                     )}
                   </Button>
                   <Button 
@@ -2385,31 +2449,35 @@ export default function AgentInbox() {
       
       {/* Image Modal for Full-Screen Viewing */}
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 bg-black/95 border-none overflow-hidden">
+        <DialogContent className="!flex h-[min(92vh,920px)] max-h-[95vh] w-[min(95vw,1200px)] max-w-[95vw] flex-col gap-0 overflow-hidden border-none bg-black/95 p-0 shadow-xl">
           {selectedImage && (
-            <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-4">
+            <ZoomableImageLightbox
+              key={selectedImage.src}
+              hint={t('chatInbox.imageZoomHint', 'Scroll or pinch to zoom. Drag to pan when zoomed.')}
+            >
               {selectedImage.src && (selectedImage.src.includes('/api/v1/unipile/attachments/') || selectedImage.src.includes('/unipile/attachments/')) ? (
                 <MediaImage
                   src={selectedImage.src}
                   alt={selectedImage.alt}
                   proxyUrl={null}
-                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg"
+                  className="max-h-full max-w-full h-auto w-auto object-contain rounded-lg"
                   onClick={() => {}}
                 />
               ) : (
                 <img
-                  src={optimizeImageUrl(selectedImage.src, 1920, 'auto') || selectedImage.src} // Higher quality for modal (1920px max)
+                  src={optimizeImageUrl(selectedImage.src, 2560, 'auto') || selectedImage.src}
                   alt={selectedImage.alt}
-                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg"
+                  className="max-h-full max-w-full h-auto w-auto object-contain rounded-lg"
                   onClick={(e) => e.stopPropagation()}
-                  loading="eager" // Eager load for modal (user already clicked to view)
+                  loading="eager"
                   decoding="async"
+                  draggable={false}
                   onError={(_e) => {
                     console.error('Failed to load image in modal:', selectedImage.src);
                   }}
                 />
               )}
-            </div>
+            </ZoomableImageLightbox>
           )}
         </DialogContent>
       </Dialog>

@@ -47,12 +47,39 @@ export interface TicketReport {
   legacySample?: Array<{ _id: string; subject: string; createdAt: string }>;
 }
 
+export interface WorkflowAnalyticsBySurfaceRow {
+  inboundSurface: string;
+  count: number;
+}
+
+export interface WorkflowAnalyticsDailyRow {
+  date: string;
+  count: number;
+}
+
+export interface WorkflowAnalyticsDailySurfaceRow {
+  date: string;
+  inboundSurface: string;
+  count: number;
+}
+
+/** Workflow step analytics (e.g. user chose "Talk with AI" in chat workflow). */
+export interface WorkflowAnalyticsReport {
+  range: { start: string; end: string };
+  eventType: string;
+  totals: { totalEvents: number; uniqueCustomers: number; uniqueConversations: number };
+  bySurface: WorkflowAnalyticsBySurfaceRow[];
+  daily: WorkflowAnalyticsDailyRow[];
+  dailyBySurface: WorkflowAnalyticsDailySurfaceRow[];
+}
+
 interface ReportingState {
   status: 'idle' | 'loading' | 'succeeded' | 'failed';
   error: string | null;
   userPerformance: UserPerformanceReport | null;
   assignments: AssignmentReport | null;
   tickets: TicketReport | null;
+  workflowAnalytics: WorkflowAnalyticsReport | null;
 }
 
 const initialState: ReportingState = {
@@ -61,53 +88,41 @@ const initialState: ReportingState = {
   userPerformance: null,
   assignments: null,
   tickets: null,
+  workflowAnalytics: null,
 };
 
-export const fetchUserPerformanceReport = createAsyncThunk<
-  UserPerformanceReport,
-  { businessId: string; start?: string; end?: string },
-  { rejectValue: string }
->('reporting/fetchUserPerformanceReport', async ({ businessId, start, end }, thunkAPI) => {
-  try {
-    const params: any = {};
-    if (start) params.start = start;
-    if (end) params.end = end;
-    const res = await api.get(`/api/v1/reporting/business/${businessId}/user-performance`, { params });
-    return res.data.data;
-  } catch (err: any) {
-    return thunkAPI.rejectWithValue(err.response?.data?.message || 'Failed to fetch user performance report');
-  }
-});
+export type ReportingBundlePayload = {
+  userPerformance: UserPerformanceReport;
+  assignments: AssignmentReport;
+  tickets: TicketReport;
+  workflowAnalytics: WorkflowAnalyticsReport;
+};
 
-export const fetchAssignmentReport = createAsyncThunk<
-  AssignmentReport,
+/** Single round-trip load for all reporting tabs (avoids flickering loading state from three parallel thunks). */
+export const fetchReportingBundle = createAsyncThunk<
+  ReportingBundlePayload,
   { businessId: string; start?: string; end?: string },
   { rejectValue: string }
->('reporting/fetchAssignmentReport', async ({ businessId, start, end }, thunkAPI) => {
+>('reporting/fetchReportingBundle', async ({ businessId, start, end }, thunkAPI) => {
   try {
-    const params: any = {};
+    const params: Record<string, string> = {};
     if (start) params.start = start;
     if (end) params.end = end;
-    const res = await api.get(`/api/v1/reporting/business/${businessId}/assignments`, { params });
-    return res.data.data;
+    const base = `/api/v1/reporting/business/${businessId}`;
+    const [up, asg, tix, wf] = await Promise.all([
+      api.get(`${base}/user-performance`, { params }),
+      api.get(`${base}/assignments`, { params }),
+      api.get(`${base}/tickets`, { params }),
+      api.get(`${base}/workflow-analytics`, { params }),
+    ]);
+    return {
+      userPerformance: up.data.data as UserPerformanceReport,
+      assignments: asg.data.data as AssignmentReport,
+      tickets: tix.data.data as TicketReport,
+      workflowAnalytics: wf.data.data as WorkflowAnalyticsReport,
+    };
   } catch (err: any) {
-    return thunkAPI.rejectWithValue(err.response?.data?.message || 'Failed to fetch assignment report');
-  }
-});
-
-export const fetchTicketReport = createAsyncThunk<
-  TicketReport,
-  { businessId: string; start?: string; end?: string },
-  { rejectValue: string }
->('reporting/fetchTicketReport', async ({ businessId, start, end }, thunkAPI) => {
-  try {
-    const params: any = {};
-    if (start) params.start = start;
-    if (end) params.end = end;
-    const res = await api.get(`/api/v1/reporting/business/${businessId}/tickets`, { params });
-    return res.data.data;
-  } catch (err: any) {
-    return thunkAPI.rejectWithValue(err.response?.data?.message || 'Failed to fetch ticket report');
+    return thunkAPI.rejectWithValue(err.response?.data?.message || 'Failed to load reports');
   }
 });
 
@@ -121,45 +136,73 @@ const reportingSlice = createSlice({
       state.userPerformance = null;
       state.assignments = null;
       state.tickets = null;
+      state.workflowAnalytics = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchUserPerformanceReport.pending, (state) => {
+      .addCase(fetchReportingBundle.pending, (state) => {
         state.status = 'loading';
         state.error = null;
       })
-      .addCase(fetchUserPerformanceReport.fulfilled, (state, action: PayloadAction<UserPerformanceReport>) => {
+      .addCase(fetchReportingBundle.fulfilled, (state, action: PayloadAction<ReportingBundlePayload>) => {
         state.status = 'succeeded';
-        state.userPerformance = action.payload;
+        const up = action.payload.userPerformance;
+        const asg = action.payload.assignments;
+        const tix = action.payload.tickets;
+        state.userPerformance = {
+          ...up,
+          ai: {
+            messages: Number(up?.ai?.messages) || 0,
+            conversations: Number(up?.ai?.conversations) || 0,
+          },
+          agents: Array.isArray(up?.agents) ? up.agents : [],
+        };
+        const rawTotals = asg?.totals;
+        const assignmentTypes: Array<'ai' | 'manual' | 'system'> = ['ai', 'manual', 'system'];
+        const totalsNormalized: AssignmentTotalsRow[] = assignmentTypes.map((assignedByType) => {
+          const row = rawTotals?.find((r) => r.assignedByType === assignedByType);
+          return {
+            assignedByType,
+            count: Number(row?.count) || 0,
+            uniqueConversations: Number(row?.uniqueConversations) || 0,
+          };
+        });
+        state.assignments = {
+          ...asg,
+          totals: totalsNormalized,
+          daily: Array.isArray(asg?.daily) ? asg.daily : [],
+          byAgent: Array.isArray(asg?.byAgent) ? asg.byAgent : [],
+        };
+        const tt = tix?.totals;
+        state.tickets = {
+          ...tix,
+          totals: {
+            ai: Number(tt?.ai) || 0,
+            human: Number(tt?.human) || 0,
+            system: Number(tt?.system) || 0,
+            total: Number(tt?.total) || 0,
+          },
+          legacySample: Array.isArray(tix?.legacySample) ? tix.legacySample : undefined,
+        };
+        const wfa = action.payload.workflowAnalytics;
+        const wft = wfa?.totals;
+        state.workflowAnalytics = {
+          ...wfa,
+          eventType: typeof wfa?.eventType === 'string' ? wfa.eventType : 'talk_with_ai',
+          totals: {
+            totalEvents: Number(wft?.totalEvents) || 0,
+            uniqueCustomers: Number(wft?.uniqueCustomers) || 0,
+            uniqueConversations: Number(wft?.uniqueConversations) || 0,
+          },
+          bySurface: Array.isArray(wfa?.bySurface) ? wfa.bySurface : [],
+          daily: Array.isArray(wfa?.daily) ? wfa.daily : [],
+          dailyBySurface: Array.isArray(wfa?.dailyBySurface) ? wfa.dailyBySurface : [],
+        };
       })
-      .addCase(fetchUserPerformanceReport.rejected, (state, action) => {
+      .addCase(fetchReportingBundle.rejected, (state, action) => {
         state.status = 'failed';
-        state.error = action.payload ?? 'Failed to fetch user performance report';
-      })
-      .addCase(fetchAssignmentReport.pending, (state) => {
-        state.status = 'loading';
-        state.error = null;
-      })
-      .addCase(fetchAssignmentReport.fulfilled, (state, action: PayloadAction<AssignmentReport>) => {
-        state.status = 'succeeded';
-        state.assignments = action.payload;
-      })
-      .addCase(fetchAssignmentReport.rejected, (state, action) => {
-        state.status = 'failed';
-        state.error = action.payload ?? 'Failed to fetch assignment report';
-      })
-      .addCase(fetchTicketReport.pending, (state) => {
-        state.status = 'loading';
-        state.error = null;
-      })
-      .addCase(fetchTicketReport.fulfilled, (state, action: PayloadAction<TicketReport>) => {
-        state.status = 'succeeded';
-        state.tickets = action.payload;
-      })
-      .addCase(fetchTicketReport.rejected, (state, action) => {
-        state.status = 'failed';
-        state.error = action.payload ?? 'Failed to fetch ticket report';
+        state.error = action.payload ?? 'Failed to load reports';
       });
   },
 });

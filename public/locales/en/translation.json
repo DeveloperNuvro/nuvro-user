@@ -193,6 +193,7 @@
     "loadingSnippets": "Loading...",
     "downloadDocument": "Download",
     "documentUnavailable": "Document unavailable",
+    "imageZoomHint": "Scroll or pinch to zoom. Drag to pan when zoomed.",
     "quotedReplyLabel": "Replying to",
     "quotedReplyNoPreview": "Original message (preview unavailable)",
     "whapi": {
@@ -1782,6 +1783,79 @@
   "reporting": {
     "pageTitle": "Reporting",
     "pageSubtitle": "AI vs Agent replies and assignment activity for your business.",
+    "pageSubtitlePolished": "Interactive metrics for agents, AI, tickets, and assignments.",
+    "layout": {
+      "badge": "Insights"
+    },
+    "loading": "Loading…",
+    "nav": {
+      "section": "Reports",
+      "overview": "Overview",
+      "agents": "Agent performance",
+      "ai": "AI usage",
+      "tickets": "Tickets",
+      "assignments": "Assignments"
+    },
+    "manualShort": "Manual",
+    "humanShort": "Human",
+    "systemShort": "System",
+    "charts": {
+      "assignmentsSplit": "Assignments by source",
+      "assignmentsSplitHint": "Share of AI vs manual vs system assignment events.",
+      "ticketsSplit": "Tickets by creator type",
+      "ticketsSplitHint": "AI, human, and workflow/system ticket volume in the selected range.",
+      "assignmentVolume": "Assignment volume over time",
+      "assignmentVolumeHint": "Total assignment events per day (all sources).",
+      "assignments": "Assignments"
+    },
+    "agents": {
+      "chartTitle": "Messages sent by agent",
+      "chartHint": "Compare outbound human/agent message volume in the selected range.",
+      "messages": "Messages",
+      "groupedTitle": "Workload breakdown",
+      "groupedHint": "Assigned conversations, closed conversations, and unique contacts side by side."
+    },
+    "ai": {
+      "aiAssignmentsTrend": "AI assignment events over time",
+      "aiAssignmentsTrendHint": "Daily count of assignments initiated by AI.",
+      "routingMix": "AI vs human routing",
+      "routingMixHint": "Share of AI vs manual vs workflow/system assignment events.",
+      "workflowTalkWithAiTitle": "Workflow: Talk with AI",
+      "workflowTalkWithAiIntro": "When customers pick “Talk with AI” in your chat workflow, we record it by channel (website widget, WhatsApp, and other linked entry points). Total events counts every choice; unique customers and conversations show how many distinct people chose this path.",
+      "talkWithAiEvents": "Talk with AI — events",
+      "talkWithAiEventsDesc": "Times users selected this workflow option",
+      "talkWithAiUniqueCustomers": "Unique customers",
+      "talkWithAiUniqueCustomersDesc": "Distinct customers who chose Talk with AI",
+      "talkWithAiUniqueConversations": "Unique conversations",
+      "talkWithAiUniqueConversationsDesc": "Distinct chats where this option was used",
+      "talkWithAiByChannel": "Talk with AI by channel",
+      "talkWithAiByChannelHint": "Website widget compared with WhatsApp and other linked entry points.",
+      "talkWithAiDaily": "Talk with AI over time",
+      "talkWithAiDailyHint": "Daily count of workflow “Talk with AI” selections."
+    },
+    "workflowSurface": {
+      "widget": "Website widget",
+      "whatsapp_meta": "WhatsApp (Business API)",
+      "unipile_whatsapp": "WhatsApp (linked device)",
+      "whapi_whatsapp": "WhatsApp (linked inbox)",
+      "unipile_other": "Other linked messaging",
+      "unknown": "Unknown"
+    },
+    "tickets": {
+      "barTitle": "Tickets by creator type",
+      "barHint": "Absolute counts in the selected date range.",
+      "count": "Tickets",
+      "pieTitle": "Distribution",
+      "pieHint": "Proportional view of ticket sources."
+    },
+    "assignments": {
+      "stackedTitle": "Assignment flow by day",
+      "stackedHint": "Stacked AI, manual, and system assignment events.",
+      "byAgentTitle": "Assignments landing on agents",
+      "byAgentHint": "Top agents by count of assignment events in the range.",
+      "events": "Assignment events",
+      "unknownAgent": "Unknown"
+    },
     "filters": "Filters",
     "noData": "No data",
     "aiMessages": "AI Messages",
@@ -1792,6 +1866,10 @@
     "aiAssignmentsDesc": "Contacts assigned by AI",
     "manualAssignments": "Manual Assignments",
     "manualAssignmentsDesc": "Contacts assigned manually",
+    "systemAssignments": "System assignments",
+    "systemAssignmentsDesc": "Workflow and automated routing",
+    "systemTickets": "Workflow / system tickets",
+    "systemTicketsDesc": "Tickets created by automated workflow handoff",
     "aiTickets": "AI Tickets Created",
     "aiTicketsDesc": "Tickets created by AI escalation",
     "humanTickets": "Human Tickets Created",
@@ -1802,8 +1880,8 @@
     "userPerformanceHint": "These metrics are computed from messages + assignment events within the selected date range. Hover the ⓘ icons for exact definitions.",
     "assignmentReport": "Assignment Report",
     "legend": "Legend",
-    "legendText": "AI = assignment created by AI escalation/transfer, Manual = assigned by a user, System = internal/system-generated.",
-    "assignmentHint": "Counts reflect assignment actions recorded by the system (AI escalation/transfer and manual transfers).",
+    "legendText": "AI = AI escalation/transfer, Manual = assigned by a user in the inbox, System = workflow/automation (e.g. assign_to) and other system-recorded events.",
+    "assignmentHint": "Counts reflect assignment events: AI escalation/transfer, manual inbox transfers, and workflow/system routing (e.g. assign_to).",
     "def": {
       "aiMessages": "Count of messages sent by the AI (sender = ai) within the selected date range.",
       "aiConversations": "Number of distinct conversations where the AI sent at least one message in the selected date range.",
@@ -1815,7 +1893,12 @@
       "messagesSent": "Total messages sent by this agent (sender = agent/human) in the selected range.",
       "team": "Agent team is inferred from their channel membership (first channel name shown).",
       "aiTickets": "Tickets created automatically by AI escalation in the selected date range.",
-      "humanTickets": "Tickets created manually by a human (dashboard/user) in the selected date range."
+      "humanTickets": "Tickets created manually by a human (dashboard/user) in the selected date range.",
+      "systemTickets": "Tickets created by automated flows (e.g. chat workflow handoff to queue) in the selected date range.",
+      "systemAssignments": "Assignment actions recorded as system (e.g. workflow assign_to when an agent is connected, or legacy normalized events).",
+      "talkWithAiEvents": "Each time a user confirms “Talk with AI” in the workflow (same user can count more than once).",
+      "talkWithAiUniqueCustomers": "Number of different customers who picked “Talk with AI” at least once in the range.",
+      "talkWithAiUniqueConversations": "Number of different conversations that had at least one “Talk with AI” workflow choice in the range."
     }
   }
 }

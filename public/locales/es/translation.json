@@ -192,6 +192,7 @@
     "snippetHint": "Usa '/' para respuestas rápidas",
     "downloadDocument": "Descargar",
     "documentUnavailable": "Documento no disponible",
+    "imageZoomHint": "Desplaza o pellizca para ampliar. Arrastra para mover cuando esté ampliado.",
     "quotedReplyLabel": "Respondiendo a",
     "quotedReplyNoPreview": "Mensaje original (sin vista previa)",
     "whapi": {
@@ -1672,6 +1673,79 @@
   "reporting": {
     "pageTitle": "Informes",
     "pageSubtitle": "Respuestas de IA vs agentes y actividad de asignaciones de tu negocio.",
+    "pageSubtitlePolished": "Métricas interactivas para agentes, IA, tickets y asignaciones.",
+    "layout": {
+      "badge": "Información"
+    },
+    "loading": "Cargando…",
+    "nav": {
+      "section": "Informes",
+      "overview": "Resumen",
+      "agents": "Rendimiento de agentes",
+      "ai": "Uso de IA",
+      "tickets": "Tickets",
+      "assignments": "Asignaciones"
+    },
+    "manualShort": "Manual",
+    "humanShort": "Humano",
+    "systemShort": "Sistema",
+    "charts": {
+      "assignmentsSplit": "Asignaciones por origen",
+      "assignmentsSplitHint": "Proporción de eventos de asignación IA vs manual vs sistema.",
+      "ticketsSplit": "Tickets por tipo de creador",
+      "ticketsSplitHint": "Volumen de tickets IA, humano y flujo/sistema en el rango seleccionado.",
+      "assignmentVolume": "Volumen de asignaciones en el tiempo",
+      "assignmentVolumeHint": "Total de eventos de asignación por día (todas las fuentes).",
+      "assignments": "Asignaciones"
+    },
+    "agents": {
+      "chartTitle": "Mensajes enviados por agente",
+      "chartHint": "Compara el volumen de mensajes humano/agente en el rango seleccionado.",
+      "messages": "Mensajes",
+      "groupedTitle": "Desglose de carga",
+      "groupedHint": "Conversaciones asignadas, cerradas y contactos únicos en paralelo."
+    },
+    "ai": {
+      "aiAssignmentsTrend": "Eventos de asignación por IA en el tiempo",
+      "aiAssignmentsTrendHint": "Recuento diario de asignaciones iniciadas por IA.",
+      "routingMix": "Enrutamiento IA vs humano",
+      "routingMixHint": "Proporción de eventos de asignación: IA, manual y flujo/sistema.",
+      "workflowTalkWithAiTitle": "Flujo: Hablar con la IA",
+      "workflowTalkWithAiIntro": "Cuando el cliente elige “Hablar con la IA” en el flujo del chat, lo registramos por canal (widget web, WhatsApp y otros puntos de entrada vinculados). El total de eventos cuenta cada elección; clientes y conversaciones únicas muestran cuántas personas distintas eligieron esta opción.",
+      "talkWithAiEvents": "Hablar con la IA — eventos",
+      "talkWithAiEventsDesc": "Veces que los usuarios eligieron esta opción del flujo",
+      "talkWithAiUniqueCustomers": "Clientes únicos",
+      "talkWithAiUniqueCustomersDesc": "Clientes distintos que eligieron Hablar con la IA",
+      "talkWithAiUniqueConversations": "Conversaciones únicas",
+      "talkWithAiUniqueConversationsDesc": "Chats distintos donde se usó esta opción",
+      "talkWithAiByChannel": "Hablar con la IA por canal",
+      "talkWithAiByChannelHint": "Widget web frente a WhatsApp y otros puntos de entrada vinculados.",
+      "talkWithAiDaily": "Hablar con la IA en el tiempo",
+      "talkWithAiDailyHint": "Recuento diario de selecciones de “Hablar con la IA” en el flujo."
+    },
+    "workflowSurface": {
+      "widget": "Widget web",
+      "whatsapp_meta": "WhatsApp (API empresarial)",
+      "unipile_whatsapp": "WhatsApp (dispositivo vinculado)",
+      "whapi_whatsapp": "WhatsApp (bandeja vinculada)",
+      "unipile_other": "Otra mensajería vinculada",
+      "unknown": "Desconocido"
+    },
+    "tickets": {
+      "barTitle": "Tickets por tipo de creador",
+      "barHint": "Conteos absolutos en el rango de fechas seleccionado.",
+      "count": "Tickets",
+      "pieTitle": "Distribución",
+      "pieHint": "Vista proporcional de los orígenes de los tickets."
+    },
+    "assignments": {
+      "stackedTitle": "Flujo de asignaciones por día",
+      "stackedHint": "Eventos de asignación apilados: IA, manual y sistema.",
+      "byAgentTitle": "Asignaciones recibidas por agentes",
+      "byAgentHint": "Principales agentes por número de eventos de asignación en el rango.",
+      "events": "Eventos de asignación",
+      "unknownAgent": "Desconocido"
+    },
     "filters": "Filtros",
     "noData": "Sin datos",
     "aiMessages": "Mensajes de IA",
@@ -1682,6 +1756,10 @@
     "aiAssignmentsDesc": "Contactos asignados por la IA",
     "manualAssignments": "Asignaciones manuales",
     "manualAssignmentsDesc": "Contactos asignados manualmente",
+    "systemAssignments": "Asignaciones del sistema",
+    "systemAssignmentsDesc": "Flujo de trabajo y enrutamiento automático",
+    "systemTickets": "Tickets de flujo / sistema",
+    "systemTicketsDesc": "Tickets creados por derivación automática del flujo",
     "aiTickets": "Tickets creados por IA",
     "aiTicketsDesc": "Tickets creados por escalamiento de IA",
     "humanTickets": "Tickets creados por humanos",
@@ -1692,8 +1770,8 @@
     "userPerformanceHint": "Estas métricas se calculan a partir de mensajes y eventos de asignación dentro del rango de fechas seleccionado. Pasa el cursor sobre los íconos ⓘ para ver definiciones exactas.",
     "assignmentReport": "Informe de asignaciones",
     "legend": "Leyenda",
-    "legendText": "IA = asignación creada por escalamiento/transferencia de IA; Manual = asignado por un usuario; Sistema = generado internamente por el sistema.",
-    "assignmentHint": "Los conteos reflejan acciones de asignación registradas por el sistema (escalamiento/transferencia por IA y transferencias manuales).",
+    "legendText": "IA = escalamiento/transferencia por IA; Manual = asignado por un usuario en el inbox; Sistema = flujo/automatización (p. ej. assign_to) y otros eventos registrados por el sistema.",
+    "assignmentHint": "Los conteos reflejan eventos de asignación: escalamiento/transferencia por IA, transferencias manuales en el inbox y enrutamiento por flujo/sistema (p. ej. assign_to).",
     "def": {
       "aiMessages": "Cantidad de mensajes enviados por la IA (sender = ai) dentro del rango de fechas seleccionado.",
       "aiConversations": "Número de conversaciones distintas en las que la IA envió al menos un mensaje dentro del rango seleccionado.",
@@ -1705,7 +1783,12 @@
       "messagesSent": "Total de mensajes enviados por este agente (sender = agent/human) dentro del rango.",
       "team": "El equipo del agente se infiere por su membresía de canal (se muestra el primer nombre de canal).",
       "aiTickets": "Tickets creados automáticamente por escalamiento de IA dentro del rango seleccionado.",
-      "humanTickets": "Tickets creados manualmente por un humano (dashboard/usuario) dentro del rango seleccionado."
+      "humanTickets": "Tickets creados manualmente por un humano (dashboard/usuario) dentro del rango seleccionado.",
+      "systemTickets": "Tickets creados por flujos automáticos (p. ej. derivación del flujo de chat a la cola) en el rango seleccionado.",
+      "systemAssignments": "Acciones de asignación registradas como sistema (p. ej. assign_to del flujo cuando se conecta un agente, u otros eventos heredados normalizados).",
+      "talkWithAiEvents": "Cada vez que un usuario confirma “Hablar con la IA” en el flujo (el mismo usuario puede contar más de una vez).",
+      "talkWithAiUniqueCustomers": "Número de clientes distintos que eligieron “Hablar con la IA” al menos una vez en el rango.",
+      "talkWithAiUniqueConversations": "Número de conversaciones distintas con al menos una elección de “Hablar con la IA” en el rango."
     }
   }
 }

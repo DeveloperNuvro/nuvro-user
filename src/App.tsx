@@ -20,6 +20,12 @@ import OnboardingGuard from "./routes/OnboardingGuard"; // Assuming this compone
 import { useAuthBootstrap } from "./hooks/useAuthBootstrap";
 import { useAppSelector } from "./app/hooks";
 import { menuRoutes, additionalProtectedRoutes, ROLES } from "./appRoutes";
+import ReportingLayout from "./pages/reporting/ReportingLayout";
+import ReportingOverview from "./pages/reporting/ReportingOverview";
+import ReportingAgentsReport from "./pages/reporting/ReportingAgentsReport";
+import ReportingAiReport from "./pages/reporting/ReportingAiReport";
+import ReportingTicketsReport from "./pages/reporting/ReportingTicketsReport";
+import ReportingAssignmentsReport from "./pages/reporting/ReportingAssignmentsReport";
 
 function App() {
   // This hook handles the initial session check (e.g., from localStorage)
@@ -135,10 +141,28 @@ function App() {
               element={<Navigate to={defaultProtectedRoute} replace />}
             />
 
+            {/* Reporting: nested sub-routes + submenu (see ReportingLayout) */}
+            <Route
+              path="reporting"
+              element={
+                <ProtectedRoute allowedRoles={[ROLES.BUSINESS]}>
+                  <ReportingLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="overview" replace />} />
+              <Route path="overview" element={<ReportingOverview />} />
+              <Route path="agents" element={<ReportingAgentsReport />} />
+              <Route path="ai" element={<ReportingAiReport />} />
+              <Route path="tickets" element={<ReportingTicketsReport />} />
+              <Route path="assignments" element={<ReportingAssignmentsReport />} />
+            </Route>
+
             {/* Render sidebar menu routes with role protection */}
             {menuRoutes.map(
               ({ path, component, allowedRoles, action }) =>
-                !action && (
+                !action &&
+                path !== "reporting" && (
                   <Route
                     key={path}
                     path={path}

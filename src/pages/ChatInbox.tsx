@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fra
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Image as ImageIcon, X, Reply } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Paperclip, X, Reply } from "lucide-react";
 import { cn, toCloudinaryMp3Url } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -19,7 +19,7 @@ import toast from 'react-hot-toast';
 
 import { AppDispatch, RootState } from "@/app/store";
 import { api } from "@/api/axios";
-import { uploadImage as uploadImageApi, getAudioPlayUrl as getAudioPlayUrlApi } from "@/api/chatApi";
+import { uploadChatAttachment as uploadChatAttachmentApi, getAudioPlayUrl as getAudioPlayUrlApi } from "@/api/chatApi";
 import { suggestQuickResponses, type SuggestItem } from "@/api/quickResponsesApi";
 import {
   fetchCustomersByBusiness,
@@ -45,6 +45,7 @@ import { fetchChannels } from "@/features/channel/channelSlice";
 // } from "@/features/whatsappBusiness/whatsappBusinessSlice";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ZoomableImageLightbox } from "@/components/chat/ZoomableImageLightbox";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -233,6 +234,7 @@ const MediaImage = ({ src, alt, proxyUrl, className, onClick }: { src: string | 
       alt={alt} 
       className={className}
       onClick={onClick}
+      draggable={false}
       loading="lazy" // Lazy load images
       decoding="async" // Async decoding for better performance
       onError={() => {
@@ -392,8 +394,22 @@ export default function ChatInbox() {
 
   const businessId = user?.businessId;
   const debouncedSearchQuery = useDebounce(searchInput, 500);
-  
-  
+
+  const businessListFetchParamsRef = useRef({
+    debouncedSearchQuery: '',
+    activeFilter: 'open' as 'open' | 'closed',
+    activePlatform: 'all' as 'all' | 'website' | 'whatsapp',
+    listCurrentPage: 1,
+  });
+  useEffect(() => {
+    businessListFetchParamsRef.current = {
+      debouncedSearchQuery,
+      activeFilter,
+      activePlatform,
+      listCurrentPage: currentPage,
+    };
+  }, [debouncedSearchQuery, activeFilter, activePlatform, currentPage]);
+
   // 🔧 FIX: Filter conversations by platform on frontend for real-time updates. "All" shows every conversation.
   const filteredConversations = useMemo(() => {
     if (activePlatform === 'all') return conversations;
@@ -413,9 +429,10 @@ export default function ChatInbox() {
   // When Open/Closed, platform, search, or pagination changes the list, drop selection if that row is no longer shown — avoids stale Redux messages + wrong header/chrome.
   useEffect(() => {
     if (!selectedCustomer) return;
+    if (chatListStatus === 'loading') return;
     const inList = filteredConversations.some((c) => c.customer?.id === selectedCustomer);
     if (!inList) setSelectedCustomer(null);
-  }, [filteredConversations, selectedCustomer]);
+  }, [filteredConversations, selectedCustomer, chatListStatus]);
 
   const onlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'online' && agent._id !== user?._id) : [], [agents, user?._id]);
   const offlineAgents = useMemo(() => Array.isArray(agents) ? agents.filter(agent => agent.status === 'offline' && agent._id !== user?._id) : [], [agents, user?._id]);
@@ -479,9 +496,18 @@ export default function ChatInbox() {
   // 🔧 Refetch chat list when socket reconnects so realtime updates resume (e.g. after 5+ min idle)
   useEffect(() => {
     if (socketReconnectCount > 0 && businessId) {
-      dispatch(fetchCustomersByBusiness({ businessId, page: 1, searchQuery: debouncedSearchQuery, status: activeFilter, platform: activePlatform }));
+      const p = businessListFetchParamsRef.current;
+      dispatch(
+        fetchCustomersByBusiness({
+          businessId,
+          page: p.listCurrentPage,
+          searchQuery: p.debouncedSearchQuery,
+          status: p.activeFilter,
+          platform: p.activePlatform,
+        })
+      );
     }
-  }, [socketReconnectCount]);
+  }, [socketReconnectCount, businessId, dispatch]);
 
   // META WhatsApp Business: 24h session + template selector – commented out. Using Unipile for WhatsApp.
   // META: Fetch WhatsApp 24h session + templates when a WhatsApp conversation is selected
@@ -705,8 +731,27 @@ export default function ChatInbox() {
   // 🔧 NEW: State for image upload
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const pdfObjectUrlRef = useRef<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const revokePdfPreviewUrl = useCallback(() => {
+    if (pdfObjectUrlRef.current) {
+      URL.revokeObjectURL(pdfObjectUrlRef.current);
+      pdfObjectUrlRef.current = null;
+    }
+    setPdfPreviewUrl(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pdfObjectUrlRef.current) {
+        URL.revokeObjectURL(pdfObjectUrlRef.current);
+        pdfObjectUrlRef.current = null;
+      }
+    };
+  }, []);
   
   // 🔧 Audio: when API doesn't return audioSrc, fetch play URL on demand so playback works
   const [audioUrlByMessageId, setAudioUrlByMessageId] = useState<Record<string, string>>({});
@@ -736,52 +781,50 @@ export default function ChatInbox() {
     return () => { cancelled = true; };
   }, [selectedCustomer, messagesData?.list]);
 
-  // 🔧 NEW: Handle image file selection
+  // Image or PDF for WhatsApp / Unipile (server: /upload/chat-attachment)
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+    const isImage = file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+    if (!isImage && !isPdf) {
+      toast.error('Please select an image or PDF file');
       return;
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Image size must be less than 10MB');
+    if (file.size > 16 * 1024 * 1024) {
+      toast.error('File size must be less than 16MB');
       return;
     }
 
     setSelectedImageFile(file);
-    
-    // Create preview
+
+    if (isPdf) {
+      setImagePreview(null);
+      revokePdfPreviewUrl();
+      const url = URL.createObjectURL(file);
+      pdfObjectUrlRef.current = url;
+      setPdfPreviewUrl(url);
+      return;
+    }
+    revokePdfPreviewUrl();
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-  }, []);
+  }, [revokePdfPreviewUrl]);
 
   // 🔧 NEW: Remove selected image
   const handleRemoveImage = useCallback(() => {
+    revokePdfPreviewUrl();
     setSelectedImageFile(null);
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, []);
-
-  // 🔧 NEW: Upload image to get URL
-  const uploadImage = useCallback(async (file: File): Promise<string> => {
-    try {
-      const result = await uploadImageApi(file);
-      return result.url;
-    } catch (error: any) {
-      console.error('Failed to upload image:', error);
-      throw error;
-    }
-  }, []);
+  }, [revokePdfPreviewUrl]);
 
   const handleSendMessage = useCallback(async () => {
     if ((!newMessage.trim() && !selectedImageFile) || !selectedCustomer || !businessId || !currentConversation) return;
@@ -792,16 +835,21 @@ export default function ChatInbox() {
     const platformRaw = currentConversation.platformInfo?.platform || currentConversation?.source || 'website';
     const platform = typeof platformRaw === 'string' ? platformRaw.toLowerCase() : 'website';
     const messageText = newMessage.trim();
-    let imageUrl: string | null = null;
+    let mediaUrl: string | null = null;
+    let uploadedKind: 'image' | 'document' | null = null;
+    let documentFilename: string | undefined;
 
-    // 🔧 NEW: Upload image if selected
     if (selectedImageFile) {
       setIsUploadingImage(true);
       try {
-        const result = await uploadImageApi(selectedImageFile);
-        imageUrl = result.url;
+        const result = await uploadChatAttachmentApi(selectedImageFile);
+        mediaUrl = result.url;
+        uploadedKind = result.messageType;
+        if (result.messageType === 'document') {
+          documentFilename = result.fileName || selectedImageFile.name;
+        }
       } catch (error: any) {
-        toast.error(error.response?.data?.message || 'Failed to upload image');
+        toast.error(error.response?.data?.message || 'Failed to upload file');
         setIsUploadingImage(false);
         return;
       }
@@ -834,13 +882,15 @@ export default function ChatInbox() {
     // For Instagram, WhatsApp, Telegram - use Unipile API (send via conversation)
     if (platform === 'instagram' || platform === 'whatsapp' || platform === 'telegram') {
       const clientRequestId = crypto.randomUUID();
-      const outboundPreview = messageText || (imageUrl ? '📷 Image' : '');
+      const outboundPreview =
+        messageText ||
+        (mediaUrl ? (uploadedKind === 'document' ? '📄 Document' : '📷 Image') : '');
       dispatch(
         addOutboundPendingMessage({
           customerId: selectedCustomer,
           clientRequestId,
           text: outboundPreview,
-          messageType: imageUrl ? 'image' : 'text',
+          messageType: mediaUrl ? (uploadedKind === 'document' ? 'document' : 'image') : 'text',
         })
       );
       try {
@@ -848,14 +898,24 @@ export default function ChatInbox() {
 
         const payload: any = {
           conversationId: currentConversation.id,
-          message: messageText || (imageUrl ? '📷 Image' : ''),
+          message:
+            messageText ||
+            (mediaUrl ? (uploadedKind === 'document' ? '📄 Document' : '📷 Image') : ''),
           businessId: businessId,
           clientRequestId,
         };
 
-        if (imageUrl) {
-          payload.imageUrl = imageUrl;
-          payload.messageType = 'image';
+        if (mediaUrl) {
+          if (uploadedKind === 'document') {
+            payload.mediaUrl = mediaUrl;
+            payload.messageType = 'document';
+            const fn = documentFilename || 'document.pdf';
+            payload.documentFilename = fn;
+            payload.filename = fn;
+          } else {
+            payload.imageUrl = mediaUrl;
+            payload.messageType = 'image';
+          }
         }
 
         if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection) && whapiReplyTo?.id) {
@@ -867,7 +927,9 @@ export default function ChatInbox() {
         await sendMessageViaConversation(payload);
 
         if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection)) setWhapiReplyTo(null);
-        toast.success(imageUrl ? 'Image sent!' : 'Message sent!');
+        toast.success(
+          mediaUrl ? (uploadedKind === 'document' ? 'PDF sent!' : 'Image sent!') : 'Message sent!'
+        );
       } catch (error: any) {
         dispatch(removeOutboundPendingMessage({ customerId: selectedCustomer, clientRequestId }));
         const errorData = error.response?.data;
@@ -942,7 +1004,7 @@ export default function ChatInbox() {
     )
       .unwrap()
       .catch((error) => toast.error(error || t('chatInbox.toastMessageFailed')));
-  }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t, selectedImageFile, uploadImage, handleRemoveImage, whapiReplyTo]);
+  }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t, selectedImageFile, handleRemoveImage, whapiReplyTo]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
     if (!currentConversation?.id) { toast.error(t('chatInbox.toastTransferNoId')); return; }
@@ -2081,19 +2143,41 @@ export default function ChatInbox() {
                   </div>
                 )}
 
-                {/* 🔧 NEW: Image preview */}
-                {imagePreview && (
-                  <div className="relative mb-3 inline-block">
-                    <div className="relative rounded-lg overflow-hidden border-2 border-primary/20">
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
-                        className="max-w-[200px] max-h-[200px] object-cover"
-                      />
+                {selectedImageFile && (
+                  <div className="relative mb-3 inline-block max-w-full">
+                    <div className="relative rounded-lg overflow-hidden border-2 border-primary/20 bg-muted/50">
+                      {pdfPreviewUrl ? (
+                        <div className="w-[min(100vw-2rem,280px)] h-[240px] sm:w-[280px] flex flex-col">
+                          <iframe
+                            title={selectedImageFile.name}
+                            src={`${pdfPreviewUrl}#view=FitH&toolbar=0&navpanes=0`}
+                            className="w-full flex-1 min-h-0 border-0 bg-background"
+                          />
+                          <div className="flex items-center gap-2 px-2 py-1.5 border-t border-border bg-background/95 text-xs text-muted-foreground shrink-0">
+                            <FileText className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate" title={selectedImageFile.name}>
+                              {selectedImageFile.name}
+                            </span>
+                          </div>
+                        </div>
+                      ) : imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="max-w-[200px] max-h-[200px] object-cover"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 px-3 py-2 max-w-[220px]">
+                          <FileText className="h-8 w-8 shrink-0 text-muted-foreground" />
+                          <span className="text-sm truncate" title={selectedImageFile.name}>
+                            {selectedImageFile.name}
+                          </span>
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={handleRemoveImage}
-                        className="absolute top-1 right-1 cursor-pointer bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        className="absolute top-1 right-1 z-20 cursor-pointer bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors shadow-sm"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -2106,7 +2190,7 @@ export default function ChatInbox() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,application/pdf,.pdf"
                     onChange={handleImageSelect}
                     className="hidden"
                     id="image-upload"
@@ -2118,12 +2202,12 @@ export default function ChatInbox() {
                     className={cn('h-9 w-9 shrink-0', isWaThread && 'chat-wa-attach-btn border-[#00000014] dark:border-white/10')}
                     disabled={isUploadingImage}
                     onClick={() => fileInputRef.current?.click()}
-                    title="Upload image"
+                    title="Attach image or PDF"
                   >
                     {isUploadingImage ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <ImageIcon className="h-4 w-4" />
+                      <Paperclip className="h-4 w-4" />
                     )}
                   </Button>
                   <div className="relative w-full">
@@ -2201,31 +2285,35 @@ export default function ChatInbox() {
       
       {/* Image Modal for Full-Screen Viewing */}
       <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] w-auto h-auto p-0 bg-black/95 border-none overflow-hidden">
+        <DialogContent className="!flex h-[min(92vh,920px)] max-h-[95vh] w-[min(95vw,1200px)] max-w-[95vw] flex-col gap-0 overflow-hidden border-none bg-black/95 p-0 shadow-xl">
           {selectedImage && (
-            <div className="relative w-full h-full flex items-center justify-center p-2 sm:p-4">
+            <ZoomableImageLightbox
+              key={selectedImage.src}
+              hint={t('chatInbox.imageZoomHint', 'Scroll or pinch to zoom. Drag to pan when zoomed.')}
+            >
               {selectedImage.src && (selectedImage.src.includes('/api/v1/unipile/attachments/') || selectedImage.src.includes('/unipile/attachments/')) ? (
                 <MediaImage
                   src={selectedImage.src}
                   alt={selectedImage.alt}
                   proxyUrl={null}
-                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg"
+                  className="max-h-full max-w-full h-auto w-auto object-contain rounded-lg"
                   onClick={() => {}}
                 />
               ) : (
                 <img
-                  src={optimizeImageUrl(selectedImage.src, 1920, 'auto') || selectedImage.src} // Higher quality for modal (1920px max)
+                  src={optimizeImageUrl(selectedImage.src, 2560, 'auto') || selectedImage.src}
                   alt={selectedImage.alt}
-                  className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg"
+                  className="max-h-full max-w-full h-auto w-auto object-contain rounded-lg"
                   onClick={(e) => e.stopPropagation()}
-                  loading="eager" // Eager load for modal (user already clicked to view)
+                  loading="eager"
                   decoding="async"
+                  draggable={false}
                   onError={(_e) => {
                     console.error('Failed to load image in modal:', selectedImage.src);
                   }}
                 />
               )}
-            </div>
+            </ZoomableImageLightbox>
           )}
         </DialogContent>
       </Dialog>

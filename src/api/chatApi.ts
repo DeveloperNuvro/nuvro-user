@@ -84,6 +84,8 @@ export const sendMessageViaConversation = async (data: {
   replyToWhapiMessageId?: string;
   whapiAudioDelivery?: 'voice' | 'file';
   filename?: string;
+  /** Whapi / inbox: original filename for document (PDF) messages */
+  documentFilename?: string;
   useTemplate?: boolean;
   templateName?: string;
   templateLanguage?: string;
@@ -265,6 +267,20 @@ export const uploadImage = async (file: File): Promise<{ url: string }> => {
   const formData = new FormData();
   formData.append('image', file);
   const response = await api.post('/api/v1/upload/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data.data;
+};
+
+/** Chat inbox: images or PDF (returns Cloudinary URL + messageType for send). */
+export const uploadChatAttachment = async (
+  file: File
+): Promise<{ url: string; messageType: 'image' | 'document'; fileName?: string }> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/api/v1/upload/chat-attachment', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
