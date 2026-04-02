@@ -32,6 +32,7 @@ import {
   Pencil,
   Link2,
   BarChart3,
+  Activity,
   AlertTriangle,
 } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -52,6 +53,7 @@ import { api } from '@/api/axios';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { getWhapiWorkflowVariantAnalytics, type WhapiWorkflowVariantAnalyticsRow } from '@/api/whapiInboxApi';
+import WhapiMessageAnalyticsDialog from '@/components/custom/whapi/WhapiMessageAnalyticsDialog';
 
 interface WhapiIntegrationTabProps {
   agentId?: string;
@@ -122,6 +124,9 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsDays, setAnalyticsDays] = useState(14);
   const [analyticsRows, setAnalyticsRows] = useState<WhapiWorkflowVariantAnalyticsRow[]>([]);
+
+  const [messageAnalyticsOpen, setMessageAnalyticsOpen] = useState(false);
+  const [messageAnalyticsConn, setMessageAnalyticsConn] = useState<WhapiConnectionRow | null>(null);
 
   const [deleteConfirmConn, setDeleteConfirmConn] = useState<WhapiConnectionRow | null>(null);
   const [deleteDeleting, setDeleteDeleting] = useState(false);
@@ -465,7 +470,7 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                   <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
                     {t('integrationsPage.whapi.actionsHeading', 'Actions')}
                   </p>
-                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+                  <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6">
                     <Button variant="outline" size="sm" className={btnClass} onClick={() => openQr(c)}>
                       <QrCode className="h-3.5 w-3.5 shrink-0 opacity-80" />
                       <span className="truncate">{t('integrationsPage.whapi.showQr', 'Show QR')}</span>
@@ -514,9 +519,23 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
                       <span className="truncate">{t('integrationsPage.whapi.variantAnalytics', 'Variant analytics')}</span>
                     </Button>
                     <Button
+                      variant="outline"
+                      size="sm"
+                      className={btnClass}
+                      onClick={() => {
+                        setMessageAnalyticsConn(c);
+                        setMessageAnalyticsOpen(true);
+                      }}
+                    >
+                      <Activity className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                      <span className="truncate">
+                        {t('integrationsPage.whapi.messageAnalytics', 'Message analytics')}
+                      </span>
+                    </Button>
+                    <Button
                       variant="destructive"
                       size="sm"
-                      className={`${btnClass} col-span-2 border-destructive/25 bg-destructive/5 hover:bg-destructive/15 sm:col-span-2 lg:col-span-2 xl:col-span-1`}
+                      className={`${btnClass} col-span-2 border-destructive/25 bg-destructive/5 hover:bg-destructive/15 sm:col-span-3 lg:col-span-3 xl:col-span-1`}
                       onClick={() => setDeleteConfirmConn(c)}
                     >
                       <Trash2 className="h-3.5 w-3.5 shrink-0" />
@@ -766,6 +785,15 @@ export default function WhapiIntegrationTab({ agentId }: WhapiIntegrationTabProp
           </div>
         </DialogContent>
       </Dialog>
+
+      <WhapiMessageAnalyticsDialog
+        open={messageAnalyticsOpen}
+        onOpenChange={(o) => {
+          setMessageAnalyticsOpen(o);
+          if (!o) setMessageAnalyticsConn(null);
+        }}
+        connection={messageAnalyticsConn}
+      />
 
       <Dialog
         open={renameOpen}
