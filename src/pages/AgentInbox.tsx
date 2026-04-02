@@ -393,13 +393,19 @@ export default function AgentInbox() {
     [businessId, dispatch]
   );
 
+  /**
+   * Full list refetch kicks the agent out of the open chat: after fetch, selectedCustomer is cleared if the
+   * row is missing from the current page. Tab counts already update via `agentInboxCountsUpdated` — only
+   * refetch the list when no chat is open; new rows also arrive via `newConversation` + `newMessage`.
+   */
   const handleAgentInboxCountsRefresh = useCallback(
     (data: { businessId?: string }) => {
       if (!businessId || !data?.businessId) return;
       if (String(data.businessId) !== String(businessId)) return;
+      if (selectedCustomer) return;
       scheduleRefetchOpenAgentListFromSocket();
     },
-    [businessId, scheduleRefetchOpenAgentListFromSocket]
+    [businessId, selectedCustomer, scheduleRefetchOpenAgentListFromSocket]
   );
 
   // 🔧 OPTIMIZED: Memoize conversation lookup to avoid repeated finds
@@ -913,12 +919,13 @@ export default function AgentInbox() {
             messageMetadata: formattedMessage.metadata ?? undefined,
           })
         );
-      } else {
-        // Conversation not in list (e.g. closed chat reopened by customer) — refetch open list so it appears
+      } else if (String(customerId) !== String(selectedCustomer ?? '')) {
+        // Not in current page / view — refetch so it appears. Skip when this message is for the open thread:
+        // refetch can replace the list and clear selection via the "customer not in list" effect.
         scheduleRefetchOpenAgentListFromSocket();
       }
     }
-  }, [conversations, dispatch, scheduleRefetchOpenAgentListFromSocket]);
+  }, [conversations, dispatch, scheduleRefetchOpenAgentListFromSocket, selectedCustomer]);
 
   // 🔧 OPTIMIZED: Real-time event listeners for conversation updates and transfers
   useEffect(() => {
