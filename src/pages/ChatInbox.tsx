@@ -33,6 +33,7 @@ import {
   addNewCustomer,
   addOutboundPendingMessage,
   removeOutboundPendingMessage,
+  removeConversation,
   ConversationInList,
 } from "@/features/chatInbox/chatInboxSlice";
 import { fetchAgentsWithStatus } from "@/features/humanAgent/humanAgentSlice";
@@ -72,6 +73,15 @@ import { putWhapiMessageReaction } from "@/api/whapiInboxApi";
 dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 dayjs.extend(relativeTime);
+
+/** Heuristic: treat as video URL when type/placeholder is wrong (skip obvious audio extensions). */
+function chatInboxUrlLooksLikeVideo(url: string | null | undefined): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const u = url.toLowerCase();
+  if (/\.(mp3|wav|ogg|opus|m4a|aac)(\?|#|$)/i.test(u)) return false;
+  if (/\.(mp4|webm|mov|m4v|3gp)(\?|#|$)/i.test(u)) return true;
+  return u.includes('/video/upload/');
+}
 
 /** Workflow option for system/ask_question messages */
 interface WorkflowOption {
@@ -645,6 +655,10 @@ export default function ChatInbox() {
   // 🔧 OPTIMIZED: Handle conversation updates
   const handleConversationUpdated = useCallback((data: any) => {
     const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status } = data;
+    if (conversationId && (status === 'closed' || status === 'CLOSED')) {
+      dispatch(removeConversation({ conversationId }));
+      return;
+    }
     dispatch(updateConversationEnhanced({
       conversationId,
       unreadCount,
@@ -655,6 +669,13 @@ export default function ChatInbox() {
       status,
     }));
   }, [dispatch]);
+
+  const handleConversationClosedByAgent = useCallback(
+    (data: { conversationId?: string }) => {
+      if (data?.conversationId) dispatch(removeConversation({ conversationId: data.conversationId }));
+    },
+    [dispatch]
+  );
 
   // 🔧 OPTIMIZED: Handle conversation assignment
   const handleConversationAssigned = useCallback((data: any) => {
@@ -702,6 +723,7 @@ export default function ChatInbox() {
     socket.on('newConversation', handleNewConversation);
     socket.on('newChatAssigned', handleNewChatAssigned);
     socket.on('conversationUpdated', handleConversationUpdated);
+    socket.on('conversationClosedByAgent', handleConversationClosedByAgent);
     socket.on('conversationAssigned', handleConversationAssigned);
     // 🔧 NEW: Listen for message status updates (WhatsApp read receipts, delivery confirmations)
     socket.on('messageStatusUpdate', handleMessageStatusUpdate);
@@ -710,10 +732,11 @@ export default function ChatInbox() {
       socket.off('newConversation', handleNewConversation);
       socket.off('newChatAssigned', handleNewChatAssigned);
       socket.off('conversationUpdated', handleConversationUpdated);
+      socket.off('conversationClosedByAgent', handleConversationClosedByAgent);
       socket.off('conversationAssigned', handleConversationAssigned);
       socket.off('messageStatusUpdate', handleMessageStatusUpdate);
     };
-  }, [businessId, handleNewConversation, handleNewChatAssigned, handleConversationUpdated, handleConversationAssigned, handleMessageStatusUpdate]);
+  }, [businessId, handleNewConversation, handleNewChatAssigned, handleConversationUpdated, handleConversationClosedByAgent, handleConversationAssigned, handleMessageStatusUpdate]);
 
   useLayoutEffect(() => { 
     if (!messageListRef.current) return; 
@@ -734,6 +757,8 @@ export default function ChatInbox() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const pdfObjectUrlRef = useRef<string | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const videoObjectUrlRef = useRef<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -745,11 +770,23 @@ export default function ChatInbox() {
     setPdfPreviewUrl(null);
   }, []);
 
+  const revokeVideoPreviewUrl = useCallback(() => {
+    if (videoObjectUrlRef.current) {
+      URL.revokeObjectURL(videoObjectUrlRef.current);
+      videoObjectUrlRef.current = null;
+    }
+    setVideoPreviewUrl(null);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (pdfObjectUrlRef.current) {
         URL.revokeObjectURL(pdfObjectUrlRef.current);
         pdfObjectUrlRef.current = null;
+      }
+      if (videoObjectUrlRef.current) {
+        URL.revokeObjectURL(videoObjectUrlRef.current);
+        videoObjectUrlRef.current = null;
       }
     };
   }, []);
@@ -782,15 +819,16 @@ export default function ChatInbox() {
     return () => { cancelled = true; };
   }, [selectedCustomer, messagesData?.list]);
 
-  // Image or PDF for WhatsApp / Unipile (server: /upload/chat-attachment)
+  // Image, video, or PDF for WhatsApp / Unipile (server: /upload/chat-attachment)
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
-    if (!isImage && !isPdf) {
-      toast.error('Please select an image or PDF file');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isPdf && !isVideo) {
+      toast.error('Please select an image, video, or PDF file');
       return;
     }
 
@@ -803,29 +841,41 @@ export default function ChatInbox() {
 
     if (isPdf) {
       setImagePreview(null);
+      revokeVideoPreviewUrl();
       revokePdfPreviewUrl();
       const url = URL.createObjectURL(file);
       pdfObjectUrlRef.current = url;
       setPdfPreviewUrl(url);
       return;
     }
+    if (isVideo) {
+      setImagePreview(null);
+      revokePdfPreviewUrl();
+      revokeVideoPreviewUrl();
+      const url = URL.createObjectURL(file);
+      videoObjectUrlRef.current = url;
+      setVideoPreviewUrl(url);
+      return;
+    }
     revokePdfPreviewUrl();
+    revokeVideoPreviewUrl();
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-  }, [revokePdfPreviewUrl]);
+  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl]);
 
   // 🔧 NEW: Remove selected image
   const handleRemoveImage = useCallback(() => {
     revokePdfPreviewUrl();
+    revokeVideoPreviewUrl();
     setSelectedImageFile(null);
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [revokePdfPreviewUrl]);
+  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl]);
 
   const handleSendMessage = useCallback(async () => {
     if ((!newMessage.trim() && !selectedImageFile) || !selectedCustomer || !businessId || !currentConversation) return;
@@ -837,7 +887,7 @@ export default function ChatInbox() {
     const platform = typeof platformRaw === 'string' ? platformRaw.toLowerCase() : 'website';
     const messageText = newMessage.trim();
     let mediaUrl: string | null = null;
-    let uploadedKind: 'image' | 'document' | null = null;
+    let uploadedKind: 'image' | 'video' | 'document' | null = null;
     let documentFilename: string | undefined;
 
     if (selectedImageFile) {
@@ -885,13 +935,25 @@ export default function ChatInbox() {
       const clientRequestId = crypto.randomUUID();
       const outboundPreview =
         messageText ||
-        (mediaUrl ? (uploadedKind === 'document' ? '📄 Document' : '📷 Image') : '');
+        (mediaUrl
+          ? uploadedKind === 'document'
+            ? '📄 Document'
+            : uploadedKind === 'video'
+              ? '🎥 Video'
+              : '📷 Image'
+          : '');
       dispatch(
         addOutboundPendingMessage({
           customerId: selectedCustomer,
           clientRequestId,
           text: outboundPreview,
-          messageType: mediaUrl ? (uploadedKind === 'document' ? 'document' : 'image') : 'text',
+          messageType: mediaUrl
+            ? uploadedKind === 'document'
+              ? 'document'
+              : uploadedKind === 'video'
+                ? 'video'
+                : 'image'
+            : 'text',
         })
       );
       try {
@@ -901,7 +963,13 @@ export default function ChatInbox() {
           conversationId: currentConversation.id,
           message:
             messageText ||
-            (mediaUrl ? (uploadedKind === 'document' ? '📄 Document' : '📷 Image') : ''),
+            (mediaUrl
+              ? uploadedKind === 'document'
+                ? '📄 Document'
+                : uploadedKind === 'video'
+                  ? '🎥 Video'
+                  : '📷 Image'
+              : ''),
           businessId: businessId,
           clientRequestId,
         };
@@ -913,6 +981,9 @@ export default function ChatInbox() {
             const fn = documentFilename || 'document.pdf';
             payload.documentFilename = fn;
             payload.filename = fn;
+          } else if (uploadedKind === 'video') {
+            payload.mediaUrl = mediaUrl;
+            payload.messageType = 'video';
           } else {
             payload.imageUrl = mediaUrl;
             payload.messageType = 'image';
@@ -929,7 +1000,13 @@ export default function ChatInbox() {
 
         if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection)) setWhapiReplyTo(null);
         toast.success(
-          mediaUrl ? (uploadedKind === 'document' ? 'PDF sent!' : 'Image sent!') : 'Message sent!'
+          mediaUrl
+            ? uploadedKind === 'document'
+              ? 'PDF sent!'
+              : uploadedKind === 'video'
+                ? 'Video sent!'
+                : 'Image sent!'
+            : 'Message sent!'
         );
       } catch (error: any) {
         dispatch(removeOutboundPendingMessage({ customerId: selectedCustomer, clientRequestId }));
@@ -1663,6 +1740,14 @@ export default function ChatInbox() {
                       const isDocumentMessage = messageType === 'document' || (!!(displayUrl || proxyUrl) && (!!msg.metadata?.fileName || /\.(pdf|doc|docx|xls|xlsx)$/i.test(msg.metadata?.fileName || '') || (displayUrl || proxyUrl || '').toLowerCase().includes('.pdf')));
                       // 🔧 Show as audio when messageType is audio OR we have URL + audio hint (voice/Unipile sometimes sends wrong type)
                       const isAudioMessage = messageType === 'audio' || (!!(displayUrl || proxyUrl) && (msg.text === '🎵 Audio' || msg.metadata?.messageType === 'audio' || (msg.text && /🎵/.test(msg.text))));
+                      const isLikelyVideo =
+                        !isDocumentMessage &&
+                        !isAudioMessage &&
+                        (messageType === 'video' ||
+                          msg.metadata?.messageType === 'video' ||
+                          msg.text === '🎥 Video' ||
+                          (typeof msg.text === 'string' && /\[video\]/i.test(msg.text)) ||
+                          (!!displayUrl && chatInboxUrlLooksLikeVideo(displayUrl)));
                       // 🔧 FIX: Detect media message from messageType OR if message text contains "Image:" or "att://"
                       const isMediaMessage = ['image', 'video', 'audio', 'document'].includes(messageType) || isDocumentMessage || isAudioMessage ||
                                             (msg.text && typeof msg.text === 'string' && (msg.text.includes('att://') || msg.text.match(/^(📷|🎥|🎵|📄|📎)/)));
@@ -1740,7 +1825,7 @@ export default function ChatInbox() {
                             {/* 🔧 NEW: Render media based on messageType (document can use proxyUrl when displayUrl missing) */}
                             {isMediaMessage && (displayUrl || (isDocumentMessage && proxyUrl) || (isAudioMessage && (proxyUrl || displayUrl)) || isAudioMessage) ? (
                               <>
-                                {messageType === 'image' && (
+                                {messageType === 'image' && !isLikelyVideo && (
                                   <div className="relative group">
                                     <MediaImage 
                                       src={displayUrl}
@@ -1752,7 +1837,7 @@ export default function ChatInbox() {
                                     <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                                   </div>
                                 )}
-                                {messageType === 'video' && (
+                                {(messageType === 'video' || isLikelyVideo) && displayUrl && (
                                   <video 
                                     src={displayUrl} 
                                     controls 
@@ -2161,6 +2246,17 @@ export default function ChatInbox() {
                             </span>
                           </div>
                         </div>
+                      ) : videoPreviewUrl ? (
+                        <div className="flex flex-col gap-1.5 p-2 max-w-[280px]">
+                          <video
+                            src={videoPreviewUrl}
+                            controls
+                            className="max-h-[200px] w-full rounded-md bg-black"
+                          />
+                          <span className="text-xs text-muted-foreground truncate" title={selectedImageFile.name}>
+                            {selectedImageFile.name}
+                          </span>
+                        </div>
                       ) : imagePreview ? (
                         <img
                           src={imagePreview}
@@ -2191,7 +2287,7 @@ export default function ChatInbox() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,application/pdf,.pdf"
+                    accept="image/*,video/*,application/pdf,.pdf"
                     onChange={handleImageSelect}
                     className="hidden"
                     id="image-upload"
@@ -2203,7 +2299,7 @@ export default function ChatInbox() {
                     className={cn('h-9 w-9 shrink-0', isWaThread && 'chat-wa-attach-btn border-[#00000014] dark:border-white/10')}
                     disabled={isUploadingImage}
                     onClick={() => fileInputRef.current?.click()}
-                    title="Attach image or PDF"
+                    title="Attach image, video, or PDF"
                   >
                     {isUploadingImage ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

@@ -86,6 +86,14 @@ dayjs.extend(isToday);
 dayjs.extend(isYesterday);
 dayjs.extend(relativeTime);
 
+function chatInboxUrlLooksLikeVideo(url: string | null | undefined): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const u = url.toLowerCase();
+  if (/\.(mp3|wav|ogg|opus|m4a|aac)(\?|#|$)/i.test(u)) return false;
+  if (/\.(mp4|webm|mov|m4v|3gp)(\?|#|$)/i.test(u)) return true;
+  return u.includes('/video/upload/');
+}
+
 const SystemMessage = ({ text }: { text: string }) => ( 
   <div className="flex items-center justify-center my-4">
     <div className="text-center text-xs px-4 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-600 break-words">
@@ -310,6 +318,8 @@ export default function AgentInbox() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const pdfObjectUrlRef = useRef<string | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const videoObjectUrlRef = useRef<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -321,11 +331,23 @@ export default function AgentInbox() {
     setPdfPreviewUrl(null);
   }, []);
 
+  const revokeVideoPreviewUrl = useCallback(() => {
+    if (videoObjectUrlRef.current) {
+      URL.revokeObjectURL(videoObjectUrlRef.current);
+      videoObjectUrlRef.current = null;
+    }
+    setVideoPreviewUrl(null);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (pdfObjectUrlRef.current) {
         URL.revokeObjectURL(pdfObjectUrlRef.current);
         pdfObjectUrlRef.current = null;
+      }
+      if (videoObjectUrlRef.current) {
+        URL.revokeObjectURL(videoObjectUrlRef.current);
+        videoObjectUrlRef.current = null;
       }
     };
   }, []);
@@ -754,6 +776,11 @@ export default function AgentInbox() {
   const handleConversationUpdated = useCallback(
     (data: any) => {
       const { conversationId, unreadCount, priority, tags, notes, assignedAgentId, status, channelId, queueState } = data;
+      if (conversationId && (status === 'closed' || status === 'CLOSED')) {
+        dispatch(removeConversation({ conversationId }));
+        scheduleRefetchOpenAgentListFromSocket();
+        return;
+      }
       console.log('🔔 AgentInbox: Received conversationUpdated event:', data);
       console.log('Current agentId:', agentId);
       console.log('Event assignedAgentId:', assignedAgentId);
@@ -983,8 +1010,9 @@ export default function AgentInbox() {
 
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
-    if (!isImage && !isPdf) {
-      toast.error('Please select an image or PDF file');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isPdf && !isVideo) {
+      toast.error('Please select an image, video, or PDF file');
       return;
     }
 
@@ -997,28 +1025,40 @@ export default function AgentInbox() {
 
     if (isPdf) {
       setImagePreview(null);
+      revokeVideoPreviewUrl();
       revokePdfPreviewUrl();
       const url = URL.createObjectURL(file);
       pdfObjectUrlRef.current = url;
       setPdfPreviewUrl(url);
       return;
     }
+    if (isVideo) {
+      setImagePreview(null);
+      revokePdfPreviewUrl();
+      revokeVideoPreviewUrl();
+      const url = URL.createObjectURL(file);
+      videoObjectUrlRef.current = url;
+      setVideoPreviewUrl(url);
+      return;
+    }
     revokePdfPreviewUrl();
+    revokeVideoPreviewUrl();
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-  }, [revokePdfPreviewUrl]);
+  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl]);
 
   const handleRemoveImage = useCallback(() => {
     revokePdfPreviewUrl();
+    revokeVideoPreviewUrl();
     setSelectedImageFile(null);
     setImagePreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [revokePdfPreviewUrl]);
+  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl]);
 
   const handleSendMessage = useCallback(async () => {
     if ((!newMessage.trim() && !selectedImageFile) || !selectedCustomer || !businessId || !currentConversation) return;
@@ -1029,7 +1069,7 @@ export default function AgentInbox() {
     const platform = getConversationUiPlatform(currentConversation);
     const messageText = newMessage.trim();
     let mediaUrl: string | null = null;
-    let uploadedKind: 'image' | 'document' | null = null;
+    let uploadedKind: 'image' | 'video' | 'document' | null = null;
     let documentFilename: string | undefined;
 
     if (selectedImageFile) {
@@ -1077,13 +1117,25 @@ export default function AgentInbox() {
       const clientRequestId = crypto.randomUUID();
       const outboundPreview =
         messageText ||
-        (mediaUrl ? (uploadedKind === 'document' ? '📄 Document' : '📷 Image') : '');
+        (mediaUrl
+          ? uploadedKind === 'document'
+            ? '📄 Document'
+            : uploadedKind === 'video'
+              ? '🎥 Video'
+              : '📷 Image'
+          : '');
       dispatch(
         addOutboundPendingMessage({
           customerId: selectedCustomer,
           clientRequestId,
           text: outboundPreview,
-          messageType: mediaUrl ? (uploadedKind === 'document' ? 'document' : 'image') : 'text',
+          messageType: mediaUrl
+            ? uploadedKind === 'document'
+              ? 'document'
+              : uploadedKind === 'video'
+                ? 'video'
+                : 'image'
+            : 'text',
         })
       );
       if (currentConversation?.id) {
@@ -1100,7 +1152,13 @@ export default function AgentInbox() {
           conversationId: currentConversation.id,
           message:
             messageText ||
-            (mediaUrl ? (uploadedKind === 'document' ? '📄 Document' : '📷 Image') : ''),
+            (mediaUrl
+              ? uploadedKind === 'document'
+                ? '📄 Document'
+                : uploadedKind === 'video'
+                  ? '🎥 Video'
+                  : '📷 Image'
+              : ''),
           businessId: businessId,
           clientRequestId,
         };
@@ -1111,6 +1169,9 @@ export default function AgentInbox() {
             const fn = documentFilename || 'document.pdf';
             payload.documentFilename = fn;
             payload.filename = fn;
+          } else if (uploadedKind === 'video') {
+            payload.mediaUrl = mediaUrl;
+            payload.messageType = 'video';
           } else {
             payload.imageUrl = mediaUrl;
             payload.messageType = 'image';
@@ -1123,7 +1184,13 @@ export default function AgentInbox() {
         await sendMessageViaConversation(payload);
         if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection)) setWhapiReplyTo(null);
         toast.success(
-          mediaUrl ? (uploadedKind === 'document' ? 'PDF sent!' : 'Image sent!') : 'Message sent!'
+          mediaUrl
+            ? uploadedKind === 'document'
+              ? 'PDF sent!'
+              : uploadedKind === 'video'
+                ? 'Video sent!'
+                : 'Image sent!'
+            : 'Message sent!'
         );
       } catch (error: any) {
         dispatch(removeOutboundPendingMessage({ customerId: selectedCustomer, clientRequestId }));
@@ -1949,6 +2016,14 @@ export default function AgentInbox() {
                       const isDocumentMessage = messageType === 'document' || (!!(displayUrl || proxyUrl) && (!!msg.metadata?.fileName || /\.(pdf|doc|docx|xls|xlsx)$/i.test(msg.metadata?.fileName || '') || (displayUrl || proxyUrl || '').toLowerCase().includes('.pdf')));
                       // 🔧 Show as audio when messageType is audio OR we have URL + audio hint (voice/Unipile sometimes sends wrong type)
                       const isAudioMessage = messageType === 'audio' || (!!(displayUrl || proxyUrl) && (msg.text === '🎵 Audio' || msg.metadata?.messageType === 'audio' || (msg.text && /🎵/.test(msg.text))));
+                      const isLikelyVideo =
+                        !isDocumentMessage &&
+                        !isAudioMessage &&
+                        (messageType === 'video' ||
+                          msg.metadata?.messageType === 'video' ||
+                          msg.text === '🎥 Video' ||
+                          (typeof msg.text === 'string' && /\[video\]/i.test(msg.text)) ||
+                          (!!displayUrl && chatInboxUrlLooksLikeVideo(displayUrl)));
                       // 🔧 FIX: Detect media message from messageType OR if message text contains "Image:" or "att://"
                       const isMediaMessage = ['image', 'video', 'audio', 'document'].includes(messageType) || isDocumentMessage || isAudioMessage ||
                                             (msg.text && typeof msg.text === 'string' && (msg.text.includes('att://') || msg.text.match(/^(📷|🎥|🎵|📄|📎)/)));
@@ -2026,7 +2101,7 @@ export default function AgentInbox() {
                             {/* 🔧 NEW: Render media based on messageType (document can use proxyUrl when displayUrl missing) */}
                             {isMediaMessage && (displayUrl || (isDocumentMessage && proxyUrl) || (isAudioMessage && (proxyUrl || displayUrl)) || isAudioMessage) ? (
                               <>
-                                {messageType === 'image' && (
+                                {messageType === 'image' && !isLikelyVideo && (
                                   <div className="relative group">
                                     <MediaImage 
                                       src={displayUrl}
@@ -2038,7 +2113,7 @@ export default function AgentInbox() {
                                     <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                                   </div>
                                 )}
-                                {messageType === 'video' && (
+                                {(messageType === 'video' || isLikelyVideo) && displayUrl && (
                                   <video 
                                     src={displayUrl} 
                                     controls 
@@ -2405,6 +2480,17 @@ export default function AgentInbox() {
                             </span>
                           </div>
                         </div>
+                      ) : videoPreviewUrl ? (
+                        <div className="flex flex-col gap-1.5 p-2 max-w-[280px]">
+                          <video
+                            src={videoPreviewUrl}
+                            controls
+                            className="max-h-[200px] w-full rounded-md bg-black"
+                          />
+                          <span className="text-xs text-muted-foreground truncate" title={selectedImageFile.name}>
+                            {selectedImageFile.name}
+                          </span>
+                        </div>
                       ) : imagePreview ? (
                         <img
                           src={imagePreview}
@@ -2434,7 +2520,7 @@ export default function AgentInbox() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,application/pdf,.pdf"
+                    accept="image/*,video/*,application/pdf,.pdf"
                     onChange={handleImageSelect}
                     className="hidden"
                     id="image-upload-agent"
@@ -2518,7 +2604,7 @@ export default function AgentInbox() {
                     disabled={isUploadingImage}
                     onClick={() => fileInputRef.current?.click()}
                     className="absolute right-12 sm:right-14 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9"
-                    title="Attach image or PDF"
+                    title="Attach image, video, or PDF"
                   >
                     {isUploadingImage ? (
                       <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
