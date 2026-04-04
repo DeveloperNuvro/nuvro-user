@@ -263,7 +263,7 @@
     "snippetHint": "স্নিপেটের জন্য '/' ব্যবহার করুন",
     "downloadDocument": "ডাউনলোড",
     "documentUnavailable": "ডকুমেন্ট উপলব্ধ নয়",
-    "imageZoomHint": "জুম করতে স্ক্রল বা পিঞ্চ করুন। জুম থাকলে টেনে সরান।",
+    "imageZoomHint": "জুম: Ctrl বা ⌘ চেপে স্ক্রল করুন; ফোনে পিঞ্চ। জুম থাকলে টেনে সরান।",
     "quotedReplyLabel": "উত্তর দিচ্ছেন",
     "quotedReplyNoPreview": "মূল বার্তা (প্রিভিউ নেই)",
     "whapi": {

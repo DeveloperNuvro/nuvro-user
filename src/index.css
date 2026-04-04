@@ -371,3 +371,21 @@ body {
 .chat-wa-attach-btn {
   border-radius: 9999px !important;
 }
+
+/* Voice recording bar — lightweight level animation */
+@keyframes voice-rec-bar {
+  0%,
+  100% {
+    transform: scaleY(0.28);
+    opacity: 0.65;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.voice-rec-wave__bar {
+  transform-origin: center bottom;
+  animation: voice-rec-bar 0.75s ease-in-out infinite;
+}

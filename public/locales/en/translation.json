@@ -193,7 +193,7 @@
     "loadingSnippets": "Loading...",
     "downloadDocument": "Download",
     "documentUnavailable": "Document unavailable",
-    "imageZoomHint": "Scroll or pinch to zoom. Drag to pan when zoomed.",
+    "imageZoomHint": "Hold Ctrl or ⌘ and scroll to zoom. Pinch to zoom on touch. Drag to pan when zoomed.",
     "quotedReplyLabel": "Replying to",
     "quotedReplyNoPreview": "Original message (preview unavailable)",
     "whapi": {

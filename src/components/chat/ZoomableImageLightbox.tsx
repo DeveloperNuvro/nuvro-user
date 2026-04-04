@@ -37,6 +37,8 @@ export function ZoomableImageLightbox({ children, className, hint }: Props) {
   }, [scale]);
 
   const applyWheelZoom = useCallback((e: globalThis.WheelEvent) => {
+    // Plain trackpad "scroll" was firing wheel and looked like auto-zoom. Require Ctrl (Windows/Linux) or ⌘ (Mac).
+    if (!e.ctrlKey && !e.metaKey) return;
     e.preventDefault();
     e.stopPropagation();
     // Trackpads often use small deltas; mouse wheel uses larger steps
@@ -162,7 +164,7 @@ export function ZoomableImageLightbox({ children, className, hint }: Props) {
         className={cn(
           'relative min-h-0 min-w-0 w-full flex-1 overflow-hidden bg-black/40 select-none',
           'min-h-[min(55vh,420px)]',
-          scale > MIN_SCALE ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-in'
+          scale > MIN_SCALE ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
         )}
         style={{ touchAction: 'none' }}
         onPointerDown={onPointerDown}

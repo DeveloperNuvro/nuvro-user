@@ -2,10 +2,13 @@
 // 10-item fix: (6) internal note shown as message in conversation flow
 
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fragment } from "react";
+import { useVoiceRecorder, formatVoiceDuration, resolveVoiceAttachmentDurationSeconds } from "@/hooks/useVoiceRecorder";
+import { VoiceRecordingBar } from "@/components/chat/VoiceRecordingBar";
+import { OutboundVoicePreviewCard } from "@/components/chat/OutboundVoicePreviewCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Paperclip, X, Reply } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Paperclip, X, Reply, Mic } from "lucide-react";
 import { cn, toCloudinaryMp3Url } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -759,6 +762,9 @@ export default function ChatInbox() {
   const pdfObjectUrlRef = useRef<string | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const videoObjectUrlRef = useRef<string | null>(null);
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+  const [outboundAudioDurationSec, setOutboundAudioDurationSec] = useState<number | null>(null);
+  const audioObjectUrlRef = useRef<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -778,6 +784,14 @@ export default function ChatInbox() {
     setVideoPreviewUrl(null);
   }, []);
 
+  const revokeAudioPreviewUrl = useCallback(() => {
+    if (audioObjectUrlRef.current) {
+      URL.revokeObjectURL(audioObjectUrlRef.current);
+      audioObjectUrlRef.current = null;
+    }
+    setAudioPreviewUrl(null);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (pdfObjectUrlRef.current) {
@@ -787,6 +801,10 @@ export default function ChatInbox() {
       if (videoObjectUrlRef.current) {
         URL.revokeObjectURL(videoObjectUrlRef.current);
         videoObjectUrlRef.current = null;
+      }
+      if (audioObjectUrlRef.current) {
+        URL.revokeObjectURL(audioObjectUrlRef.current);
+        audioObjectUrlRef.current = null;
       }
     };
   }, []);
@@ -819,6 +837,59 @@ export default function ChatInbox() {
     return () => { cancelled = true; };
   }, [selectedCustomer, messagesData?.list]);
 
+  const {
+    isRecording,
+    isPaused,
+    recordingSeconds,
+    supportsPause,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+    pauseRecording,
+    resumeRecording,
+  } = useVoiceRecorder();
+  const VOICE_MAX_SECONDS = 300;
+  const hitVoiceMaxRef = useRef(false);
+
+  const attachAudioFile = useCallback(
+    (file: File, recordedDurationSec?: number) => {
+      if (file.size > 16 * 1024 * 1024) {
+        toast.error('File size must be less than 16MB');
+        return;
+      }
+      setSelectedImageFile(file);
+      setImagePreview(null);
+      revokePdfPreviewUrl();
+      revokeVideoPreviewUrl();
+      revokeAudioPreviewUrl();
+      const url = URL.createObjectURL(file);
+      audioObjectUrlRef.current = url;
+      setAudioPreviewUrl(url);
+      if (typeof recordedDurationSec === 'number' && recordedDurationSec >= 0) {
+        setOutboundAudioDurationSec(Math.round(recordedDurationSec));
+      } else {
+        setOutboundAudioDurationSec(null);
+      }
+    },
+    [revokePdfPreviewUrl, revokeVideoPreviewUrl, revokeAudioPreviewUrl]
+  );
+
+  useEffect(() => {
+    if (!isRecording) {
+      hitVoiceMaxRef.current = false;
+      return;
+    }
+    if (recordingSeconds < VOICE_MAX_SECONDS || hitVoiceMaxRef.current) return;
+    hitVoiceMaxRef.current = true;
+    void stopRecording().then(async ({ file, activeDurationSec }) => {
+      if (file) {
+        const d = await resolveVoiceAttachmentDurationSeconds(file, activeDurationSec);
+        attachAudioFile(file, d);
+        toast.success(t('chatInbox.voiceMaxLength', 'Maximum recording length — preview added'));
+      }
+    });
+  }, [isRecording, recordingSeconds, stopRecording, attachAudioFile, t]);
+
   // Image, video, or PDF for WhatsApp / Unipile (server: /upload/chat-attachment)
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -827,8 +898,9 @@ export default function ChatInbox() {
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
     const isVideo = file.type.startsWith('video/');
-    if (!isImage && !isPdf && !isVideo) {
-      toast.error('Please select an image, video, or PDF file');
+    const isAudio = file.type.startsWith('audio/');
+    if (!isImage && !isPdf && !isVideo && !isAudio) {
+      toast.error('Please select an image, video, audio, or PDF file');
       return;
     }
 
@@ -842,6 +914,7 @@ export default function ChatInbox() {
     if (isPdf) {
       setImagePreview(null);
       revokeVideoPreviewUrl();
+      revokeAudioPreviewUrl();
       revokePdfPreviewUrl();
       const url = URL.createObjectURL(file);
       pdfObjectUrlRef.current = url;
@@ -852,32 +925,41 @@ export default function ChatInbox() {
       setImagePreview(null);
       revokePdfPreviewUrl();
       revokeVideoPreviewUrl();
+      revokeAudioPreviewUrl();
       const url = URL.createObjectURL(file);
       videoObjectUrlRef.current = url;
       setVideoPreviewUrl(url);
       return;
     }
+    if (isAudio) {
+      attachAudioFile(file);
+      return;
+    }
     revokePdfPreviewUrl();
     revokeVideoPreviewUrl();
+    revokeAudioPreviewUrl();
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl]);
+  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl, revokeAudioPreviewUrl, attachAudioFile]);
 
   // 🔧 NEW: Remove selected image
   const handleRemoveImage = useCallback(() => {
     revokePdfPreviewUrl();
     revokeVideoPreviewUrl();
+    revokeAudioPreviewUrl();
     setSelectedImageFile(null);
     setImagePreview(null);
+    setOutboundAudioDurationSec(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl]);
+  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl, revokeAudioPreviewUrl]);
 
   const handleSendMessage = useCallback(async () => {
+    if (isRecording) return;
     if ((!newMessage.trim() && !selectedImageFile) || !selectedCustomer || !businessId || !currentConversation) return;
 
     const socket = getSocket();
@@ -886,8 +968,9 @@ export default function ChatInbox() {
     const platformRaw = currentConversation.platformInfo?.platform || currentConversation?.source || 'website';
     const platform = typeof platformRaw === 'string' ? platformRaw.toLowerCase() : 'website';
     const messageText = newMessage.trim();
+    // Media fields are only set after `uploadChatAttachmentApi` (picked file). Plain pasted URLs stay in `messageText` only.
     let mediaUrl: string | null = null;
-    let uploadedKind: 'image' | 'video' | 'document' | null = null;
+    let uploadedKind: 'image' | 'video' | 'document' | 'audio' | null = null;
     let documentFilename: string | undefined;
 
     if (selectedImageFile) {
@@ -940,7 +1023,9 @@ export default function ChatInbox() {
             ? '📄 Document'
             : uploadedKind === 'video'
               ? '🎥 Video'
-              : '📷 Image'
+              : uploadedKind === 'audio'
+                ? '🎵 Audio'
+                : '📷 Image'
           : '');
       dispatch(
         addOutboundPendingMessage({
@@ -952,7 +1037,9 @@ export default function ChatInbox() {
               ? 'document'
               : uploadedKind === 'video'
                 ? 'video'
-                : 'image'
+                : uploadedKind === 'audio'
+                  ? 'audio'
+                  : 'image'
             : 'text',
         })
       );
@@ -968,10 +1055,14 @@ export default function ChatInbox() {
                 ? '📄 Document'
                 : uploadedKind === 'video'
                   ? '🎥 Video'
-                  : '📷 Image'
+                  : uploadedKind === 'audio'
+                    ? '🎵 Audio'
+                    : '📷 Image'
               : ''),
           businessId: businessId,
           clientRequestId,
+          // Explicit text when no attachment — avoids any client/proxy inferring document/media from `.img` URLs in body
+          ...(!mediaUrl ? { messageType: 'text' as const } : {}),
         };
 
         if (mediaUrl) {
@@ -984,6 +1075,12 @@ export default function ChatInbox() {
           } else if (uploadedKind === 'video') {
             payload.mediaUrl = mediaUrl;
             payload.messageType = 'video';
+          } else if (uploadedKind === 'audio') {
+            payload.audioUrl = mediaUrl;
+            payload.messageType = 'audio';
+            if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection)) {
+              payload.whapiAudioDelivery = 'voice';
+            }
           } else {
             payload.imageUrl = mediaUrl;
             payload.messageType = 'image';
@@ -1005,7 +1102,9 @@ export default function ChatInbox() {
               ? 'PDF sent!'
               : uploadedKind === 'video'
                 ? 'Video sent!'
-                : 'Image sent!'
+                : uploadedKind === 'audio'
+                  ? 'Voice sent!'
+                  : 'Image sent!'
             : 'Message sent!'
         );
       } catch (error: any) {
@@ -1082,7 +1181,7 @@ export default function ChatInbox() {
     )
       .unwrap()
       .catch((error) => toast.error(error || t('chatInbox.toastMessageFailed')));
-  }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t, selectedImageFile, handleRemoveImage, whapiReplyTo]);
+  }, [newMessage, selectedCustomer, businessId, currentConversation, dispatch, t, selectedImageFile, handleRemoveImage, whapiReplyTo, isRecording]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
     if (!currentConversation?.id) { toast.error(t('chatInbox.toastTransferNoId')); return; }
@@ -1856,6 +1955,11 @@ export default function ChatInbox() {
                                     <div className="rounded-xl border border-purple-200/50 bg-gradient-to-r from-purple-50 to-blue-50 p-4 dark:border-purple-800/50 dark:from-purple-900/20 dark:to-blue-900/20">
                                       <SimpleVoiceNote
                                         messageId={String(msg._id)}
+                                        audioSrc={
+                                          (msg as any).audioSrc ??
+                                          msg.metadata?.audioSrc ??
+                                          (effectiveAudioUrl?.startsWith('http') ? effectiveAudioUrl : null)
+                                        }
                                         audioUrl={(msg as any).audioUrl ?? msg.metadata?.audioUrl ?? audioUrlByMessageId[msg._id]}
                                         cloudinaryUrl={msg.cloudinaryUrl ?? msg.metadata?.cloudinaryUrl ?? anyCloudinary}
                                       />
@@ -2229,7 +2333,49 @@ export default function ChatInbox() {
                   </div>
                 )}
 
+                {isRecording && (
+                  <VoiceRecordingBar
+                    recordingSeconds={recordingSeconds}
+                    isPaused={isPaused}
+                    supportsPause={supportsPause}
+                    variant={isWaThread ? 'whatsapp' : 'default'}
+                    onPause={pauseRecording}
+                    onResume={resumeRecording}
+                    onCancel={cancelRecording}
+                    onDone={async () => {
+                      const { file, activeDurationSec } = await stopRecording();
+                      if (!file) {
+                        toast.error(t('chatInbox.voiceTooShort', 'Recording too short'));
+                        return;
+                      }
+                      const d = await resolveVoiceAttachmentDurationSeconds(file, activeDurationSec);
+                      attachAudioFile(file, d);
+                    }}
+                  />
+                )}
+
                 {selectedImageFile && (
+                  audioPreviewUrl ? (
+                    <div className="relative mb-3 inline-block max-w-full pr-2 pt-2">
+                      <OutboundVoicePreviewCard
+                        src={audioPreviewUrl}
+                        durationHint={
+                          outboundAudioDurationSec != null
+                            ? formatVoiceDuration(outboundAudioDurationSec)
+                            : null
+                        }
+                        fileName={selectedImageFile.name}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="absolute -top-0.5 -right-0.5 z-30 cursor-pointer rounded-full bg-red-500 p-1.5 text-white shadow-md transition-colors hover:bg-red-600"
+                        aria-label={t('chatInbox.removeAttachment', 'Remove attachment')}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
                   <div className="relative mb-3 inline-block max-w-full">
                     <div className="relative rounded-lg overflow-hidden border-2 border-primary/20 bg-muted/50">
                       {pdfPreviewUrl ? (
@@ -2280,6 +2426,7 @@ export default function ChatInbox() {
                       </button>
                     </div>
                   </div>
+                  )
                 )}
                 
                 <div className="relative flex items-end gap-2">
@@ -2287,7 +2434,7 @@ export default function ChatInbox() {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,video/*,application/pdf,.pdf"
+                    accept="image/*,video/*,audio/*,application/pdf,.pdf"
                     onChange={handleImageSelect}
                     className="hidden"
                     id="image-upload"
@@ -2299,13 +2446,49 @@ export default function ChatInbox() {
                     className={cn('h-9 w-9 shrink-0', isWaThread && 'chat-wa-attach-btn border-[#00000014] dark:border-white/10')}
                     disabled={isUploadingImage}
                     onClick={() => fileInputRef.current?.click()}
-                    title="Attach image, video, or PDF"
+                    title="Attach image, video, audio, or PDF"
                   >
                     {isUploadingImage ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Paperclip className="h-4 w-4" />
                     )}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className={cn(
+                      'h-9 w-9 shrink-0',
+                      isWaThread && 'chat-wa-attach-btn border-[#00000014] dark:border-white/10 text-[#25D366] hover:text-[#20bd5a]'
+                    )}
+                    disabled={
+                      isUploadingImage ||
+                      !!selectedImageFile ||
+                      isRecording ||
+                      (chatSurfacePlatform === 'whatsapp' && !!whatsappSession?.requiresTemplate)
+                    }
+                    title={t('chatInbox.voiceMicHint', 'Record voice message')}
+                    onClick={async () => {
+                      try {
+                        await startRecording();
+                      } catch (e: unknown) {
+                        const err = e as Error & { name?: string };
+                        if (err?.message === 'VOICE_NOT_SUPPORTED') {
+                          toast.error(
+                            t('chatInbox.voiceNotSupported', 'Voice recording is not supported in this browser')
+                          );
+                          return;
+                        }
+                        if (err?.name === 'NotAllowedError') {
+                          toast.error(t('chatInbox.voiceMicDenied', 'Microphone permission denied'));
+                          return;
+                        }
+                        toast.error(t('chatInbox.voiceMicError', 'Could not start recording'));
+                      }
+                    }}
+                  >
+                    <Mic className="h-4 w-4" />
                   </Button>
                   <div className="relative w-full">
                     <Textarea 
@@ -2365,7 +2548,12 @@ export default function ChatInbox() {
                         ? 'rounded-full bg-[#25D366] text-white hover:bg-[#20bd5a] shadow-sm border-0'
                         : 'bg-primary hover:bg-primary/90'
                     )}
-                    disabled={isUploadingImage || (whatsappSession?.requiresTemplate && chatSurfacePlatform === 'whatsapp') || (!newMessage.trim() && !selectedImageFile)}
+                    disabled={
+                      isUploadingImage ||
+                      isRecording ||
+                      (whatsappSession?.requiresTemplate && chatSurfacePlatform === 'whatsapp') ||
+                      (!newMessage.trim() && !selectedImageFile)
+                    }
                   >
                     {isUploadingImage ? (
                       <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
@@ -2386,7 +2574,10 @@ export default function ChatInbox() {
           {selectedImage && (
             <ZoomableImageLightbox
               key={selectedImage.src}
-              hint={t('chatInbox.imageZoomHint', 'Scroll or pinch to zoom. Drag to pan when zoomed.')}
+              hint={t(
+                'chatInbox.imageZoomHint',
+                'Hold Ctrl or ⌘ and scroll to zoom. Pinch to zoom on touch. Drag to pan when zoomed.'
+              )}
             >
               {selectedImage.src && (selectedImage.src.includes('/api/v1/unipile/attachments/') || selectedImage.src.includes('/unipile/attachments/')) ? (
                 <MediaImage

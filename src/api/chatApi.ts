@@ -277,7 +277,7 @@ export const uploadImage = async (file: File): Promise<{ url: string }> => {
 /** Chat inbox: images, video, or PDF (returns Cloudinary URL + messageType for send). */
 export const uploadChatAttachment = async (
   file: File
-): Promise<{ url: string; messageType: 'image' | 'video' | 'document'; fileName?: string }> => {
+): Promise<{ url: string; messageType: 'image' | 'video' | 'document' | 'audio'; fileName?: string }> => {
   const formData = new FormData();
   formData.append('file', file);
   const response = await api.post('/api/v1/upload/chat-attachment', formData, {

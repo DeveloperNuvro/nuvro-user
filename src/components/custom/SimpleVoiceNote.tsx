@@ -1,9 +1,20 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { toCloudinaryMp3Url } from '@/lib/utils';
 import { api } from '@/api/axios';
 import { Play, Pause, Loader2 } from 'lucide-react';
 
-function pickSrc(audioUrl?: string | null, cloudinaryUrl?: string | null): string | null {
+/** Optimistic inbox rows use `pending_<uuid>` — not a Mongo id; never call audio-play-url for those. */
+function isPlayableChatMessageId(id: string): boolean {
+  return /^[a-f0-9]{24}$/i.test(String(id || '').trim());
+}
+
+function pickSrc(
+  audioUrl?: string | null,
+  cloudinaryUrl?: string | null,
+  audioSrc?: string | null
+): string | null {
+  if (audioSrc && audioSrc.startsWith('http')) return audioSrc;
   if (audioUrl && audioUrl.startsWith('http')) return audioUrl;
   if (cloudinaryUrl?.startsWith('http')) {
     return toCloudinaryMp3Url(cloudinaryUrl) || cloudinaryUrl;
@@ -46,26 +57,35 @@ export default function SimpleVoiceNote({
   messageId,
   audioUrl,
   cloudinaryUrl,
+  audioSrc,
 }: {
   messageId: string;
   audioUrl?: string | null;
   cloudinaryUrl?: string | null;
+  /** Backend-computed playable HTTPS URL (GET /messages) — prefer over raw cloudinary when set */
+  audioSrc?: string | null;
 }) {
-  const [src, setSrc] = useState<string | null>(() => pickSrc(audioUrl, cloudinaryUrl));
-  const [loading, setLoading] = useState(!pickSrc(audioUrl, cloudinaryUrl));
+  const { t } = useTranslation();
+  const [src, setSrc] = useState<string | null>(() => pickSrc(audioUrl, cloudinaryUrl, audioSrc));
+  const [loading, setLoading] = useState(() => {
+    if (!isPlayableChatMessageId(messageId)) return false;
+    return !pickSrc(audioUrl, cloudinaryUrl, audioSrc);
+  });
   const [failed, setFailed] = useState(false);
   const [playing, setPlaying] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    const next = pickSrc(audioUrl, cloudinaryUrl);
+    if (!isPlayableChatMessageId(messageId)) return;
+    const next = pickSrc(audioUrl, cloudinaryUrl, audioSrc);
     setSrc(next);
     setLoading(!next);
     setFailed(false);
-  }, [audioUrl, cloudinaryUrl]);
+  }, [messageId, audioUrl, cloudinaryUrl, audioSrc]);
 
   const loadUrl = useCallback(async () => {
     if (src?.startsWith('http')) return;
+    if (!isPlayableChatMessageId(messageId)) return;
     setLoading(true);
     setFailed(false);
     const u = await fetchPlayUrl(messageId);
@@ -80,6 +100,7 @@ export default function SimpleVoiceNote({
 
   useEffect(() => {
     if (src?.startsWith('http')) return;
+    if (!isPlayableChatMessageId(messageId)) return;
     loadUrl();
   }, [messageId, src, loadUrl]);
 
@@ -92,6 +113,15 @@ export default function SimpleVoiceNote({
       el.pause();
     }
   }, []);
+
+  if (!isPlayableChatMessageId(messageId)) {
+    return (
+      <div className="flex min-w-[220px] items-center gap-2 py-2 text-sm text-foreground">
+        <Loader2 className="h-5 w-5 shrink-0 animate-spin text-purple-500" aria-hidden />
+        <span>{t('chatInbox.voiceSending', 'Sending voice message…')}</span>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

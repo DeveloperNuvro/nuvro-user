@@ -2,10 +2,13 @@
 // 10-item fix: (2) realtime inbox no-refresh, (6) internal note in chat, (8) AI Summary, (9) Improve message button, (10) spellCheck on textarea
 
 import { useState, useEffect, useRef, useMemo, useCallback, useLayoutEffect, Fragment } from "react";
+import { useVoiceRecorder, formatVoiceDuration, resolveVoiceAttachmentDurationSeconds } from "@/hooks/useVoiceRecorder";
+import { VoiceRecordingBar } from "@/components/chat/VoiceRecordingBar";
+import { OutboundVoicePreviewCard } from "@/components/chat/OutboundVoicePreviewCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Paperclip, X, Sparkles, Reply, UserMinus } from "lucide-react";
+import { Send, MessageSquareText, Loader2, User, Ticket, Bot, MoreVertical, ChevronsRight, XCircle, Globe, MessageCircle, Circle, Tag, FileText, Clock, AlertCircle, CheckCircle2, Paperclip, X, Sparkles, Reply, UserMinus, Mic } from "lucide-react";
 import { cn, toCloudinaryMp3Url } from "@/lib/utils";
 import { useDispatch, useSelector } from "react-redux";
 import { useTranslation } from "react-i18next";
@@ -320,6 +323,10 @@ export default function AgentInbox() {
   const pdfObjectUrlRef = useRef<string | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const videoObjectUrlRef = useRef<string | null>(null);
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
+  /** Shown when native <audio> blob metadata is 0:00 (common for WebM). */
+  const [outboundAudioDurationSec, setOutboundAudioDurationSec] = useState<number | null>(null);
+  const audioObjectUrlRef = useRef<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -339,6 +346,14 @@ export default function AgentInbox() {
     setVideoPreviewUrl(null);
   }, []);
 
+  const revokeAudioPreviewUrl = useCallback(() => {
+    if (audioObjectUrlRef.current) {
+      URL.revokeObjectURL(audioObjectUrlRef.current);
+      audioObjectUrlRef.current = null;
+    }
+    setAudioPreviewUrl(null);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (pdfObjectUrlRef.current) {
@@ -348,6 +363,10 @@ export default function AgentInbox() {
       if (videoObjectUrlRef.current) {
         URL.revokeObjectURL(videoObjectUrlRef.current);
         videoObjectUrlRef.current = null;
+      }
+      if (audioObjectUrlRef.current) {
+        URL.revokeObjectURL(audioObjectUrlRef.current);
+        audioObjectUrlRef.current = null;
       }
     };
   }, []);
@@ -1004,6 +1023,59 @@ export default function AgentInbox() {
     }
   }, [messagesData?.list, isInitialMessageLoad]);
 
+  const {
+    isRecording,
+    isPaused,
+    recordingSeconds,
+    supportsPause,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+    pauseRecording,
+    resumeRecording,
+  } = useVoiceRecorder();
+  const VOICE_MAX_SECONDS = 300;
+  const hitVoiceMaxRef = useRef(false);
+
+  const attachAudioFile = useCallback(
+    (file: File, recordedDurationSec?: number) => {
+      if (file.size > 16 * 1024 * 1024) {
+        toast.error('File size must be less than 16MB');
+        return;
+      }
+      setSelectedImageFile(file);
+      setImagePreview(null);
+      revokePdfPreviewUrl();
+      revokeVideoPreviewUrl();
+      revokeAudioPreviewUrl();
+      const url = URL.createObjectURL(file);
+      audioObjectUrlRef.current = url;
+      setAudioPreviewUrl(url);
+      if (typeof recordedDurationSec === 'number' && recordedDurationSec >= 0) {
+        setOutboundAudioDurationSec(Math.round(recordedDurationSec));
+      } else {
+        setOutboundAudioDurationSec(null);
+      }
+    },
+    [revokePdfPreviewUrl, revokeVideoPreviewUrl, revokeAudioPreviewUrl]
+  );
+
+  useEffect(() => {
+    if (!isRecording) {
+      hitVoiceMaxRef.current = false;
+      return;
+    }
+    if (recordingSeconds < VOICE_MAX_SECONDS || hitVoiceMaxRef.current) return;
+    hitVoiceMaxRef.current = true;
+    void stopRecording().then(async ({ file, activeDurationSec }) => {
+      if (file) {
+        const d = await resolveVoiceAttachmentDurationSeconds(file, activeDurationSec);
+        attachAudioFile(file, d);
+        toast.success(t('chatInbox.voiceMaxLength', 'Maximum recording length — preview added'));
+      }
+    });
+  }, [isRecording, recordingSeconds, stopRecording, attachAudioFile, t]);
+
   const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1011,8 +1083,9 @@ export default function AgentInbox() {
     const isImage = file.type.startsWith('image/');
     const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
     const isVideo = file.type.startsWith('video/');
-    if (!isImage && !isPdf && !isVideo) {
-      toast.error('Please select an image, video, or PDF file');
+    const isAudio = file.type.startsWith('audio/');
+    if (!isImage && !isPdf && !isVideo && !isAudio) {
+      toast.error('Please select an image, video, audio, or PDF file');
       return;
     }
 
@@ -1026,6 +1099,7 @@ export default function AgentInbox() {
     if (isPdf) {
       setImagePreview(null);
       revokeVideoPreviewUrl();
+      revokeAudioPreviewUrl();
       revokePdfPreviewUrl();
       const url = URL.createObjectURL(file);
       pdfObjectUrlRef.current = url;
@@ -1036,31 +1110,40 @@ export default function AgentInbox() {
       setImagePreview(null);
       revokePdfPreviewUrl();
       revokeVideoPreviewUrl();
+      revokeAudioPreviewUrl();
       const url = URL.createObjectURL(file);
       videoObjectUrlRef.current = url;
       setVideoPreviewUrl(url);
       return;
     }
+    if (isAudio) {
+      attachAudioFile(file);
+      return;
+    }
     revokePdfPreviewUrl();
     revokeVideoPreviewUrl();
+    revokeAudioPreviewUrl();
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl]);
+  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl, revokeAudioPreviewUrl, attachAudioFile]);
 
   const handleRemoveImage = useCallback(() => {
     revokePdfPreviewUrl();
     revokeVideoPreviewUrl();
+    revokeAudioPreviewUrl();
     setSelectedImageFile(null);
     setImagePreview(null);
+    setOutboundAudioDurationSec(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
-  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl]);
+  }, [revokePdfPreviewUrl, revokeVideoPreviewUrl, revokeAudioPreviewUrl]);
 
   const handleSendMessage = useCallback(async () => {
+    if (isRecording) return;
     if ((!newMessage.trim() && !selectedImageFile) || !selectedCustomer || !businessId || !currentConversation) return;
 
     const socket = getSocket();
@@ -1068,8 +1151,9 @@ export default function AgentInbox() {
 
     const platform = getConversationUiPlatform(currentConversation);
     const messageText = newMessage.trim();
+    // Media fields only after attachment upload; pasted links are sent as normal text (`message`), never as imageUrl/mediaUrl.
     let mediaUrl: string | null = null;
-    let uploadedKind: 'image' | 'video' | 'document' | null = null;
+    let uploadedKind: 'image' | 'video' | 'document' | 'audio' | null = null;
     let documentFilename: string | undefined;
 
     if (selectedImageFile) {
@@ -1122,7 +1206,9 @@ export default function AgentInbox() {
             ? '📄 Document'
             : uploadedKind === 'video'
               ? '🎥 Video'
-              : '📷 Image'
+              : uploadedKind === 'audio'
+                ? '🎵 Audio'
+                : '📷 Image'
           : '');
       dispatch(
         addOutboundPendingMessage({
@@ -1134,7 +1220,9 @@ export default function AgentInbox() {
               ? 'document'
               : uploadedKind === 'video'
                 ? 'video'
-                : 'image'
+                : uploadedKind === 'audio'
+                  ? 'audio'
+                  : 'image'
             : 'text',
         })
       );
@@ -1157,10 +1245,13 @@ export default function AgentInbox() {
                 ? '📄 Document'
                 : uploadedKind === 'video'
                   ? '🎥 Video'
-                  : '📷 Image'
+                  : uploadedKind === 'audio'
+                    ? '🎵 Audio'
+                    : '📷 Image'
               : ''),
           businessId: businessId,
           clientRequestId,
+          ...(!mediaUrl ? { messageType: 'text' as const } : {}),
         };
         if (mediaUrl) {
           if (uploadedKind === 'document') {
@@ -1172,6 +1263,12 @@ export default function AgentInbox() {
           } else if (uploadedKind === 'video') {
             payload.mediaUrl = mediaUrl;
             payload.messageType = 'video';
+          } else if (uploadedKind === 'audio') {
+            payload.audioUrl = mediaUrl;
+            payload.messageType = 'audio';
+            if (isWhapiLinkedWhatsApp(currentConversation?.whatsappConnection)) {
+              payload.whapiAudioDelivery = 'voice';
+            }
           } else {
             payload.imageUrl = mediaUrl;
             payload.messageType = 'image';
@@ -1189,7 +1286,9 @@ export default function AgentInbox() {
               ? 'PDF sent!'
               : uploadedKind === 'video'
                 ? 'Video sent!'
-                : 'Image sent!'
+                : uploadedKind === 'audio'
+                  ? 'Voice sent!'
+                  : 'Image sent!'
             : 'Message sent!'
         );
       } catch (error: any) {
@@ -1283,6 +1382,7 @@ export default function AgentInbox() {
     selectedImageFile,
     handleRemoveImage,
     whapiReplyTo,
+    isRecording,
   ]);
 
   const handleTransfer = async (target: { type: 'agent' | 'channel', id: string }) => {
@@ -2132,6 +2232,11 @@ export default function AgentInbox() {
                                     <div className="rounded-xl border border-purple-200/50 bg-gradient-to-r from-purple-50 to-blue-50 p-4 dark:border-purple-800/50 dark:from-purple-900/20 dark:to-blue-900/20">
                                       <SimpleVoiceNote
                                         messageId={String(msg._id)}
+                                        audioSrc={
+                                          (msg as any).audioSrc ??
+                                          msg.metadata?.audioSrc ??
+                                          (effectiveAudioUrl?.startsWith('http') ? effectiveAudioUrl : null)
+                                        }
                                         audioUrl={(msg as any).audioUrl ?? msg.metadata?.audioUrl ?? audioUrlByMessageId[msg._id]}
                                         cloudinaryUrl={msg.cloudinaryUrl ?? msg.metadata?.cloudinaryUrl ?? anyCloudinary}
                                       />
@@ -2463,7 +2568,48 @@ export default function AgentInbox() {
                     </Button>
                   </div>
                 )}
+                {isRecording && (
+                  <VoiceRecordingBar
+                    recordingSeconds={recordingSeconds}
+                    isPaused={isPaused}
+                    supportsPause={supportsPause}
+                    variant={isWaThread ? 'whatsapp' : 'default'}
+                    onPause={pauseRecording}
+                    onResume={resumeRecording}
+                    onCancel={cancelRecording}
+                    onDone={async () => {
+                      const { file, activeDurationSec } = await stopRecording();
+                      if (!file) {
+                        toast.error(t('chatInbox.voiceTooShort', 'Recording too short'));
+                        return;
+                      }
+                      const d = await resolveVoiceAttachmentDurationSeconds(file, activeDurationSec);
+                      attachAudioFile(file, d);
+                    }}
+                  />
+                )}
                 {selectedImageFile && (
+                  audioPreviewUrl ? (
+                    <div className="relative mb-3 inline-block max-w-full pr-2 pt-2">
+                      <OutboundVoicePreviewCard
+                        src={audioPreviewUrl}
+                        durationHint={
+                          outboundAudioDurationSec != null
+                            ? formatVoiceDuration(outboundAudioDurationSec)
+                            : null
+                        }
+                        fileName={selectedImageFile.name}
+                      />
+                      <Button
+                        size="icon"
+                        variant="destructive"
+                        className="absolute -top-1 -right-1 z-20 h-6 w-6 rounded-full shadow-sm"
+                        onClick={handleRemoveImage}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
                   <div className="mb-3 relative inline-block max-w-full">
                     <div className="relative rounded-lg overflow-hidden border border-border bg-muted/50">
                       {pdfPreviewUrl ? (
@@ -2515,12 +2661,13 @@ export default function AgentInbox() {
                       </Button>
                     </div>
                   </div>
+                  )
                 )}
                 <div className="relative">
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*,video/*,application/pdf,.pdf"
+                    accept="image/*,video/*,audio/*,application/pdf,.pdf"
                     onChange={handleImageSelect}
                     className="hidden"
                     id="image-upload-agent"
@@ -2544,7 +2691,7 @@ export default function AgentInbox() {
                       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); }
                     }} 
                     className={cn(
-                      'w-full resize-none p-3 sm:p-4 pr-28 sm:pr-32 focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base',
+                      'w-full resize-none p-3 sm:p-4 pr-[8.75rem] sm:pr-40 focus-visible:ring-2 focus-visible:ring-primary text-sm sm:text-base',
                       isWaThread ? 'wa-composer-input' : 'rounded-lg bg-muted border-none'
                     )}
                     rows={1} 
@@ -2573,62 +2720,117 @@ export default function AgentInbox() {
                       )}
                     </div>
                   )}
-                  {/* Improve wording/tone (no send); spelling suggestions via browser spellCheck */}
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    disabled={!newMessage.trim() || improveLoading}
-                    onClick={async () => {
-                      if (!newMessage.trim()) return;
-                      setImproveLoading(true);
-                      try {
-                        const lang = detectLanguageFromText(newMessage) || (currentConversation as any)?.preferredLanguage || (user as any)?.language || i18n.language?.slice(0, 2);
-                        const data = await improveMessageApi(newMessage, lang);
-                        if (data?.improvedText) setNewMessage(data.improvedText);
-                      } catch {
-                        toast.error(t('agentInbox.improveFailed', 'Could not improve message'));
-                      } finally {
-                        setImproveLoading(false);
+                  <div className="absolute bottom-2 sm:bottom-2.5 right-2 sm:right-3 flex flex-row-reverse items-center gap-0.5">
+                    <Button
+                      type="button"
+                      onClick={handleSendMessage}
+                      size="icon"
+                      disabled={
+                        isUploadingImage ||
+                        isRecording ||
+                        (chatSurfacePlatform === 'whatsapp' &&
+                          whatsappSession?.requiresTemplate &&
+                          isMetaWhatsAppCloudApiSession(whatsappSession?.source)) ||
+                        (!newMessage.trim() && !selectedImageFile)
                       }
-                    }}
-                    className="absolute right-20 sm:right-24 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9"
-                    title={t('agentInbox.improveTone', 'Improve wording and tone')}
-                  >
-                    {improveLoading ? <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" /> : <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    disabled={isUploadingImage}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute right-12 sm:right-14 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9"
-                    title="Attach image, video, or PDF"
-                  >
-                    {isUploadingImage ? (
-                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                    ) : (
-                      <Paperclip className="h-3 w-3 sm:h-4 sm:w-4" />
-                    )}
-                  </Button>
-                  <Button 
-                    onClick={handleSendMessage} 
-                    size="icon" 
-                    disabled={isUploadingImage || (chatSurfacePlatform === 'whatsapp' && whatsappSession?.requiresTemplate && isMetaWhatsAppCloudApiSession(whatsappSession?.source)) || (!newMessage.trim() && !selectedImageFile)}
-                    className={cn(
-                      'absolute right-2 sm:right-3 bottom-2 sm:bottom-2.5 h-8 w-8 sm:h-9 sm:w-9 disabled:opacity-50',
-                      isWaThread
-                        ? 'rounded-full bg-[#25D366] text-white hover:bg-[#20bd5a] shadow-sm border-0'
-                        : 'bg-primary hover:bg-primary/90'
-                    )}
-                  >
-                    {isUploadingImage ? (
-                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-3 w-3 sm:h-4 sm:w-4" />
-                    )}
-                  </Button>
+                      className={cn(
+                        'h-8 w-8 sm:h-9 sm:w-9 disabled:opacity-50',
+                        isWaThread
+                          ? 'rounded-full bg-[#25D366] text-white hover:bg-[#20bd5a] shadow-sm border-0'
+                          : 'bg-primary hover:bg-primary/90'
+                      )}
+                    >
+                      {isUploadingImage ? (
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      disabled={!newMessage.trim() || improveLoading}
+                      onClick={async () => {
+                        if (!newMessage.trim()) return;
+                        setImproveLoading(true);
+                        try {
+                          const lang =
+                            detectLanguageFromText(newMessage) ||
+                            (currentConversation as any)?.preferredLanguage ||
+                            (user as any)?.language ||
+                            i18n.language?.slice(0, 2);
+                          const data = await improveMessageApi(newMessage, lang);
+                          if (data?.improvedText) setNewMessage(data.improvedText);
+                        } catch {
+                          toast.error(t('agentInbox.improveFailed', 'Could not improve message'));
+                        } finally {
+                          setImproveLoading(false);
+                        }
+                      }}
+                      className="h-8 w-8 sm:h-9 sm:w-9"
+                      title={t('agentInbox.improveTone', 'Improve wording and tone')}
+                    >
+                      {improveLoading ? (
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      disabled={isUploadingImage}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-8 w-8 sm:h-9 sm:w-9"
+                      title="Attach image, video, audio, or PDF"
+                    >
+                      {isUploadingImage ? (
+                        <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                      ) : (
+                        <Paperclip className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      disabled={
+                        isUploadingImage ||
+                        !!selectedImageFile ||
+                        isRecording ||
+                        (chatSurfacePlatform === 'whatsapp' &&
+                          whatsappSession?.requiresTemplate &&
+                          isMetaWhatsAppCloudApiSession(whatsappSession?.source))
+                      }
+                      className={cn(
+                        'h-8 w-8 sm:h-9 sm:w-9',
+                        isWaThread && 'text-[#25D366] hover:text-[#20bd5a] hover:bg-[#25D366]/10'
+                      )}
+                      title={t('chatInbox.voiceMicHint', 'Record voice message')}
+                      onClick={async () => {
+                        try {
+                          await startRecording();
+                        } catch (e: unknown) {
+                          const err = e as Error & { name?: string };
+                          if (err?.message === 'VOICE_NOT_SUPPORTED') {
+                            toast.error(
+                              t('chatInbox.voiceNotSupported', 'Voice recording is not supported in this browser')
+                            );
+                            return;
+                          }
+                          if (err?.name === 'NotAllowedError') {
+                            toast.error(t('chatInbox.voiceMicDenied', 'Microphone permission denied'));
+                            return;
+                          }
+                          toast.error(t('chatInbox.voiceMicError', 'Could not start recording'));
+                        }
+                      }}
+                    >
+                      <Mic className="h-3 w-3 sm:h-4 sm:w-4" />
+                    </Button>
+                  </div>
               </div>
             </div>
           </>
@@ -2642,7 +2844,10 @@ export default function AgentInbox() {
           {selectedImage && (
             <ZoomableImageLightbox
               key={selectedImage.src}
-              hint={t('chatInbox.imageZoomHint', 'Scroll or pinch to zoom. Drag to pan when zoomed.')}
+              hint={t(
+                'chatInbox.imageZoomHint',
+                'Hold Ctrl or ⌘ and scroll to zoom. Pinch to zoom on touch. Drag to pan when zoomed.'
+              )}
             >
               {selectedImage.src && (selectedImage.src.includes('/api/v1/unipile/attachments/') || selectedImage.src.includes('/unipile/attachments/')) ? (
                 <MediaImage

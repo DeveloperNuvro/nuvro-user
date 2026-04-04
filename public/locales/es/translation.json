@@ -192,7 +192,7 @@
     "snippetHint": "Usa '/' para respuestas rápidas",
     "downloadDocument": "Descargar",
     "documentUnavailable": "Documento no disponible",
-    "imageZoomHint": "Desplaza o pellizca para ampliar. Arrastra para mover cuando esté ampliado.",
+    "imageZoomHint": "Mantén Ctrl o ⌘ y desplaza para ampliar. Pellizca en táctil. Arrastra para mover si está ampliado.",
     "quotedReplyLabel": "Respondiendo a",
     "quotedReplyNoPreview": "Mensaje original (sin vista previa)",
     "whapi": {
