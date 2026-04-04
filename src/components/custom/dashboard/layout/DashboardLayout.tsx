@@ -37,6 +37,11 @@ import { socketReconnected } from "@/features/socket/socketSlice";
 import NotificationToast from "@/components/custom/Notification/NotificationToast";
 import { fetchChannels } from "@/features/channel/channelSlice";
 import { normalizeApiMediaUrl } from "@/lib/audioUrlNormalize";
+import {
+  conversationRowFromBusinessNewMessageSocket,
+  conversationRowFromNewConversationSocket,
+  inboxListPatchFromSocketMessage,
+} from "@/utils/socketInboxRealtime";
 
 // One-at-a-time notification sound: stop any current playback before starting new one so it's not intrusive and no stacking.
 const NOTIFICATION_SOUND_URL = "/sounds/notification.mp3";
@@ -123,7 +128,8 @@ export default function DashboardLayout() {
   // 🔧 OPTIMIZED: Memoize socket event handlers with useCallback (moved outside useEffect)
   const handleNewMessage = useCallback((data: any) => {
     const customerId = data?.customerId ?? data?.customer_id;
-    const sender = data?.sender ?? data?.senderType;
+    const rawSender = data?.sender ?? data?.senderType;
+    const sender = rawSender === 'user' ? 'customer' : rawSender;
     const message = data?.message ?? data?.text ?? '';
     const customerName = data?.customerName;
     const conversationId = data?.conversationId;
@@ -166,11 +172,14 @@ export default function DashboardLayout() {
         : typeof data.metadata?.platform === 'string' && data.metadata.platform.trim()
           ? String(data.metadata.platform).trim()
           : undefined;
+    const inboxListPatch =
+      user.role === 'business' ? inboxListPatchFromSocketMessage(data) : undefined;
     dispatch(
       addRealtimeMessage({
         customerId: String(customerId),
         message: formattedMessage,
         ...(conversationSource ? { conversationSource } : {}),
+        ...(inboxListPatch && Object.keys(inboxListPatch).length > 0 ? { inboxListPatch } : {}),
       })
     );
 
@@ -189,16 +198,14 @@ export default function DashboardLayout() {
 
     if (isNewConversation && conversationId && (sender === 'customer' || sender === 'system' || sender === 'ai')) {
       if (user.role === 'business') {
-        dispatch(
-          addNewCustomer({
-            id: conversationId,
-            customer: { id: customerId, name: customerName || t('chatInbox.unknownCustomer') },
-            preview: message,
-            latestMessageTimestamp: data.createdAt ?? data.timestamp ?? new Date().toISOString(),
-            status: 'ai_only',
-            ...(conversationSource ? { source: conversationSource } : {}),
-          })
-        );
+        const row = conversationRowFromBusinessNewMessageSocket(data, {
+          conversationId: String(conversationId),
+          customerId: String(customerId),
+          customerName: String(customerName || ''),
+          preview: message,
+          unknownCustomerLabel: t('chatInbox.unknownCustomer'),
+        });
+        dispatch(addNewCustomer(row));
       }
     }
 
@@ -323,21 +330,11 @@ export default function DashboardLayout() {
 
   // 🔧 NEW: Handle new conversation so chat list updates in real time (no refresh) from any page
   const handleNewConversation = useCallback((data: any) => {
-    if (!data?.id || !data?.customer?.id) return;
+    const payload = conversationRowFromNewConversationSocket(data, t('chatInbox.unknownCustomer'));
+    if (!payload) return;
     const state = store.getState();
-    const inChatInbox = state.chatInbox.conversations.some((c: ConversationInList) => c.id === data.id);
-    const inAgentInbox = state.agentInbox.conversations.some((c: ConversationInList) => c.id === data.id);
-    const payload: ConversationInList = {
-      id: data.id,
-      customer: { id: data.customer.id, name: data.customer.name || t('chatInbox.unknownCustomer') },
-      preview: data.preview || '',
-      latestMessageTimestamp: data.latestMessageTimestamp || new Date().toISOString(),
-      status: (data.status === 'closed' ? 'closed' : data.status) || 'ai_only',
-      assignedAgentId: data.assignedAgentId,
-      platformInfo: data.platformInfo,
-      source: data.source,
-      country: data.country,
-    };
+    const inChatInbox = state.chatInbox.conversations.some((c: ConversationInList) => c.id === payload.id);
+    const inAgentInbox = state.agentInbox.conversations.some((c: ConversationInList) => c.id === payload.id);
     if (!inChatInbox) dispatch(addNewCustomer(payload));
     if (!inAgentInbox) dispatch(addAssignedConversation(payload));
   }, [dispatch, t]);

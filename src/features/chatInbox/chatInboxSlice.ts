@@ -377,9 +377,16 @@ const chatInboxSlice = createSlice({
         },
         addRealtimeMessage: (
             state,
-            action: PayloadAction<{ customerId: string; message: any; conversationSource?: string }>
+            action: PayloadAction<{
+                customerId: string;
+                message: any;
+                conversationSource?: string;
+                inboxListPatch?: Partial<
+                    Pick<ConversationInList, 'whatsappConnection' | 'country' | 'platformInfo' | 'source'>
+                >;
+            }>
         ) => {
-            const { customerId, message: rawMessage, conversationSource } = action.payload;
+            const { customerId, message: rawMessage, conversationSource, inboxListPatch } = action.payload;
             
             // 🔧 FIX: Transform socket message to match expected Message format
             // Socket messages might have different field names (message vs text, sender vs sentBy, createdAt vs time)
@@ -433,15 +440,26 @@ const chatInboxSlice = createSlice({
             }
             const convoIndex = state.conversations.findIndex((c) => c.customer.id === customerId);
             if (convoIndex !== -1) {
-                const merged = mergeConversationWithSocketHints(state.conversations[convoIndex], {
+                let row = state.conversations[convoIndex];
+                if (inboxListPatch) {
+                    row = {
+                        ...row,
+                        ...inboxListPatch,
+                        platformInfo:
+                            inboxListPatch.platformInfo != null
+                                ? { ...row.platformInfo, ...inboxListPatch.platformInfo }
+                                : row.platformInfo,
+                    };
+                }
+                const merged = mergeConversationWithSocketHints(row, {
                     topLevelSource: conversationSource,
                     metadata: transformedMessage.metadata,
                 });
-                const conversationToMove = {
+                const conversationToMove = normalizeConversationPlatformFields({
                     ...merged,
                     preview: transformedMessage.text,
                     latestMessageTimestamp: transformedMessage.time,
-                };
+                });
                 state.conversations.splice(convoIndex, 1);
                 state.conversations.unshift(conversationToMove);
             }
